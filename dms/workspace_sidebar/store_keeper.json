@@ -1,0 +1,27 @@
+{
+ "app": "dms",
+ "creation": "2026-06-24 08:55:50.360737",
+ "docstatus": 0,
+ "doctype": "Workspace Sidebar",
+ "header_icon": "airplay",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Store Keeper",
+   "link_to": "Store Keeper",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-06-24 08:58:15.477628",
+ "modified_by": "Administrator",
+ "name": "Store Keeper",
+ "owner": "Administrator",
+ "standard": 1,
+ "title": "Store Keeper"
+}

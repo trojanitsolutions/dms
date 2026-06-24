@@ -1,0 +1,40 @@
+{
+ "app": "dms",
+ "charts": [],
+ "content": "[{\"id\":\"XIbIT16MrJ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Welcome to the Sales Representative workspace</span>\",\"col\":12}},{\"id\":\"eZTY3cXgLF\",\"type\":\"paragraph\",\"data\":{\"text\":\"Click on \\n\\t\\t\\t\\n\\t\\t\\t\\n\\t\\t to edit\",\"col\":12}},{\"id\":\"oVrhjM9lby\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Completed Sales Order\",\"col\":4}}]",
+ "creation": "2026-06-23 12:00:34.074718",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "airplay",
+ "idx": 1,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Sales Representative",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-06-23 13:33:04.632037",
+ "modified_by": "Administrator",
+ "module": "Sales REP",
+ "name": "Sales Representative",
+ "number_cards": [],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Sales Order",
+   "label": "Completed Sales Order",
+   "quick_list_filter": "[[\"Sales Order\",\"status\",\"=\",\"Completed\"]]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "Sales Rep"
+  }
+ ],
+ "sequence_id": 0.0,
+ "shortcuts": [],
+ "title": "Sales Representative",
+ "type": "Workspace"
+}
