@@ -20,6 +20,12 @@ app_license = "mit"
 # 		"has_permission": "dms.api.permission.has_app_permission"
 # 	}
 # ]
+fixtures = [
+    {
+        "dt": "Workspace",
+        "filters": [["name", "in", ["Store Keeper", "Sales Representative"]]]
+    }
+]
 
 # Includes in <head>
 # ------------------

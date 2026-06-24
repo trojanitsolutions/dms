@@ -1,7 +1,7 @@
 {
  "app": "dms",
  "charts": [],
- "content": "[]",
+ "content": "[{\"id\":\"-sdqmqSYAt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Welcome to the Store Keeper workspace</span>\",\"col\":12}},{\"id\":\"V5NAV2g276\",\"type\":\"paragraph\",\"data\":{\"text\":\"Click on \\n\\t\\t\\t\\n\\t\\t\\t\\n\\t\\t to edit\",\"col\":12}},{\"id\":\"ubmglXPfXQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Order Created\",\"col\":3}}]",
  "creation": "2026-06-24 08:55:50.334937",
  "custom_blocks": [],
  "docstatus": 0,
@@ -14,7 +14,7 @@
  "label": "Store Keeper",
  "link_type": "DocType",
  "links": [],
- "modified": "2026-06-24 08:57:22.006975",
+ "modified": "2026-06-24 09:07:55.576344",
  "modified_by": "Administrator",
  "module": "Store Keeper",
  "name": "Store Keeper",
@@ -24,7 +24,16 @@
  "quick_lists": [],
  "roles": [],
  "sequence_id": 0.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Sales Order Created",
+   "link_to": "Sales Order",
+   "stats_filter": "[[\"Sales Order\",\"status\",\"=\",\"To Deliver and Bill\"]]",
+   "type": "DocType"
+  }
+ ],
  "title": "Store Keeper",
  "type": "Workspace"
 }

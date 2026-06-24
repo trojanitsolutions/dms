@@ -1,0 +1,89 @@
+[
+ {
+  "app": "dms",
+  "charts": [],
+  "content": "[{\"id\":\"-sdqmqSYAt\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Welcome to the Store Keeper workspace</span>\",\"col\":12}},{\"id\":\"V5NAV2g276\",\"type\":\"paragraph\",\"data\":{\"text\":\"Click on \\n\\t\\t\\t\\n\\t\\t\\t\\n\\t\\t to edit\",\"col\":12}},{\"id\":\"ubmglXPfXQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Order Created\",\"col\":3}}]",
+  "custom_blocks": [],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "external_link": null,
+  "for_user": null,
+  "hide_custom": 0,
+  "icon": "airplay",
+  "indicator_color": "green",
+  "is_hidden": 0,
+  "label": "Store Keeper",
+  "link_to": null,
+  "link_type": "DocType",
+  "links": [],
+  "modified": "2026-06-24 09:07:55.576344",
+  "module": "Store Keeper",
+  "name": "Store Keeper",
+  "number_cards": [],
+  "parent_page": null,
+  "public": 1,
+  "quick_lists": [],
+  "restrict_to_domain": null,
+  "roles": [],
+  "sequence_id": 0.0,
+  "shortcuts": [
+   {
+    "color": "Green",
+    "doc_view": "List",
+    "format": null,
+    "icon": null,
+    "kanban_board": null,
+    "label": "Sales Order Created",
+    "link_to": "Sales Order",
+    "report_ref_doctype": null,
+    "restrict_to_domain": null,
+    "stats_filter": "[[\"Sales Order\",\"status\",\"=\",\"To Deliver and Bill\"]]",
+    "type": "DocType",
+    "url": null
+   }
+  ],
+  "title": "Store Keeper",
+  "type": "Workspace"
+ },
+ {
+  "app": "dms",
+  "charts": [],
+  "content": "[{\"id\":\"XIbIT16MrJ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Welcome to the Sales Representative workspace</span>\",\"col\":12}},{\"id\":\"eZTY3cXgLF\",\"type\":\"paragraph\",\"data\":{\"text\":\"Click on \\n\\t\\t\\t\\n\\t\\t\\t\\n\\t\\t to edit\",\"col\":12}},{\"id\":\"oVrhjM9lby\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Completed Sales Order\",\"col\":4}}]",
+  "custom_blocks": [],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "external_link": null,
+  "for_user": null,
+  "hide_custom": 0,
+  "icon": "airplay",
+  "indicator_color": "green",
+  "is_hidden": 0,
+  "label": "Sales Representative",
+  "link_to": null,
+  "link_type": "DocType",
+  "links": [],
+  "modified": "2026-06-23 13:33:04.632037",
+  "module": "Sales REP",
+  "name": "Sales Representative",
+  "number_cards": [],
+  "parent_page": null,
+  "public": 1,
+  "quick_lists": [
+   {
+    "document_type": "Sales Order",
+    "label": "Completed Sales Order",
+    "quick_list_filter": "[[\"Sales Order\",\"status\",\"=\",\"Completed\"]]"
+   }
+  ],
+  "restrict_to_domain": null,
+  "roles": [
+   {
+    "role": "Sales Rep"
+   }
+  ],
+  "sequence_id": 0.0,
+  "shortcuts": [],
+  "title": "Sales Representative",
+  "type": "Workspace"
+ }
+]
