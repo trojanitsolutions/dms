@@ -1,0 +1,21 @@
+{
+ "app": "dms",
+ "bg_color": "gray",
+ "creation": "2026-06-24 08:55:50.376254",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Store Keeper",
+ "link_to": "Store Keeper",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-06-24 10:57:23.929761",
+ "modified_by": "Administrator",
+ "name": "Store Keeper",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "sidebar": "Store Keeper",
+ "standard": 1
+}

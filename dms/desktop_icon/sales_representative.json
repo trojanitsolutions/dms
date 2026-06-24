@@ -1,0 +1,21 @@
+{
+ "app": "dms",
+ "bg_color": "blue",
+ "creation": "2026-06-23 12:00:34.116536",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Sales Representative",
+ "link_to": "Sales Representative",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-06-24 10:57:34.859529",
+ "modified_by": "Administrator",
+ "name": "Sales Representative",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "sidebar": "Sales Representative",
+ "standard": 1
+}
