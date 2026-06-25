@@ -184,18 +184,24 @@ def get_item_groups():
 def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     _require_sales_rep()
     filters = {"disabled": 0, "is_sales_item": 1}
-    if search:
-        filters["item_name"] = ["like", f"%{search}%"]
     if item_group and item_group != "All":
         filters["item_group"] = item_group
 
-    items = frappe.get_all(
-        "Item",
+    get_all_kwargs = dict(
         filters=filters,
         fields=["name", "item_name", "item_group", "standard_rate", "image", "stock_uom"],
-        limit=100,
+        limit=10000,
         order_by="item_name",
     )
+    if search:
+        get_all_kwargs["or_filters"] = [
+            ["item_name", "like", f"%{search}%"],
+            ["name", "like", f"%{search}%"],
+            ["item_group", "like", f"%{search}%"],
+            ["description", "like", f"%{search}%"],
+        ]
+
+    items = frappe.get_all("Item", **get_all_kwargs)
 
     if not items:
         return items
