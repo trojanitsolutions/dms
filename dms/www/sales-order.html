@@ -103,6 +103,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cart-remove{color:#9CA3AF;cursor:pointer;background:none;border:none;padding:4px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
 .cart-remove:hover{color:#DC2626}
 
+/* ── Customer status banner ──────────────────────────────── */
+.cust-status-banner{margin:10px 16px;padding:10px 12px;border-radius:8px;font-size:12.5px;display:none;align-items:center;gap:8px}
+.cust-status-banner svg{flex-shrink:0;width:15px;height:15px}
+.cust-status-banner.is-disabled{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B}
+.cust-status-banner.is-frozen{background:#FFF7ED;border:1px solid #FED7AA;color:#92400E}
+
 /* ── Credit info ─────────────────────────────────────────── */
 .credit-section{padding:10px 16px;border-top:1px solid #E5E7EB;display:none}
 .credit-row{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px}
@@ -351,6 +357,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="cart-title">Order summary</div>
       <span class="draft-badge">DRAFT</span>
     </div>
+
+    <!-- Customer disabled / frozen warning -->
+    <div class="cust-status-banner" id="cust-status-banner">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524L13.476 14.89zm1.414-1.414L6.524 5.11A6 6 0 0114.89 13.476zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/></svg>
+      <span id="cust-status-msg"></span>
+    </div>
+
     <div class="cart-meta">
       <div class="meta-row"><span class="meta-key">Sales rep</span><span class="meta-val">{{ full_name }}</span></div>
       <div class="meta-row"><span class="meta-key">Customer</span><span class="meta-val" id="sum-customer">{% if customer %}{{ customer_name or customer }}{% else %}—{% endif %}</span></div>
@@ -390,6 +403,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="delivery-row">
         <label>Delivery date</label>
         <input type="date" id="delivery-date">
+        <div id="delivery-date-err" style="display:none;font-size:11.5px;color:#DC2626;margin-top:4px">Delivery date cannot be in the past.</div>
       </div>
       {% if customer %}
       <button class="btn-submit" id="submit-btn" onclick="submitOrder()">Submit Sales Order</button>
@@ -444,8 +458,34 @@ function escJS(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 
 let allItems=[],filteredItems=[],cart={},activeGroup='All',groups=[];
 let creditInfo=null,currentGrandTotal=0;
+let customerStatus={disabled:false,is_frozen:false};
 let currentView=sessionStorage.getItem('itemView')||'grid';
 let activeWhPopup=null;
+
+/* ── Stock helpers ───────────────────────────────────────── */
+function displayedAvailable(code){
+  const item=allItems.find(i=>i.name===code);
+  if(!item)return 0;
+  const wh=getWarehouse();
+  const availMap=item.warehouse_available||{};
+  const stockMap=item.warehouse_stocks||{};
+  let avail;
+  if(wh){
+    avail=availMap[wh]!==undefined?availMap[wh]:(stockMap[wh]||0);
+  }else{
+    avail=Object.values(availMap).reduce((s,v)=>s+v,0);
+    if(!avail)avail=Object.values(stockMap).reduce((s,v)=>s+v,0);
+  }
+  return Math.max(0,avail-(cart[code]?.qty||0));
+}
+function isCardOos(code){
+  const item=allItems.find(i=>i.name===code);
+  if(!item||!item.any_stock)return true;
+  if(cart[code])return false;
+  const wh=getWarehouse();
+  if(!wh)return!item.any_stock;
+  return displayedAvailable(code)<=0;
+}
 
 /* ── View toggle ────────────────────────────────────────── */
 function setView(v){
@@ -468,8 +508,9 @@ function showWhPopup(evt,code){
   if(!stocks.length)return;
   const popup=document.createElement('div');
   popup.className='wh-popup';
+  const uom=item.stock_uom||'ea';
   popup.innerHTML=`<div class="wp-title">Stock by warehouse</div>`
-    +stocks.map(([w,q])=>`<div class="wp-row"><span class="wp-wh">${w}</span><span class="wp-qty">${q} ea</span></div>`).join('');
+    +stocks.map(([w,q])=>`<div class="wp-row"><span class="wp-wh">${w}</span><span class="wp-qty">${q} ${uom}</span></div>`).join('');
   document.body.appendChild(popup);
   activeWhPopup=popup;
   const r=evt.currentTarget.getBoundingClientRect();
@@ -574,25 +615,9 @@ function renderGrid(items){
   if(!items.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF">No items found.</div>';return}
   grid.innerHTML=items.map(item=>{
     const code=escJS(item.name);
-    const inCart=cart[item.name];
-    const oos=!item.any_stock;
-    const whStocks=item.warehouse_stocks||{};
-    const whCount=Object.keys(whStocks).length;
-
-    let stockLabel='';
-    if(item.stock_qty>0)stockLabel=`<span class="item-stock${item.stock_qty<5?' low':''}">${item.stock_qty} ea</span>`;
-    else if(item.any_stock)stockLabel=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">Not in wh</span>`;
-
-    const peekBtn=whCount>0
-      ?`<button class="wh-peek-btn" onclick="showWhPopup(event,'${code}')">${EYE_ICON}${whCount}</button>`
-      :'';
-
-    const actions=oos
-      ?`<button class="add-btn" disabled>Out of stock</button>`
-      :inCart
-        ?`<div class="qty-ctrl"><button class="qty-btn" onclick="changeQty('${code}',-1)">−</button><span class="qty-num">${inCart.qty}</span><button class="qty-btn" onclick="changeQty('${code}',1)">+</button></div>`
-        :`<button class="add-btn" onclick="addToCart('${code}')">Add</button>`;
-
+    const oos=isCardOos(item.name);
+    const whCount=Object.keys(item.warehouse_stocks||{}).length;
+    const peekBtn=whCount>0?`<button class="wh-peek-btn" onclick="showWhPopup(event,'${code}')">${EYE_ICON}${whCount}</button>`:'';
     return`<div class="item-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}">
       <div class="item-img">${item.image?`<img src="${esc(item.image)}" alt="">`:`<div>${itemIcon(item.item_group)}</div>`}${oos?'<div class="oos-badge">OOS</div>':''}</div>
       <div class="item-body">
@@ -600,12 +625,14 @@ function renderGrid(items){
         <div class="item-name" title="${esc(item.item_name)}">${esc(item.item_name)}</div>
         <div class="item-code">${esc(item.name)}</div>
         <div class="item-footer">
-          <div><div class="item-price">${fmt(item.standard_rate)}</div>${stockLabel}${peekBtn}</div>
-          <div id="action-${CSS.escape(item.name)}">${actions}</div>
+          <div><div class="item-price">${fmt(item.standard_rate)} <span style="font-size:10px;font-weight:400;color:#9CA3AF">/${item.stock_uom||'ea'}</span></div><span id="stock-${CSS.escape(item.name)}"></span>${peekBtn}</div>
+          <div id="action-${CSS.escape(item.name)}"></div>
         </div>
       </div>
     </div>`;
   }).join('');
+  // populate action + stock labels via refreshCard so they stay in sync with cart
+  items.forEach(item=>refreshCard(item.name));
 }
 
 /* ── Render list ─────────────────────────────────────────── */
@@ -616,29 +643,12 @@ function renderList(items){
   if(!items.length){el.innerHTML='<div style="text-align:center;padding:60px;color:#9CA3AF">No items found.</div>';return}
   el.innerHTML=items.map(item=>{
     const code=escJS(item.name);
-    const inCart=cart[item.name];
-    const oos=!item.any_stock;
-    const whStocks=item.warehouse_stocks||{};
-    const whCount=Object.keys(whStocks).length;
-
-    let stkCls='ok',stkTxt='';
-    if(item.stock_qty>0){stkCls=item.stock_qty<5?'low':'ok';stkTxt=item.stock_qty+' ea';}
-    else if(item.any_stock){stkCls='no-wh';stkTxt='Not in wh';}
-
-    const peekBtn=whCount>0
-      ?`<button class="wh-peek-btn" onclick="showWhPopup(event,'${code}')">${EYE_ICON}${whCount} wh</button>`
-      :'';
-
-    const actions=oos
-      ?`<button class="add-btn" style="font-size:11px;padding:5px 8px" disabled>OOS</button>`
-      :inCart
-        ?`<div class="qty-ctrl"><button class="qty-btn" onclick="changeQty('${code}',-1)">−</button><span class="qty-num">${inCart.qty}</span><button class="qty-btn" onclick="changeQty('${code}',1)">+</button></div>`
-        :`<button class="add-btn" onclick="addToCart('${code}')">Add</button>`;
-
+    const oos=isCardOos(item.name);
+    const whCount=Object.keys(item.warehouse_stocks||{}).length;
+    const peekBtn=whCount>0?`<button class="wh-peek-btn" onclick="showWhPopup(event,'${code}')">${EYE_ICON}${whCount} wh</button>`:'';
     const thumb=item.image
       ?`<div class="item-row-thumb"><img src="${esc(item.image)}" alt=""></div>`
       :`<div class="item-row-thumb">${itemIcon(item.item_group)}</div>`;
-
     return`<div class="item-row-wrap" id="card-${CSS.escape(item.name)}">
       <div class="item-row${oos?' oos':''}">
         ${thumb}
@@ -647,14 +657,15 @@ function renderList(items){
           <div class="item-row-meta">${esc(item.name)}${item.item_group?' · '+esc(item.item_group):''}</div>
         </div>
         <div class="item-row-mid">
-          <div class="item-row-price">${fmt(item.standard_rate)}</div>
-          ${stkTxt?`<span class="item-row-stk ${stkCls}">${stkTxt}</span>`:''}
+          <div class="item-row-price">${fmt(item.standard_rate)} <span style="font-size:10px;font-weight:400;color:#9CA3AF">/${item.stock_uom||'ea'}</span></div>
+          <span id="stock-${CSS.escape(item.name)}"></span>
           ${peekBtn}
         </div>
-        <div class="item-row-action" id="action-${CSS.escape(item.name)}">${actions}</div>
+        <div class="item-row-action" id="action-${CSS.escape(item.name)}"></div>
       </div>
     </div>`;
   }).join('');
+  items.forEach(item=>refreshCard(item.name));
 }
 
 /* ── Filters ─────────────────────────────────────────────── */
@@ -688,11 +699,13 @@ function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(applyF
 function addToCart(code){
   const item=allItems.find(i=>i.name===code);
   if(!item||!item.any_stock)return;
+  if(displayedAvailable(code)<=0)return;
   cart[code]={item,qty:1};
   updateCartUI();refreshCard(code);
 }
 function changeQty(code,delta){
   if(!cart[code])return;
+  if(delta>0&&displayedAvailable(code)<=0)return;
   cart[code].qty=Math.max(0,cart[code].qty+delta);
   if(cart[code].qty===0)delete cart[code];
   updateCartUI();refreshCard(code);
@@ -700,16 +713,53 @@ function changeQty(code,delta){
 function removeFromCart(code){delete cart[code];updateCartUI();refreshCard(code)}
 
 function refreshCard(code){
-  const el=document.getElementById('action-'+CSS.escape(code));if(!el)return;
+  const actionEl=document.getElementById('action-'+CSS.escape(code));
+  const stockEl=document.getElementById('stock-'+CSS.escape(code));
+  if(!actionEl)return;
   const item=allItems.find(i=>i.name===code);if(!item)return;
   const c=escJS(code);
-  const inCart=cart[code];const oos=!item.any_stock;
+  const inCart=cart[code];
+  const cardOos=isCardOos(code);
+  const canMore=displayedAvailable(code)>0;
   const listStyle=currentView==='list'?' style="font-size:11px;padding:5px 8px"':'';
-  el.innerHTML=oos
-    ?`<button class="add-btn"${listStyle} disabled>OOS</button>`
-    :inCart
-      ?`<div class="qty-ctrl"><button class="qty-btn" onclick="changeQty('${c}',-1)">−</button><span class="qty-num">${inCart.qty}</span><button class="qty-btn" onclick="changeQty('${c}',1)">+</button></div>`
-      :`<button class="add-btn" onclick="addToCart('${c}')">Add</button>`;
+
+  // Update action buttons
+  if(cardOos){
+    actionEl.innerHTML=`<button class="add-btn"${listStyle} disabled>OOS</button>`;
+  }else if(inCart){
+    const plusDis=!canMore?' disabled style="opacity:.45;cursor:not-allowed"':'';
+    actionEl.innerHTML=`<div class="qty-ctrl"><button class="qty-btn" onclick="changeQty('${c}',-1)">−</button><span class="qty-num">${inCart.qty}</span><button class="qty-btn" onclick="changeQty('${c}',1)"${plusDis}>+</button></div>`;
+  }else{
+    actionEl.innerHTML=`<button class="add-btn" onclick="addToCart('${c}')">Add</button>`;
+  }
+
+  // Update stock label
+  if(stockEl){
+    const avail=displayedAvailable(code);
+    const wh=getWarehouse();
+    const uom=item.stock_uom||'ea';
+    if(!item.any_stock){
+      stockEl.innerHTML='';
+    }else if(wh){
+      if(avail>0)stockEl.innerHTML=`<span class="item-stock${avail<5?' low':''}">${avail} ${uom}</span>`;
+      else if(inCart)stockEl.innerHTML=`<span class="item-stock" style="color:#F59E0B;font-size:10.5px">Max in cart</span>`;
+      else stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">All reserved</span>`;
+    }else{
+      stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">Select wh</span>`;
+    }
+  }
+
+  // Toggle OOS state on card
+  const cardEl=document.getElementById('card-'+CSS.escape(code));
+  if(cardEl){
+    cardEl.classList.toggle('oos',cardOos);
+    const imgEl=cardEl.querySelector('.item-img')||cardEl.querySelector('.item-row');
+    if(imgEl&&currentView==='grid'){
+      let badge=imgEl.querySelector('.oos-badge');
+      if(cardOos&&!badge){badge=document.createElement('div');badge.className='oos-badge';badge.textContent='OOS';imgEl.appendChild(badge);}
+      else if(!cardOos&&badge)badge.remove();
+    }
+  }
 }
 
 function updateCartUI(){
@@ -732,7 +782,7 @@ function updateCartUI(){
   cartEl.innerHTML=items.map(({item,qty})=>{
     const line=item.standard_rate*qty;subtotal+=line;
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price">${fmt(item.standard_rate)} × ${qty}</div></div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price">${fmt(item.standard_rate)} × ${qty} ${item.stock_uom||'ea'}</div></div>
       <div class="cart-item-total">${fmt(line)}</div>
       <button class="cart-remove" onclick="removeFromCart('${item.name}')" title="Remove">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
@@ -750,6 +800,12 @@ function updateCartUI(){
 function updateCreditWarning(){
   const btn=document.getElementById('submit-btn');
   const warnEl=document.getElementById('credit-warning');
+  // Never enable submit for disabled/frozen customers
+  if(customerStatus.disabled||customerStatus.is_frozen){
+    if(warnEl)warnEl.style.display='none';
+    if(btn)btn.disabled=true;
+    return;
+  }
   if(!creditInfo||!creditInfo.credit_limit){
     if(warnEl)warnEl.style.display='none';
     if(btn)btn.disabled=Object.keys(cart).length===0;
@@ -763,7 +819,25 @@ function updateCreditWarning(){
 async function loadCreditInfo(){
   if(!CUSTOMER_ID)return;
   const info=await get('dms.api.sales.get_customer_credit',{customer:CUSTOMER_ID});
-  if(!info||!info.credit_limit)return;
+  if(!info)return;
+
+  // Customer disabled / frozen
+  customerStatus={disabled:!!info.disabled,is_frozen:!!info.is_frozen};
+  if(customerStatus.disabled||customerStatus.is_frozen){
+    const banner=document.getElementById('cust-status-banner');
+    const msg=document.getElementById('cust-status-msg');
+    if(banner&&msg){
+      banner.className='cust-status-banner '+(customerStatus.disabled?'is-disabled':'is-frozen');
+      msg.textContent=customerStatus.disabled
+        ?'This customer is disabled. Sales Orders cannot be created.'
+        :'This customer account is frozen. Sales Orders cannot be created.';
+      banner.style.display='flex';
+    }
+    const btn=document.getElementById('submit-btn');
+    if(btn)btn.disabled=true;
+  }
+
+  if(!info.credit_limit)return;
   creditInfo=info;
   const sec=document.getElementById('credit-section');
   if(sec)sec.style.display='block';
@@ -780,8 +854,16 @@ async function submitOrder(){
   const items=Object.values(cart);
   if(!items.length){alert('Add at least one item.');return}
   if(!CUSTOMER_ID){alert('No customer selected.');return}
+
+  if(customerStatus.disabled){alert('This customer is disabled. Sales Orders cannot be created.');return}
+  if(customerStatus.is_frozen){alert('This customer account is frozen. Sales Orders cannot be created.');return}
+
   const wh=getWarehouse();
   if(!wh){alert('Select a warehouse first.');return}
+
+  const ddVal=document.getElementById('delivery-date').value;
+  const _today=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dy=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dy}`})();
+  if(ddVal&&ddVal<_today){alert('Delivery date cannot be in the past.');return}
 
   if(creditInfo&&creditInfo.credit_limit>0&&currentGrandTotal>creditInfo.available_credit){
     alert(`Order total (${fmt(currentGrandTotal)}) exceeds available credit (${fmt(creditInfo.available_credit)}).`);
@@ -806,9 +888,16 @@ async function submitOrder(){
 
 /* ── Init ────────────────────────────────────────────────── */
 (async function(){
-  // Default delivery date
-  const d=new Date();d.setDate(d.getDate()+7);
-  document.getElementById('delivery-date').value=d.toISOString().split('T')[0];
+  // Delivery date: default = today, min = today, prevent past dates
+  const _todayStr=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${day}`})();
+  const ddInput=document.getElementById('delivery-date');
+  ddInput.min=_todayStr;
+  ddInput.value=_todayStr;
+  ddInput.addEventListener('change',function(){
+    const errEl=document.getElementById('delivery-date-err');
+    if(this.value<_todayStr){this.value=_todayStr;if(errEl)errEl.style.display='block';setTimeout(()=>{if(errEl)errEl.style.display='none'},3000);}
+    else{if(errEl)errEl.style.display='none';}
+  });
 
   // Restore view preference
   setView(currentView);

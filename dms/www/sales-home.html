@@ -235,18 +235,29 @@ function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionD
 
 function statusDot(s){const m={Submitted:'dot-blue',Delivered:'dot-green',Cancelled:'dot-gray',Draft:'dot-gray',Completed:'dot-green'};return m[s]||'dot-gray'}
 
-function timeSince(s){
+// Exact replica of frappe.datetime.prettyDate() from frappe/public/js/frappe/utils/datetime.js
+// Frappe stores creation in the system timezone without a timezone marker; parsing without 'Z'
+// matches how Frappe Desk's str_to_obj() treats the string — browser local time as the reference.
+function prettyDate(s){
   if(!s)return '';
-  // Frappe returns creation as a UTC datetime string (no timezone marker); force UTC parse
-  const d=new Date(s.replace(' ','T')+'Z');
-  const secs=Math.floor((Date.now()-d)/1000);
-  if(secs<60)return 'Just now';
-  if(secs<3600){const m=Math.floor(secs/60);return m+' minute'+(m>1?'s':'')+' ago'}
-  if(secs<86400){const h=Math.floor(secs/3600);return h+' hour'+(h>1?'s':'')+' ago'}
-  if(secs<172800)return 'Yesterday';
-  const days=Math.floor(secs/86400);
-  if(days<7)return days+' days ago';
-  return d.toLocaleDateString('en',{month:'short',day:'numeric'});
+  const d=new Date(s.replace(' ','T'));
+  const diff=(new Date()-d)/1000;
+  const day_diff=Math.floor(diff/86400);
+  if(isNaN(day_diff)||day_diff<0||day_diff>=365)
+    return d.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'});
+  return(
+    (day_diff===0&&(
+      (diff<60&&'just now')||
+      (diff<120&&'1 minute ago')||
+      (diff<3600&&Math.floor(diff/60)+' minutes ago')||
+      (diff<7200&&'1 hour ago')||
+      (Math.floor(diff/3600)+' hours ago')
+    ))||
+    (day_diff===1&&'Yesterday')||
+    (day_diff<7&&day_diff+' days ago')||
+    (day_diff<31&&Math.ceil(day_diff/7)+' weeks ago')||
+    (Math.ceil(day_diff/30)+' months ago')
+  );
 }
 
 (function(){
@@ -278,7 +289,7 @@ function timeSince(s){
         <div class="activity-dot ${statusDot(o.status)}"></div>
         <div class="activity-body">
           <div class="activity-text">Order <strong>${o.name}</strong> — <strong>${o.customer_name}</strong></div>
-          <div class="activity-time">${fmt(o.grand_total)} · ${o.status} · ${timeSince(o.creation)}</div>
+          <div class="activity-time">${fmt(o.grand_total)} · ${o.status} · ${prettyDate(o.creation)}</div>
         </div>
       </div>`).join('');
   }

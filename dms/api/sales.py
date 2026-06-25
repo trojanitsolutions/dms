@@ -21,29 +21,27 @@ def _get_credit_info(customer, company=None):
     if not company:
         company = _get_default_company()
 
-    # Use ERPNext's get_credit_limit if available (checks customer group fallback)
-    credit_limit = 0.0
-    try:
-        from erpnext.accounts.party import get_credit_limit as erp_credit_limit
-        credit_limit = float(erp_credit_limit(customer, company) or 0)
-    except Exception:
-        credit_limit = float(
-            frappe.db.get_value(
-                "Customer Credit Limit",
-                {"parent": customer, "parenttype": "Customer", "company": company},
-                "credit_limit",
-            )
-            or 0
-        )
+    from erpnext.selling.doctype.customer.customer import (
+        get_credit_limit,
+        get_customer_outstanding,
+    )
 
-    # Outstanding = sum of unpaid Sales Invoice amounts (outstanding_amount is already net-of-payments)
+    # bypass_credit_limit_check mirrors the Customer Credit Balance report logic:
+    # when set, unbilled Sales Orders are excluded from outstanding
+    bypass = (
+        frappe.db.get_value(
+            "Customer Credit Limit",
+            {"parent": customer, "parenttype": "Customer", "company": company},
+            "bypass_credit_limit_check",
+        )
+        or False
+    )
+
+    credit_limit = float(get_credit_limit(customer, company) or 0)
     outstanding = float(
-        frappe.db.sql(
-            """SELECT COALESCE(SUM(outstanding_amount), 0)
-               FROM `tabSales Invoice`
-               WHERE customer = %s AND company = %s AND docstatus = 1""",
-            (customer, company),
-        )[0][0]
+        get_customer_outstanding(
+            customer, company, ignore_outstanding_sales_order=bypass
+        )
         or 0
     )
 
@@ -58,7 +56,13 @@ def _get_credit_info(customer, company=None):
 @frappe.whitelist(methods=["GET"])
 def get_customer_credit(customer: str):
     _require_sales_rep()
-    return _get_credit_info(customer)
+    info = _get_credit_info(customer)
+    status = frappe.db.get_value(
+        "Customer", customer, ["disabled", "is_frozen"], as_dict=True
+    ) or {}
+    info["disabled"] = bool(status.get("disabled"))
+    info["is_frozen"] = bool(status.get("is_frozen"))
+    return info
 
 
 @frappe.whitelist(methods=["GET"])
@@ -101,7 +105,7 @@ def get_dashboard_stats():
 def get_customers(search: str = ""):
     _require_sales_rep()
     company = _get_default_company()
-    filters = {"disabled": 0}
+    filters = {}
     or_filters = {}
     if search:
         or_filters = {
@@ -113,24 +117,25 @@ def get_customers(search: str = ""):
         "Customer",
         filters=filters,
         or_filters=or_filters if or_filters else None,
-        fields=["name", "customer_name", "territory", "mobile_no", "customer_group"],
-        limit=60,
+        fields=["name", "customer_name", "territory", "mobile_no", "customer_group", "is_frozen", "disabled"],
+        limit=200,
         order_by="customer_name",
     )
 
+    from erpnext.selling.doctype.customer.customer import get_customer_outstanding
+
     for c in customers:
-        c["outstanding"] = float(
-            frappe.db.sql(
-                """SELECT COALESCE(SUM(outstanding_amount), 0)
-                   FROM `tabSales Invoice`
-                   WHERE customer = %s AND company = %s AND docstatus = 1""",
-                (c["name"], company),
-            )[0][0]
-            or 0
+        bypass = (
+            frappe.db.get_value(
+                "Customer Credit Limit",
+                {"parent": c["name"], "parenttype": "Customer", "company": company},
+                "bypass_credit_limit_check",
+            )
+            or False
         )
-        info = _get_credit_info(c["name"], company)
-        c["credit_limit"] = info["credit_limit"]
-        c["available_credit"] = info["available_credit"]
+        c["outstanding"] = float(
+            get_customer_outstanding(c["name"], company, ignore_outstanding_sales_order=bypass) or 0
+        )
 
     return customers
 
@@ -187,7 +192,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     items = frappe.get_all(
         "Item",
         filters=filters,
-        fields=["name", "item_name", "item_group", "standard_rate", "image"],
+        fields=["name", "item_name", "item_group", "standard_rate", "image", "stock_uom"],
         limit=100,
         order_by="item_name",
     )
@@ -213,8 +218,28 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     )
     price_map = {p.item_code: float(p.price_list_rate or 0) for p in price_rows}
 
+    # Resolve item images from tabFile for items whose image field is not set
+    _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif")
+    no_image_codes = [i["name"] for i in items if not i.get("image")]
+    img_map = {}
+    if no_image_codes:
+        attach_rows = frappe.db.sql(
+            """SELECT attached_to_name AS item_code, file_url
+               FROM `tabFile`
+               WHERE attached_to_doctype = 'Item'
+                 AND attached_to_name IN %(codes)s
+               ORDER BY attached_to_name, creation ASC""",
+            {"codes": no_image_codes},
+            as_dict=True,
+        )
+        for r in attach_rows:
+            if r.item_code not in img_map:
+                url = (r.file_url or "").split("?")[0].lower()
+                if any(url.endswith(ext) for ext in _IMAGE_EXTS):
+                    img_map[r.item_code] = r.file_url
+
     bins = frappe.db.sql(
-        """SELECT item_code, warehouse, actual_qty
+        """SELECT item_code, warehouse, actual_qty, COALESCE(reserved_stock, 0) AS reserved_stock
            FROM `tabBin`
            WHERE item_code IN %(codes)s AND actual_qty > 0""",
         {"codes": item_codes},
@@ -222,17 +247,26 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     )
 
     wh_stock = {}
+    wh_available = {}
     for b in bins:
-        wh_stock.setdefault(b.item_code, {})[b.warehouse] = float(b.actual_qty)
+        actual = float(b.actual_qty or 0)
+        reserved = float(b.reserved_stock or 0)
+        avail = max(0.0, actual - reserved)
+        wh_stock.setdefault(b.item_code, {})[b.warehouse] = actual
+        wh_available.setdefault(b.item_code, {})[b.warehouse] = avail
 
     for item in items:
         pl_rate = price_map.get(item["name"])
         if pl_rate:
             item["standard_rate"] = pl_rate
+        if not item.get("image") and item["name"] in img_map:
+            item["image"] = img_map[item["name"]]
         stock_map = wh_stock.get(item["name"], {})
+        avail_map = wh_available.get(item["name"], {})
         item["warehouse_stocks"] = stock_map
-        item["any_stock"] = len(stock_map) > 0
-        item["stock_qty"] = float(stock_map.get(warehouse, 0)) if warehouse else None
+        item["warehouse_available"] = avail_map
+        item["any_stock"] = any(q > 0 for q in avail_map.values()) if avail_map else False
+        item["stock_qty"] = float(avail_map.get(warehouse, 0)) if warehouse else None
         item["in_stock"] = item["any_stock"]
 
     return items
@@ -245,10 +279,37 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
     if not items:
         frappe.throw(_("No items in order"))
     if not delivery_date:
-        delivery_date = frappe.utils.add_days(frappe.utils.today(), 7)
+        delivery_date = frappe.utils.today()
+    if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
+        frappe.throw(_("Delivery date cannot be in the past."))
 
     # Server-side credit limit check
     company = _get_default_company()
+
+    # Customer frozen/disabled check — reuses ERPNext's existing party validation
+    from erpnext.accounts.party import validate_party_frozen_disabled
+    validate_party_frozen_disabled(company, "Customer", customer)
+
+    # Stock availability check using tabBin — same source as the UI display so they stay consistent.
+    # ERPNext's own on_submit will still catch genuine overstock via SRE creation.
+    item_codes = [it["item_code"] for it in items]
+    bin_rows = frappe.db.sql(
+        """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
+           FROM `tabBin`
+           WHERE item_code IN %(codes)s AND warehouse = %(wh)s""",
+        {"codes": item_codes, "wh": warehouse},
+        as_dict=True,
+    )
+    avail_map = {b.item_code: float(b.avail) for b in bin_rows}
+    for it in items:
+        avail = avail_map.get(it["item_code"], 0.0)
+        if float(it["qty"]) > avail:
+            frappe.throw(
+                _(
+                    "Insufficient stock for {0}: requested {1}, available {2} in {3}."
+                ).format(it["item_code"], float(it["qty"]), avail, warehouse)
+            )
+
     credit_info = _get_credit_info(customer, company)
     if credit_info["credit_limit"] > 0:
         grand_total = sum(float(it["qty"]) * float(it.get("rate", 0)) for it in items)
@@ -284,7 +345,20 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
         }
     )
     so.insert(ignore_permissions=True)
-    so.submit()
+    # ERPNext's on_submit creates Stock Reservation Entries which require create
+    # permission on that doctype. Swap only session.user so permission checks
+    # pass as Administrator, without touching session.sid (which set_user would
+    # corrupt, causing logout).
+    _user = frappe.session.user
+    frappe.session.user = "Administrator"
+    frappe.local.role_permissions = {}
+    frappe.local.user_perms = None
+    try:
+        so.submit()
+    finally:
+        frappe.session.user = _user
+        frappe.local.role_permissions = {}
+        frappe.local.user_perms = None
     return {"name": so.name, "grand_total": so.grand_total}
 
 
@@ -309,7 +383,7 @@ def get_customer_detail(customer: str):
     c = frappe.db.get_value(
         "Customer",
         customer,
-        ["name", "customer_name", "territory", "mobile_no"],
+        ["name", "customer_name", "territory", "mobile_no", "disabled", "is_frozen"],
         as_dict=True,
     )
     if not c:
@@ -317,8 +391,6 @@ def get_customer_detail(customer: str):
 
     credit_info = _get_credit_info(customer)
     c["outstanding"] = credit_info["outstanding"]
-    c["credit_limit"] = credit_info["credit_limit"]
-    c["available_credit"] = credit_info["available_credit"]
     c["company"] = credit_info["company"]
 
     c["recent_orders"] = frappe.get_all(

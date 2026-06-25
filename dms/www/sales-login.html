@@ -2,147 +2,497 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sign In — Luxury Stationery Field Sales</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex}
-.left{background:#13294B;flex:0 0 42%;display:flex;flex-direction:column;justify-content:space-between;padding:48px 52px;color:#fff}
-.right{flex:1;background:#F3F4F3;display:flex;align-items:center;justify-content:center;padding:48px}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:60px}
-.brand-badge{width:44px;height:44px;background:#2A6FDB;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;letter-spacing:1px}
-.brand-name{font-weight:600;font-size:17px;letter-spacing:.02em}
-.tagline-label{font-size:11px;font-weight:600;letter-spacing:.12em;color:#7FA8D8;text-transform:uppercase;margin-bottom:20px}
-.tagline{font-size:36px;font-weight:800;line-height:1.15;margin-bottom:20px}
-.tagline-sub{font-size:15px;color:#9FC0F0;line-height:1.6;margin-bottom:36px}
-.feature-list{display:flex;flex-direction:column;gap:12px}
-.feature-item{display:flex;align-items:center;gap:12px;font-size:14px;color:#C5DAEF}
-.feature-item svg{flex-shrink:0;width:18px;height:18px;color:#2A6FDB}
-.powered{font-size:12px;color:#4A6A8A;margin-top:auto;padding-top:40px}
-.form-box{width:100%;max-width:420px}
-.form-box h1{font-size:28px;font-weight:700;color:#111827;margin-bottom:8px}
-.form-box .sub{font-size:15px;color:#6B7280;margin-bottom:36px}
-.form-group{margin-bottom:20px}
-.form-group label{display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:8px}
-.form-group input{width:100%;padding:12px 14px;border:1.5px solid #D1D5DB;border-radius:10px;font-size:15px;color:#111827;background:#fff;outline:none;transition:border .15s}
-.form-group input:focus{border-color:#2A6FDB;box-shadow:0 0 0 3px rgba(42,111,219,.1)}
-.forgot{font-size:13px;color:#2A6FDB;text-decoration:none;float:right;margin-top:-28px;position:relative;z-index:1}
-.btn-primary{width:100%;padding:13px;background:#2A6FDB;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s;margin-top:8px}
-.btn-primary:hover{background:#1e5bbf}
-.btn-primary:disabled{background:#9DB9E8;cursor:not-allowed}
-.error-msg{background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:8px;padding:11px 14px;font-size:13.5px;margin-bottom:20px}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ── Body ──────────────────────────────────────────────── */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #13294B;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ── Hero (mobile: full-bleed top / desktop: left panel) ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 52px 28px 64px;
+  background: #13294B;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.brand-badge {
+  width: 42px;
+  height: 42px;
+  background: #2A6FDB;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: .02em;
+}
+
+.hero-content { margin-top: 28px; }
+
+/* hidden on mobile, shown on desktop */
+.hero-label {
+  display: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  color: #7FA8D8;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.hero-tagline {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+  text-wrap: balance;
+  margin-bottom: 10px;
+}
+
+.hero-sub {
+  font-size: 14px;
+  color: #9FC0F0;
+  line-height: 1.55;
+}
+
+/* hidden on mobile */
+.feature-list {
+  display: none;
+  flex-direction: column;
+  gap: 13px;
+  list-style: none;
+  margin-top: 28px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 14px;
+  color: #C5DAEF;
+}
+
+.feature-icon { width: 18px; height: 18px; color: #2A6FDB; flex-shrink: 0; }
+
+/* hidden on mobile */
+.hero-footer {
+  display: none;
+  font-size: 12px;
+  color: #3D5A7A;
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+/* ── Bottom sheet (mobile) / Right panel (desktop) ─────── */
+.sheet {
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  flex: 1;
+  margin-top: -28px;
+  padding: 0 24px calc(36px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, .18);
+  position: relative;
+}
+
+/* Drag-handle pill — reinforces the bottom-sheet metaphor */
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #DDE1EA;
+  border-radius: 2px;
+  margin: 20px auto 28px;
+}
+
+/* Wraps form content; on desktop becomes the white card */
+.form-inner { width: 100%; }
+
+.form-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.form-sub {
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.45;
+  margin-bottom: 24px;
+}
+
+/* ── Error banner ──────────────────────────────────────── */
+.error-banner {
+  display: none;
+  align-items: flex-start;
+  gap: 10px;
+  background: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin-bottom: 18px;
+}
+
+.error-banner.visible { display: flex; }
+
+.error-icon { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; }
+
+/* ── Form fields ───────────────────────────────────────── */
+.field { margin-bottom: 16px; }
+
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.field-label { font-size: 13px; font-weight: 500; color: #374151; }
+
+.forgot-link {
+  font-size: 13px;
+  color: #2A6FDB;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgot-link:active { opacity: .7; }
+
+.field-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 16px; /* 16px prevents iOS auto-zoom */
+  font-family: inherit;
+  color: #111827;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field-input:focus {
+  border-color: #2A6FDB;
+  box-shadow: 0 0 0 3px rgba(42, 111, 219, .11);
+}
+
+.field-input::placeholder { color: #9CA3AF; }
+
+/* ── Sign-in button ────────────────────────────────────── */
+.btn-submit {
+  width: 100%;
+  height: 52px;
+  margin-top: 8px;
+  background: #2A6FDB;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-submit:hover { background: #1e5bbf; }
+.btn-submit:active { background: #1a53b0; }
+.btn-submit:disabled { background: #9DB9E8; cursor: not-allowed; }
+
+/* Spinner inside button */
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, .3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+  display: none;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-submit.loading .btn-spinner { display: block; }
+.btn-submit.loading .btn-label { display: none; }
+
+/* ── Footer (mobile only) ──────────────────────────────── */
+.page-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 32px;
+}
+
+/* ── Desktop (≥768px) ──────────────────────────────────── */
+@media (min-width: 768px) {
+  body {
+    flex-direction: row;
+    background: #F3F4F3;
+    overflow: hidden;
+  }
+
+  /* Left panel */
+  .hero {
+    flex: 0 0 420px;
+    padding: 52px 48px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    justify-content: flex-start;
+  }
+
+  .hero-content { margin-top: 52px; }
+  .hero-label { display: block; }
+  .hero-tagline { font-size: 32px; }
+  .hero-sub { font-size: 15px; }
+  .feature-list { display: flex; }
+  .hero-footer { display: block; }
+
+  /* Right panel */
+  .sheet {
+    flex: 1;
+    border-radius: 0;
+    margin-top: 0;
+    padding: 0;
+    background: #F3F4F3;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .sheet-handle { display: none; }
+
+  /* White card on desktop */
+  .form-inner {
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 36px 32px calc(36px + env(safe-area-inset-bottom));
+    box-shadow: 0 2px 14px rgba(0, 0, 0, .06);
+    margin: 24px;
+  }
+
+  .form-title { font-size: 24px; }
+  .form-sub { font-size: 15px; margin-bottom: 28px; }
+  .field-input { font-size: 15px; }
+  .btn-submit { font-size: 15px; }
+  .page-footer { display: none; }
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner { animation: none; }
+  .btn-submit, .field-input { transition: none; }
+}
 </style>
 </head>
 <body>
-<div class="left">
-  <div>
-    <div class="brand">
-      <div class="brand-badge">LS</div>
-      <div class="brand-name">Luxury Stationery</div>
-    </div>
-    <div class="tagline-label">Field Sales Platform</div>
-    <h2 class="tagline">Take the whole catalog<br>to every customer.</h2>
-    <p class="tagline-sub">Live inventory, instant credit checks, and one-tap order submission.</p>
+
+<!-- Mobile: hero top section / Desktop: left panel -->
+<div class="hero">
+  <div class="brand">
+    <div class="brand-badge">LS</div>
+    <div class="brand-name">Luxury Stationery Wholesale</div>
+  </div>
+
+  <div class="hero-content">
+    <span class="hero-label">Sales Management</span>
+    <p class="hero-tagline">Take the whole catalog<br>to every customer.</p>
+    <p class="hero-sub">Live inventory, instant credit checks, and one-tap order submission.</p>
     <ul class="feature-list">
       <li class="feature-item">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/>
+        </svg>
         Real-time stock &amp; reservations
       </li>
       <li class="feature-item">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/>
+        </svg>
         Instant credit &amp; balance checks
       </li>
-      <li class="feature-item">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+      <!-- <li class="feature-item">
+        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/>
+        </svg>
         Submit orders straight to ERPNext
-      </li>
+      </li> -->
     </ul>
   </div>
-  <div class="powered">Powered by Trojan Technologies</div>
+
+  <div class="hero-footer">Powered by Trojan Technologies</div>
 </div>
 
-<div class="right">
-  <div class="form-box">
-    <h1>Welcome back</h1>
-    <p class="sub">Sign in to your sales workspace</p>
+<!-- Mobile: bottom sheet / Desktop: right panel + form card -->
+<div class="sheet" role="main">
+  <div class="sheet-handle" aria-hidden="true"></div>
+
+  <div class="form-inner">
+    <h1 class="form-title">Welcome back</h1>
+    <p class="form-sub">Sign in to your sales workspace</p>
 
     {% if error == "access-denied" %}
-    <div class="error-msg">Your account doesn't have Sales Rep access. Contact your administrator.</div>
+    <div class="error-banner visible" role="alert">
+      <svg class="error-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+      </svg>
+      <span>Your account doesn't have Sales Rep access. Contact your administrator.</span>
+    </div>
     {% endif %}
 
-    <div id="error-banner" class="error-msg" style="display:none"></div>
+    <div id="error-banner" class="error-banner" role="alert" aria-live="assertive">
+      <svg class="error-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+      </svg>
+      <span id="error-text"></span>
+    </div>
 
-    <form id="login-form">
-      <div class="form-group">
-        <label for="usr">Email</label>
-        <input type="text" id="usr" name="usr" placeholder="you@company.com" required autocomplete="username">
+    <form id="login-form" novalidate>
+      <div class="field">
+        <div class="field-header">
+          <label class="field-label" for="usr">Email</label>
+        </div>
+        <input class="field-input" type="email" id="usr" name="usr"
+               placeholder="you@company.com" required
+               autocomplete="username" inputmode="email">
       </div>
-      <div class="form-group">
-        <label for="pwd">Password</label>
-        <a href="/update-password" class="forgot">Forgot?</a>
-        <input type="password" id="pwd" name="pwd" placeholder="••••••••" required autocomplete="current-password">
+
+      <div class="field">
+        <div class="field-header">
+          <label class="field-label" for="pwd">Password</label>
+          <a class="forgot-link" href="/update-password">Forgot?</a>
+        </div>
+        <input class="field-input" type="password" id="pwd" name="pwd"
+               placeholder="••••••••" required
+               autocomplete="current-password">
       </div>
-      <button type="submit" class="btn-primary" id="sign-in-btn">Sign in</button>
+
+      <button type="submit" class="btn-submit" id="sign-in-btn">
+        <span class="btn-spinner" aria-hidden="true"></span>
+        <span class="btn-label">Sign in</span>
+      </button>
     </form>
+
+    <p class="page-footer">Powered by Trojan Technologies</p>
   </div>
 </div>
 
 <script>
-const form = document.getElementById('login-form');
-const banner = document.getElementById('error-banner');
-const btn = document.getElementById('sign-in-btn');
+const form     = document.getElementById('login-form');
+const banner   = document.getElementById('error-banner');
+const errText  = document.getElementById('error-text');
+const btn      = document.getElementById('sign-in-btn');
 
 function csrf() {
   const m = document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);
   return m ? decodeURIComponent(m[1]) : 'fetch';
 }
 
+function showError(msg) {
+  errText.textContent = msg;
+  banner.classList.add('visible');
+}
+
+function hideError() {
+  banner.classList.remove('visible');
+}
+
+function setLoading(on) {
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+}
+
 form.addEventListener('submit', async e => {
   e.preventDefault();
-  banner.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Signing in…';
+  hideError();
+  setLoading(true);
 
-  const usr = document.getElementById('usr').value;
+  const usr = document.getElementById('usr').value.trim();
   const pwd = document.getElementById('pwd').value;
 
   try {
     const res = await fetch('/api/method/login', {
       method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Frappe-CSRF-Token': csrf()},
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Frappe-CSRF-Token': csrf()
+      },
       body: `usr=${encodeURIComponent(usr)}&pwd=${encodeURIComponent(pwd)}`
     });
     const data = await res.json();
 
     if (!res.ok) {
-      showError(data.message || data.exc_type || 'Invalid credentials');
+      showError(data.message || data.exc_type || 'Invalid email or password. Please try again.');
       return;
     }
 
-    // Check role
+    // Verify Sales Rep role before redirecting
     const roleRes = await fetch('/api/method/dms.api.sales.get_dashboard_stats', {
-      headers: {'X-Frappe-CSRF-Token': csrf()}
+      headers: { 'X-Frappe-CSRF-Token': csrf() }
     });
+
     if (roleRes.status === 403) {
-      // Logout then show error
-      await fetch('/api/method/logout', {method:'POST', headers:{'X-Frappe-CSRF-Token': csrf()}});
-      showError("Your account doesn't have Sales Rep access.");
+      await fetch('/api/method/logout', {
+        method: 'POST',
+        headers: { 'X-Frappe-CSRF-Token': csrf() }
+      });
+      showError("Your account doesn't have Sales Rep access. Contact your administrator.");
       return;
     }
 
     window.location.href = '/sales-home';
   } catch {
-    showError('Network error. Please try again.');
+    showError('Network error. Please check your connection and try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Sign in';
+    setLoading(false);
   }
 });
-
-function showError(msg) {
-  banner.textContent = msg;
-  banner.style.display = 'block';
-}
 </script>
 </body>
 </html>

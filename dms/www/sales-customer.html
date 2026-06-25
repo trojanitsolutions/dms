@@ -50,6 +50,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge-green{background:#DCFCE7;color:#166534}
 .badge-orange{background:#FEF3C7;color:#92400E}
 .badge-gray{background:#F3F4F6;color:#6B7280}
+.badge-red{background:#FEE2E2;color:#991B1B}
+.badge-amber{background:#FEF3C7;color:#92400E}
+/* ── Status filter chips ────────────────────────────────── */
+.status-filters{display:flex;gap:8px;overflow-x:auto;padding:0 0 14px;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
+.status-filters::-webkit-scrollbar{display:none}
+.status-chip{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.status-chip:hover{border-color:#9CA3AF;color:#374151}
+.status-chip.active{border-color:transparent}
+.status-chip[data-status="All"].active{background:#2A6FDB;color:#fff}
+.status-chip[data-status="Active"].active{background:#16a34a;color:#fff}
+.status-chip[data-status="Frozen"].active{background:#D97706;color:#fff}
+.status-chip[data-status="Disabled"].active{background:#DC2626;color:#fff}
+/* Card state modifiers */
+.customer-card.cust-disabled{opacity:0.68}
+.customer-card.cust-frozen{border-left:3px solid #D97706}
+
+.cust-status-alert{margin-bottom:16px;padding:12px 14px;border-radius:10px;font-size:13px;display:none;align-items:flex-start;gap:10px}
+.cust-status-alert svg{flex-shrink:0;width:16px;height:16px;margin-top:1px}
+.cust-status-alert.is-disabled{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;display:flex}
+.cust-status-alert.is-frozen{background:#FFF7ED;border:1px solid #FED7AA;color:#92400E;display:flex}
 .card-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .meta-label{font-size:11.5px;color:#9CA3AF;margin-bottom:2px}
 .meta-value{font-size:14px;font-weight:600;color:#111827}
@@ -71,10 +91,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fin-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:16px}
 .fin-label{font-size:12px;color:#6B7280;margin-bottom:6px}
 .fin-value{font-size:20px;font-weight:700}
-.fin-value.avail{color:#16a34a}
 .fin-sub{font-size:11.5px;color:#9CA3AF;margin-top:4px}
-.progress-bar{height:4px;background:#E5E7EB;border-radius:2px;margin-top:10px}
-.progress-fill{height:100%;border-radius:2px;background:#2A6FDB;transition:width .3s}
 .orders-section{background:#fff;border-radius:14px;border:1px solid #E5E7EB;overflow:hidden}
 .section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #F3F4F3}
 .section-title{font-size:14px;font-weight:600}
@@ -130,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .customer-grid{grid-template-columns:repeat(3,1fr);gap:16px}
   .detail-content{padding:24px 36px}
   .back-bar{padding:16px 36px}
-  .fin-grid{grid-template-columns:repeat(3,1fr);gap:16px}
+  .fin-grid{grid-template-columns:minmax(0,320px);gap:16px}
   .fin-value{font-size:22px}
   .modal-overlay{align-items:center}
   .modal{border-radius:16px;padding:32px;max-width:440px}
@@ -200,6 +217,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
         <input type="text" id="search-input" placeholder="Search by name or code…" autocomplete="off">
       </div>
+      <div class="status-filters">
+        <button class="status-chip active" data-status="All" onclick="setStatusFilter('All')">All</button>
+        <button class="status-chip" data-status="Active" onclick="setStatusFilter('Active')">Active</button>
+        <button class="status-chip" data-status="Frozen" onclick="setStatusFilter('Frozen')">Frozen</button>
+        <button class="status-chip" data-status="Disabled" onclick="setStatusFilter('Disabled')">Disabled</button>
+      </div>
       <div class="count-label" id="count-label">Loading…</div>
       <div class="customer-grid" id="customer-grid">
         <div class="loading-grid" style="grid-column:1/-1">Loading customers…</div>
@@ -233,23 +256,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </a>
       </div>
 
+      <!-- Customer disabled / frozen alert -->
+      <div class="cust-status-alert" id="d-status-alert">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524L13.476 14.89zm1.414-1.414L6.524 5.11A6 6 0 0114.89 13.476zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/></svg>
+        <span id="d-status-alert-msg"></span>
+      </div>
+
       <div class="fin-label-outer">Financial Summary</div>
       <div class="fin-grid">
         <div class="fin-card">
           <div class="fin-label">Outstanding Balance</div>
           <div class="fin-value" id="d-outstanding">—</div>
           <div class="fin-sub">Unpaid invoices</div>
-        </div>
-        <div class="fin-card">
-          <div class="fin-label">Credit Limit</div>
-          <div class="fin-value" id="d-credit">—</div>
-          <div class="progress-bar"><div class="progress-fill" id="d-progress" style="width:0%"></div></div>
-          <div class="fin-sub" id="d-utilized"></div>
-        </div>
-        <div class="fin-card">
-          <div class="fin-label">Available Credit</div>
-          <div class="fin-value avail" id="d-available">—</div>
-          <div class="fin-sub">Ready to allocate</div>
         </div>
       </div>
 
@@ -337,16 +355,30 @@ async function post(method,args={}){
 }
 
 let allCustomers=[];
+let currentStatusFilter='All';
+
+function getCustStatus(c){
+  if(c.disabled)return 'Disabled';
+  if(c.is_frozen)return 'Frozen';
+  return 'Active';
+}
 
 function renderGrid(list){
   const grid=document.getElementById('customer-grid');
   document.getElementById('count-label').textContent=`${list.length} account${list.length!==1?'s':''}`;
   if(!list.length){grid.innerHTML='<div class="loading-grid" style="grid-column:1/-1">No customers found.</div>';return}
   grid.innerHTML=list.map(c=>{
-    const ov=c.outstanding||0,cl=c.credit_limit||0;
-    const overdue=ov>cl&&cl>0;
-    const badge=overdue?'<span class="badge badge-orange">Overdue</span>':'<span class="badge badge-green">Active</span>';
-    return `<div class="customer-card" onclick="showDetail('${c.name}')">
+    let badge,cardExtra='';
+    if(c.disabled){
+      badge='<span class="badge badge-red">Disabled</span>';
+      cardExtra=' cust-disabled';
+    }else if(c.is_frozen){
+      badge='<span class="badge badge-amber">Frozen</span>';
+      cardExtra=' cust-frozen';
+    }else{
+      badge='<span class="badge badge-green">Active</span>';
+    }
+    return `<div class="customer-card${cardExtra}" onclick="showDetail('${c.name}')">
       <div class="card-top">
         <div class="cust-avatar" style="background:${avatarColor(c.customer_name)}">${initials(c.customer_name)}</div>
         <div class="cust-info">
@@ -356,24 +388,33 @@ function renderGrid(list){
         ${badge}
       </div>
       <div class="card-meta">
-        <div><div class="meta-label">Outstanding</div><div class="meta-value">${fmt(c.outstanding)}</div></div>
-        <div><div class="meta-label">Territory</div><div class="meta-value">${c.territory||'—'}</div></div>
+        <div><div class="meta-label">Outstanding Balance</div><div class="meta-value">${fmt(c.outstanding)}</div></div>
       </div>
     </div>`
   }).join('');
 }
 
-async function loadCustomers(search=''){
-  const data=await get('dms.api.sales.get_customers',{search});
-  allCustomers=data||[];
-  renderGrid(allCustomers);
+function applyFilters(){
+  const q=document.getElementById('search-input').value.toLowerCase().trim();
+  let list=allCustomers;
+  if(currentStatusFilter!=='All')list=list.filter(c=>getCustStatus(c)===currentStatusFilter);
+  if(q)list=list.filter(c=>c.customer_name.toLowerCase().includes(q)||c.name.toLowerCase().includes(q));
+  renderGrid(list);
 }
 
-let searchTimer;
-document.getElementById('search-input').addEventListener('input',e=>{
-  clearTimeout(searchTimer);
-  searchTimer=setTimeout(()=>loadCustomers(e.target.value),350);
-});
+function setStatusFilter(f){
+  currentStatusFilter=f;
+  document.querySelectorAll('.status-chip').forEach(el=>el.classList.toggle('active',el.dataset.status===f));
+  applyFilters();
+}
+
+async function loadCustomers(){
+  const data=await get('dms.api.sales.get_customers',{});
+  allCustomers=data||[];
+  applyFilters();
+}
+
+document.getElementById('search-input').addEventListener('input',()=>applyFilters());
 
 async function showDetail(custId){
   document.getElementById('list-view').style.display='none';
@@ -387,18 +428,30 @@ async function showDetail(custId){
   document.getElementById('d-avatar').style.background=avatarColor(c.customer_name);
   document.getElementById('d-name').textContent=c.customer_name;
   document.getElementById('d-meta').textContent=[c.name,c.mobile_no,c.territory].filter(Boolean).join(' · ');
-  document.getElementById('d-new-order-btn').href=`/sales-order?customer=${custId}`;
 
-  const outstanding=c.outstanding||0,credit=c.credit_limit||0,available=c.available_credit||0;
-  document.getElementById('d-outstanding').textContent=fmt(outstanding);
-  document.getElementById('d-credit').textContent=credit?fmt(credit):'No limit';
-  document.getElementById('d-available').textContent=credit?fmt(available):'Unlimited';
-  if(credit>0){
-    const pct=Math.min(100,Math.round(outstanding/credit*100));
-    document.getElementById('d-progress').style.width=pct+'%';
-    document.getElementById('d-progress').style.background=pct>=90?'#DC2626':pct>=70?'#F59E0B':'#2A6FDB';
-    document.getElementById('d-utilized').textContent=pct+'% utilized';
+  // Status badge + alert
+  const statusBadge=document.getElementById('d-status');
+  const statusAlert=document.getElementById('d-status-alert');
+  const statusAlertMsg=document.getElementById('d-status-alert-msg');
+  const newOrderBtn=document.getElementById('d-new-order-btn');
+  if(c.disabled){
+    statusBadge.className='badge badge-red';statusBadge.textContent='Disabled';
+    statusAlert.className='cust-status-alert is-disabled';
+    statusAlertMsg.textContent='This customer is disabled. New Sales Orders cannot be created for this account.';
+    newOrderBtn.style.opacity='0.45';newOrderBtn.style.pointerEvents='none';newOrderBtn.href='#';
+  }else if(c.is_frozen){
+    statusBadge.className='badge badge-amber';statusBadge.textContent='Frozen';
+    statusAlert.className='cust-status-alert is-frozen';
+    statusAlertMsg.textContent='This customer account is frozen. New Sales Orders cannot be created until the account is unfrozen.';
+    newOrderBtn.style.opacity='0.45';newOrderBtn.style.pointerEvents='none';newOrderBtn.href='#';
+  }else{
+    statusBadge.className='badge badge-green';statusBadge.textContent='Active';
+    statusAlert.className='cust-status-alert';
+    newOrderBtn.style.opacity='';newOrderBtn.style.pointerEvents='';
+    newOrderBtn.href=`/sales-order?customer=${custId}`;
   }
+
+  document.getElementById('d-outstanding').textContent=fmt(c.outstanding||0);
 
   const orders=c.recent_orders||[];
   const badge=s=>{const m={Submitted:'badge-green',Delivered:'badge-green',Cancelled:'badge-gray',Draft:'badge-gray'};return `<span class="badge ${m[s]||'badge-gray'}">${s}</span>`};
@@ -433,6 +486,8 @@ async function submitNewCustomer(){
     });
     closeModal();
     await loadCustomers();
+    currentStatusFilter='All';
+    document.querySelectorAll('.status-chip').forEach(el=>el.classList.toggle('active',el.dataset.status==='All'));
     showDetail(c.name);
   }catch(e){alert(e.message)}
   finally{btn.disabled=false;btn.textContent='Create Customer'}
