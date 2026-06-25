@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customers — Luxury Stationery Field Sales</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F3F4F3;color:#111827;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── Sidebar (desktop) ──────────────────────────────────── */
+.sidebar{display:none}
+
+/* ── Bottom nav (mobile) ────────────────────────────────── */
+.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#13294B;border-top:1px solid rgba(255,255,255,.1);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;color:#7FA8D8;text-decoration:none;font-size:10px;font-weight:500;gap:3px}
+.bnav-item svg{width:22px;height:22px}
+.bnav-item.active{color:#fff}
+
+/* ── Main ───────────────────────────────────────────────── */
+.main{flex:1;overflow-y:auto;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+
+/* ── Top bar ────────────────────────────────────────────── */
+.topbar{padding:20px 16px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid #E5E7EB;background:#fff}
+.page-title{font-size:22px;font-weight:700}
+.page-sub{font-size:13px;color:#6B7280;margin-top:4px}
+.btn-primary{padding:10px 14px;background:#2A6FDB;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap;flex-shrink:0;min-height:44px}
+.btn-primary:hover{background:#1e5bbf}
+.btn-outline{padding:10px 14px;background:#fff;color:#374151;border:1.5px solid #D1D5DB;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+.btn-outline:hover{border-color:#2A6FDB;color:#2A6FDB}
+
+/* ── List view ──────────────────────────────────────────── */
+.content{padding:16px}
+.search-bar{position:relative;margin-bottom:14px}
+.search-bar input{width:100%;padding:12px 14px 12px 42px;border:1.5px solid #D1D5DB;border-radius:10px;font-size:15px;background:#fff;outline:none;-webkit-appearance:none;transition:border .15s}
+.search-bar input:focus{border-color:#2A6FDB}
+.search-bar svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:#9CA3AF;pointer-events:none}
+.count-label{font-size:13px;color:#6B7280;margin-bottom:12px}
+.customer-grid{display:grid;grid-template-columns:1fr;gap:12px}
+
+/* ── Customer card ──────────────────────────────────────── */
+.customer-card{background:#fff;border-radius:14px;border:1.5px solid #E5E7EB;padding:16px;cursor:pointer;transition:all .15s;text-decoration:none;display:block;-webkit-tap-highlight-color:transparent}
+.customer-card:active{border-color:#2A6FDB;background:#F8FBFF}
+.card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.cust-avatar{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}
+.cust-info{flex:1;min-width:0}
+.cust-name{font-weight:600;font-size:14px;color:#111827;line-height:1.3}
+.cust-code{font-size:12px;color:#9CA3AF;margin-top:2px}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:500}
+.badge-green{background:#DCFCE7;color:#166534}
+.badge-orange{background:#FEF3C7;color:#92400E}
+.badge-gray{background:#F3F4F6;color:#6B7280}
+.card-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meta-label{font-size:11.5px;color:#9CA3AF;margin-bottom:2px}
+.meta-value{font-size:14px;font-weight:600;color:#111827}
+.loading-grid{text-align:center;padding:60px;color:#9CA3AF}
+
+/* ── Detail view ────────────────────────────────────────── */
+.detail-view{display:none}
+.back-bar{display:flex;align-items:center;gap:8px;padding:14px 16px;background:#fff;border-bottom:1px solid #E5E7EB}
+.back-btn{display:flex;align-items:center;gap:6px;color:#6B7280;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;background:none;border:none;padding:4px 0;-webkit-tap-highlight-color:transparent}
+.back-btn:hover{color:#2A6FDB}
+.detail-content{padding:16px}
+.detail-header{background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:18px 16px;margin-bottom:16px}
+.detail-avatar-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.detail-avatar{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#fff;flex-shrink:0}
+.detail-name{font-size:18px;font-weight:700}
+.detail-meta{font-size:13px;color:#6B7280;margin-top:4px}
+.fin-label-outer{font-size:10px;font-weight:600;letter-spacing:.1em;color:#9CA3AF;text-transform:uppercase;margin-bottom:10px}
+.fin-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:16px}
+.fin-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:16px}
+.fin-label{font-size:12px;color:#6B7280;margin-bottom:6px}
+.fin-value{font-size:20px;font-weight:700}
+.fin-value.avail{color:#16a34a}
+.fin-sub{font-size:11.5px;color:#9CA3AF;margin-top:4px}
+.progress-bar{height:4px;background:#E5E7EB;border-radius:2px;margin-top:10px}
+.progress-fill{height:100%;border-radius:2px;background:#2A6FDB;transition:width .3s}
+.orders-section{background:#fff;border-radius:14px;border:1px solid #E5E7EB;overflow:hidden}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #F3F4F3}
+.section-title{font-size:14px;font-weight:600}
+.order-row{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid #F9FAFB}
+.order-row:last-child{border-bottom:none}
+.order-name{font-size:14px;font-weight:500;color:#111827}
+.order-date{font-size:12px;color:#9CA3AF;margin-top:2px}
+.order-right{text-align:right}
+.order-amount{font-size:14px;font-weight:600;margin-top:4px}
+.empty-state{padding:36px;text-align:center;color:#9CA3AF;font-size:14px}
+.new-order-fab{width:100%;padding:14px;background:#2A6FDB;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;text-decoration:none;min-height:52px}
+.new-order-fab:hover{background:#1e5bbf}
+
+/* ── Modal ──────────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:520px;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.modal-handle{width:36px;height:4px;background:#E5E7EB;border-radius:2px;margin:0 auto 20px}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:6px}
+.form-group input,.form-group select{width:100%;padding:13px 14px;border:1.5px solid #D1D5DB;border-radius:10px;font-size:16px;outline:none;-webkit-appearance:none;transition:border .15s}
+.form-group input:focus,.form-group select:focus{border-color:#2A6FDB}
+.modal-actions{display:flex;gap:12px;margin-top:20px}
+.btn-cancel{flex:1;padding:14px;border:1.5px solid #D1D5DB;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;background:#fff;min-height:52px}
+.btn-create{flex:1;padding:14px;background:#2A6FDB;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;min-height:52px}
+.btn-create:disabled{background:#9DB9E8}
+
+/* ── Desktop overrides ──────────────────────────────────── */
+@media(min-width:768px){
+  body{flex-direction:row}
+  .bottom-nav{display:none}
+  .sidebar{width:240px;flex-shrink:0;background:#13294B;display:flex;flex-direction:column;min-height:100vh}
+  .sidebar-brand{padding:24px 20px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .brand-badge{width:38px;height:38px;background:#2A6FDB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
+  .brand-text .name{font-weight:600;font-size:14px;color:#fff}
+  .brand-text .role{font-size:11px;color:#7FA8D8;margin-top:1px}
+  .nav-section{padding:20px 12px 8px;font-size:10px;font-weight:600;letter-spacing:.1em;color:#4A6A8A;text-transform:uppercase}
+  .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:#C5DAEF;text-decoration:none;font-size:14px;font-weight:500;margin:2px 8px;transition:all .15s}
+  .nav-link:hover{background:rgba(255,255,255,.08);color:#fff}
+  .nav-link.active{background:rgba(42,111,219,.25);color:#fff}
+  .nav-link svg{width:17px;height:17px;flex-shrink:0;opacity:.8}
+  .sidebar-footer{margin-top:auto;padding:16px 12px;border-top:1px solid rgba(255,255,255,.08)}
+  .user-row{display:flex;align-items:center;gap:10px}
+  .user-avatar{width:34px;height:34px;background:#2A6FDB;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+  .user-info .uname{font-size:13px;font-weight:500;color:#fff;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:#7FA8D8;padding:4px}
+  .logout-btn:hover{color:#fff}
+  .main{flex:1;overflow-y:auto;padding-bottom:0}
+  .topbar{padding:28px 36px 24px}
+  .page-title{font-size:26px}
+  .content{padding:28px 36px}
+  .customer-grid{grid-template-columns:repeat(3,1fr);gap:16px}
+  .detail-content{padding:24px 36px}
+  .back-bar{padding:16px 36px}
+  .fin-grid{grid-template-columns:repeat(3,1fr);gap:16px}
+  .fin-value{font-size:22px}
+  .modal-overlay{align-items:center}
+  .modal{border-radius:16px;padding:32px;max-width:440px}
+  .modal-handle{display:none}
+  .customer-card:hover{border-color:#2A6FDB;box-shadow:0 4px 16px rgba(42,111,219,.1)}
+  .new-order-fab{margin-top:0}
+}
+@media(min-width:1024px){
+  .customer-grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar (desktop) -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-badge">LS</div>
+    <div class="brand-text">
+      <div class="name">Luxury Stationery</div>
+      <div class="role">Field Sales</div>
+    </div>
+  </div>
+  <div class="nav-section">Workspace</div>
+  <a class="nav-link" href="/sales-home">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    Dashboard
+  </a>
+  <a class="nav-link active" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    Customers
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    New Order
+  </a>
+  <a class="nav-link" href="/sales-home">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+    Order History
+  </a>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">{{ full_name[:2].upper() }}</div>
+      <div class="user-info"><div class="uname">{{ full_name }}</div></div>
+      <a href="/sales-logout" class="logout-btn" title="Sign out">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <!-- List View -->
+  <div id="list-view">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Customers</div>
+        <div class="page-sub">Select an account or create a new one.</div>
+      </div>
+      <button class="btn-primary" onclick="openModal()">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+        New
+      </button>
+    </div>
+    <div class="content">
+      <div class="search-bar">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+        <input type="text" id="search-input" placeholder="Search by name or code…" autocomplete="off">
+      </div>
+      <div class="count-label" id="count-label">Loading…</div>
+      <div class="customer-grid" id="customer-grid">
+        <div class="loading-grid" style="grid-column:1/-1">Loading customers…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail View -->
+  <div id="detail-view" class="detail-view">
+    <div class="back-bar">
+      <button class="back-btn" onclick="showList()">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+        All customers
+      </button>
+    </div>
+    <div class="detail-content">
+      <div class="detail-header">
+        <div class="detail-avatar-row">
+          <div class="detail-avatar" id="d-avatar"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="detail-name" id="d-name"></div>
+              <span class="badge badge-green" id="d-status">Active</span>
+            </div>
+            <div class="detail-meta" id="d-meta"></div>
+          </div>
+        </div>
+        <a class="new-order-fab" id="d-new-order-btn" href="#">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+          New Order
+        </a>
+      </div>
+
+      <div class="fin-label-outer">Financial Summary</div>
+      <div class="fin-grid">
+        <div class="fin-card">
+          <div class="fin-label">Outstanding Balance</div>
+          <div class="fin-value" id="d-outstanding">—</div>
+          <div class="fin-sub">Unpaid invoices</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">Credit Limit</div>
+          <div class="fin-value" id="d-credit">—</div>
+          <div class="progress-bar"><div class="progress-fill" id="d-progress" style="width:0%"></div></div>
+          <div class="fin-sub" id="d-utilized"></div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">Available Credit</div>
+          <div class="fin-value avail" id="d-available">—</div>
+          <div class="fin-sub">Ready to allocate</div>
+        </div>
+      </div>
+
+      <div class="orders-section">
+        <div class="section-header">
+          <div class="section-title">Order history</div>
+        </div>
+        <div id="d-orders-list"><div class="empty-state">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Bottom nav (mobile) -->
+<nav class="bottom-nav">
+  <a href="/sales-home" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    Home
+  </a>
+  <a href="/sales-customer" class="bnav-item active">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    Customers
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    New Order
+  </a>
+  <a href="/sales-logout" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+    Sign Out
+  </a>
+</nav>
+
+<!-- New Customer Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="overlayClick(event)">
+  <div class="modal" id="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New Customer</div>
+    <div class="form-group">
+      <label>Customer Name *</label>
+      <input type="text" id="nc-name" placeholder="e.g. Pearl Boutique Hotels" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Territory</label>
+      <input type="text" id="nc-territory" placeholder="e.g. Doha" value="All Territories">
+    </div>
+    <div class="form-group">
+      <label>Mobile Number</label>
+      <input type="tel" id="nc-mobile" placeholder="+974 …">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-create" id="nc-submit-btn" onclick="submitNewCustomer()">Create Customer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function relTime(s){
+  if(!s)return '';
+  const d=new Date(s.replace(' ','T')+'Z');
+  const secs=Math.floor((Date.now()-d)/1000);
+  if(secs<60)return 'Just now';
+  if(secs<3600){const m=Math.floor(secs/60);return m+' minute'+(m>1?'s':'')+' ago'}
+  if(secs<86400){const h=Math.floor(secs/3600);return h+' hour'+(h>1?'s':'')+' ago'}
+  if(secs<172800)return 'Yesterday';
+  const days=Math.floor(secs/86400);
+  if(days<7)return days+' days ago';
+  return d.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'});
+}
+const AVATAR_COLORS=['#1E40AF','#92400E','#065F46','#7C3AED','#B91C1C','#0F766E','#C2410C','#4338CA'];
+function avatarColor(name){let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))&0xFFFF;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
+function initials(name){return name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()}
+function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
+
+async function get(method,args={}){
+  const p=new URLSearchParams(args);
+  const r=await fetch(`/api/method/${method}?${p}`,{headers:{'X-Frappe-CSRF-Token':csrf(),'Accept':'application/json'}});
+  if(!r.ok)return null;return(await r.json()).message;
+}
+async function post(method,args={}){
+  const r=await fetch(`/api/method/${method}`,{method:'POST',headers:{'X-Frappe-CSRF-Token':csrf(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(args)});
+  const d=await r.json();if(!r.ok)throw new Error(d.message||d.exc_type||'Error');return d.message;
+}
+
+let allCustomers=[];
+
+function renderGrid(list){
+  const grid=document.getElementById('customer-grid');
+  document.getElementById('count-label').textContent=`${list.length} account${list.length!==1?'s':''}`;
+  if(!list.length){grid.innerHTML='<div class="loading-grid" style="grid-column:1/-1">No customers found.</div>';return}
+  grid.innerHTML=list.map(c=>{
+    const ov=c.outstanding||0,cl=c.credit_limit||0;
+    const overdue=ov>cl&&cl>0;
+    const badge=overdue?'<span class="badge badge-orange">Overdue</span>':'<span class="badge badge-green">Active</span>';
+    return `<div class="customer-card" onclick="showDetail('${c.name}')">
+      <div class="card-top">
+        <div class="cust-avatar" style="background:${avatarColor(c.customer_name)}">${initials(c.customer_name)}</div>
+        <div class="cust-info">
+          <div class="cust-name">${c.customer_name}</div>
+          <div class="cust-code">${c.name}</div>
+        </div>
+        ${badge}
+      </div>
+      <div class="card-meta">
+        <div><div class="meta-label">Outstanding</div><div class="meta-value">${fmt(c.outstanding)}</div></div>
+        <div><div class="meta-label">Territory</div><div class="meta-value">${c.territory||'—'}</div></div>
+      </div>
+    </div>`
+  }).join('');
+}
+
+async function loadCustomers(search=''){
+  const data=await get('dms.api.sales.get_customers',{search});
+  allCustomers=data||[];
+  renderGrid(allCustomers);
+}
+
+let searchTimer;
+document.getElementById('search-input').addEventListener('input',e=>{
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(()=>loadCustomers(e.target.value),350);
+});
+
+async function showDetail(custId){
+  document.getElementById('list-view').style.display='none';
+  document.getElementById('detail-view').style.display='block';
+  window.scrollTo(0,0);
+
+  const c=await get('dms.api.sales.get_customer_detail',{customer:custId});
+  if(!c){showList();return}
+
+  document.getElementById('d-avatar').textContent=initials(c.customer_name);
+  document.getElementById('d-avatar').style.background=avatarColor(c.customer_name);
+  document.getElementById('d-name').textContent=c.customer_name;
+  document.getElementById('d-meta').textContent=[c.name,c.mobile_no,c.territory].filter(Boolean).join(' · ');
+  document.getElementById('d-new-order-btn').href=`/sales-order?customer=${custId}`;
+
+  const outstanding=c.outstanding||0,credit=c.credit_limit||0,available=c.available_credit||0;
+  document.getElementById('d-outstanding').textContent=fmt(outstanding);
+  document.getElementById('d-credit').textContent=credit?fmt(credit):'No limit';
+  document.getElementById('d-available').textContent=credit?fmt(available):'Unlimited';
+  if(credit>0){
+    const pct=Math.min(100,Math.round(outstanding/credit*100));
+    document.getElementById('d-progress').style.width=pct+'%';
+    document.getElementById('d-progress').style.background=pct>=90?'#DC2626':pct>=70?'#F59E0B':'#2A6FDB';
+    document.getElementById('d-utilized').textContent=pct+'% utilized';
+  }
+
+  const orders=c.recent_orders||[];
+  const badge=s=>{const m={Submitted:'badge-green',Delivered:'badge-green',Cancelled:'badge-gray',Draft:'badge-gray'};return `<span class="badge ${m[s]||'badge-gray'}">${s}</span>`};
+  document.getElementById('d-orders-list').innerHTML=orders.length
+    ?orders.map(o=>`<div class="order-row">
+        <div><div class="order-name">${o.name}</div><div class="order-date">${relTime(o.creation)}</div></div>
+        <div class="order-right">${badge(o.status)}<div class="order-amount">${fmt(o.grand_total)}</div></div>
+      </div>`).join('')
+    :'<div class="empty-state">No orders yet.</div>';
+}
+
+function showList(){
+  document.getElementById('detail-view').style.display='none';
+  document.getElementById('list-view').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function openModal(){document.getElementById('modal-overlay').classList.add('open')}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+function overlayClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
+
+async function submitNewCustomer(){
+  const name=document.getElementById('nc-name').value.trim();
+  if(!name)return alert('Customer name required');
+  const btn=document.getElementById('nc-submit-btn');
+  btn.disabled=true;btn.textContent='Creating…';
+  try{
+    const c=await post('dms.api.sales.create_customer',{
+      customer_name:name,
+      territory:document.getElementById('nc-territory').value,
+      mobile_no:document.getElementById('nc-mobile').value
+    });
+    closeModal();
+    await loadCustomers();
+    showDetail(c.name);
+  }catch(e){alert(e.message)}
+  finally{btn.disabled=false;btn.textContent='Create Customer'}
+}
+
+const urlCustomer=new URLSearchParams(location.search).get('customer');
+if(urlCustomer){showDetail(urlCustomer)}else{loadCustomers()}
+</script>
+</body>
+</html>

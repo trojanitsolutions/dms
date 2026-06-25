@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Signing out…</title>
+<style>body{font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#F3F4F3;color:#6B7280;font-size:15px}</style>
+</head>
+<body>
+Signing out…
+<script>
+function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
+fetch('/api/method/logout',{method:'POST',headers:{'X-Frappe-CSRF-Token':csrf()}})
+  .finally(()=>window.location.href='/sales-login');
+</script>
+</body>
+</html>

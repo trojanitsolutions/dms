@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard — Luxury Stationery Field Sales</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F3F4F3;color:#111827;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── Sidebar (desktop only) ─────────────────────────────── */
+.sidebar{display:none}
+
+/* ── Bottom nav (mobile) ────────────────────────────────── */
+.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#13294B;border-top:1px solid rgba(255,255,255,.1);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;color:#7FA8D8;text-decoration:none;font-size:10px;font-weight:500;gap:3px;transition:color .15s}
+.bnav-item svg{width:22px;height:22px}
+.bnav-item.active{color:#fff}
+.bnav-item.active svg{filter:drop-shadow(0 0 4px rgba(42,111,219,.6))}
+
+/* ── Main content ───────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow-y:auto;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+.topbar{padding:20px 16px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.page-date{font-size:12px;color:#9CA3AF;margin-bottom:4px}
+.page-greeting{font-size:22px;font-weight:700;color:#111827}
+.btn-primary{padding:10px 16px;background:#2A6FDB;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap;flex-shrink:0}
+.btn-primary:hover{background:#1e5bbf}
+.content{padding:16px}
+
+/* ── Stats grid ─────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:14px;padding:18px 16px;border:1px solid #E5E7EB}
+.stat-label{font-size:12px;font-weight:500;color:#6B7280;margin-bottom:8px}
+.stat-value{font-size:22px;font-weight:700;color:#111827;letter-spacing:-.5px}
+.stat-value.loading{color:#D1D5DB}
+
+/* ── Cards ──────────────────────────────────────────────── */
+.section-card{background:#fff;border-radius:14px;border:1px solid #E5E7EB;overflow:hidden;margin-bottom:16px}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #F3F4F3}
+.section-title{font-size:14px;font-weight:600;color:#111827}
+.section-link{font-size:13px;color:#2A6FDB;text-decoration:none;font-weight:500}
+
+/* ── Activity ───────────────────────────────────────────── */
+.activity-list{padding:4px 0}
+.activity-item{display:flex;align-items:flex-start;gap:10px;padding:12px 18px;border-bottom:1px solid #F9FAFB}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.dot-blue{background:#2A6FDB}.dot-green{background:#10B981}.dot-orange{background:#F59E0B}.dot-gray{background:#D1D5DB}
+.activity-body{flex:1;min-width:0}
+.activity-text{font-size:13px;color:#374151;line-height:1.4}
+.activity-time{font-size:11.5px;color:#9CA3AF;margin-top:3px}
+.empty-activity{padding:28px 18px;text-align:center;color:#9CA3AF;font-size:13px}
+
+/* ── Quick actions ──────────────────────────────────────── */
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
+.quick-item{border:1.5px solid #E5E7EB;border-radius:10px;padding:16px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;cursor:pointer;text-decoration:none;transition:all .15s;min-height:80px}
+.quick-item:hover,.quick-item:active{border-color:#2A6FDB;background:#F0F5FF}
+.quick-icon{width:34px;height:34px;border-radius:8px;background:#F0F5FF;display:flex;align-items:center;justify-content:center}
+.quick-icon svg{width:17px;height:17px;color:#2A6FDB}
+.quick-label{font-size:13px;font-weight:500;color:#374151}
+
+/* ── Desktop overrides (≥768px) ─────────────────────────── */
+@media(min-width:768px){
+  body{flex-direction:row}
+  .bottom-nav{display:none}
+  .sidebar{width:240px;flex-shrink:0;background:#13294B;display:flex;flex-direction:column;padding:0;min-height:100vh}
+  .sidebar-brand{padding:24px 20px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .brand-badge{width:38px;height:38px;background:#2A6FDB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0}
+  .brand-text .name{font-weight:600;font-size:14px;color:#fff}
+  .brand-text .role{font-size:11px;color:#7FA8D8;margin-top:1px}
+  .nav-section{padding:20px 12px 8px;font-size:10px;font-weight:600;letter-spacing:.1em;color:#4A6A8A;text-transform:uppercase}
+  .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:#C5DAEF;text-decoration:none;font-size:14px;font-weight:500;margin:2px 8px;transition:all .15s}
+  .nav-link:hover{background:rgba(255,255,255,.08);color:#fff}
+  .nav-link.active{background:rgba(42,111,219,.25);color:#fff}
+  .nav-link svg{width:17px;height:17px;flex-shrink:0;opacity:.8}
+  .nav-link.active svg{opacity:1}
+  .sidebar-footer{margin-top:auto;padding:16px 12px;border-top:1px solid rgba(255,255,255,.08)}
+  .user-row{display:flex;align-items:center;gap:10px}
+  .user-avatar{width:34px;height:34px;background:#2A6FDB;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+  .user-info .uname{font-size:13px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+  .logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:#7FA8D8;padding:4px;border-radius:4px}
+  .logout-btn:hover{color:#fff}
+  .main{padding-bottom:0;overflow-y:auto}
+  .topbar{padding:28px 36px 0}
+  .page-greeting{font-size:26px}
+  .content{padding:28px 36px}
+  .stats-grid{grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+  .stat-card{padding:22px 24px}
+  .stat-value{font-size:26px}
+  .two-col{display:grid;grid-template-columns:1fr 360px;gap:20px}
+  .quick-grid{gap:12px;padding:18px}
+  .section-card{margin-bottom:0}
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar (desktop) -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-badge">LS</div>
+    <div class="brand-text">
+      <div class="name">Luxury Stationery</div>
+      <div class="role">Field Sales</div>
+    </div>
+  </div>
+  <div class="nav-section">Workspace</div>
+  <a class="nav-link active" href="/sales-home">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    Dashboard
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    Customers
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    New Order
+  </a>
+  <a class="nav-link" href="/sales-home#history">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+    Order History
+  </a>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">{{ full_name[:2].upper() }}</div>
+      <div class="user-info"><div class="uname">{{ full_name }}</div></div>
+      <a href="/sales-logout" class="logout-btn" title="Sign out">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-date" id="page-date"></div>
+      <div class="page-greeting" id="greeting">Good morning, {{ full_name.split()[0] }}</div>
+    </div>
+    <a href="/sales-customer" class="btn-primary">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+      New Order
+    </a>
+  </div>
+
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Today's Sales</div>
+        <div class="stat-value loading" id="stat-sales">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Orders Created</div>
+        <div class="stat-value loading" id="stat-orders">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Customers</div>
+        <div class="stat-value loading" id="stat-customers">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Currency</div>
+        <div class="stat-value">QAR</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">Recent activity</div>
+          <a href="/sales-home#history" class="section-link">View all</a>
+        </div>
+        <div class="activity-list" id="activity-list">
+          <div class="empty-activity">Loading…</div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">Quick actions</div>
+        </div>
+        <div class="quick-grid">
+          <a href="/sales-customer" class="quick-item">
+            <div class="quick-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg></div>
+            <div class="quick-label">New Order</div>
+          </a>
+          <a href="/sales-customer" class="quick-item">
+            <div class="quick-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg></div>
+            <div class="quick-label">Find Customer</div>
+          </a>
+          <a href="/sales-home#history" class="quick-item">
+            <div class="quick-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg></div>
+            <div class="quick-label">Order History</div>
+          </a>
+          <a href="/desk" class="quick-item">
+            <div class="quick-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z"/></svg></div>
+            <div class="quick-label">ERPNext Desk</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Bottom nav (mobile) -->
+<nav class="bottom-nav">
+  <a href="/sales-home" class="bnav-item active">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    Home
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    Customers
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    New Order
+  </a>
+  <a href="/sales-logout" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+    Sign Out
+  </a>
+</nav>
+
+<script>
+function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
+async function get(method,args={}){
+  const p=new URLSearchParams(args);
+  const r=await fetch(`/api/method/${method}?${p}`,{headers:{'X-Frappe-CSRF-Token':csrf(),'Accept':'application/json'}});
+  if(!r.ok)return null;
+  return(await r.json()).message;
+}
+
+function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0})}
+
+function statusDot(s){const m={Submitted:'dot-blue',Delivered:'dot-green',Cancelled:'dot-gray',Draft:'dot-gray',Completed:'dot-green'};return m[s]||'dot-gray'}
+
+function timeSince(s){
+  if(!s)return '';
+  // Frappe returns creation as a UTC datetime string (no timezone marker); force UTC parse
+  const d=new Date(s.replace(' ','T')+'Z');
+  const secs=Math.floor((Date.now()-d)/1000);
+  if(secs<60)return 'Just now';
+  if(secs<3600){const m=Math.floor(secs/60);return m+' minute'+(m>1?'s':'')+' ago'}
+  if(secs<86400){const h=Math.floor(secs/3600);return h+' hour'+(h>1?'s':'')+' ago'}
+  if(secs<172800)return 'Yesterday';
+  const days=Math.floor(secs/86400);
+  if(days<7)return days+' days ago';
+  return d.toLocaleDateString('en',{month:'short',day:'numeric'});
+}
+
+(function(){
+  const h=new Date().getHours();
+  const g=h<12?'morning':h<17?'afternoon':'evening';
+  const el=document.getElementById('greeting');
+  el.textContent=el.textContent.replace('morning',g);
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const now=new Date();
+  document.getElementById('page-date').textContent=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate();
+})();
+
+(async function(){
+  const stats=await get('dms.api.sales.get_dashboard_stats');
+  if(!stats)return;
+
+  document.getElementById('stat-sales').textContent=fmt(stats.today_sales);
+  document.getElementById('stat-sales').classList.remove('loading');
+  document.getElementById('stat-orders').textContent=stats.today_orders;
+  document.getElementById('stat-orders').classList.remove('loading');
+
+  const list=document.getElementById('activity-list');
+  if(!stats.recent_orders||!stats.recent_orders.length){
+    list.innerHTML='<div class="empty-activity">No orders yet today.</div>';
+  } else {
+    list.innerHTML=stats.recent_orders.map(o=>`
+      <div class="activity-item">
+        <div class="activity-dot ${statusDot(o.status)}"></div>
+        <div class="activity-body">
+          <div class="activity-text">Order <strong>${o.name}</strong> — <strong>${o.customer_name}</strong></div>
+          <div class="activity-time">${fmt(o.grand_total)} · ${o.status} · ${timeSince(o.creation)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  const custs=await get('dms.api.sales.get_customers');
+  if(custs){
+    document.getElementById('stat-customers').textContent=custs.length;
+    document.getElementById('stat-customers').classList.remove('loading');
+  }
+})();
+</script>
+</body>
+</html>
