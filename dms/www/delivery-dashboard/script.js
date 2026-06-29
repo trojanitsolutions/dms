@@ -1,0 +1,190 @@
+function csrf() {
+	const m = document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);
+	return m ? decodeURIComponent(m[1]) : 'fetch';
+}
+async function get(method, args) {
+	const p = new URLSearchParams(args);
+	const r = await fetch('/api/method/' + method + (p.toString() ? '?' + p : ''), {
+		headers: { 'X-Frappe-CSRF-Token': csrf(), 'Accept': 'application/json' },
+	});
+	if (!r.ok) return null;
+	return (await r.json()).message;
+}
+
+function fmtDate(s) {
+	if (!s) return '';
+	const d = new Date(s + 'T00:00:00');
+	return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function esc(s) {
+	return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function stripHtml(s) {
+	return (s || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').trim();
+}
+
+// ── Status badge ──────────────────────────────────────
+function badgeHtml(row) {
+	if (row.docstatus === 1) return '<span class="badge badge-completed">Completed</span>';
+	const s = (row.status || '').toLowerCase();
+	if (s.includes('transit') || s.includes('progress')) return '<span class="badge badge-inprogress">In Progress</span>';
+	return '<span class="badge badge-pending">Pending</span>';
+}
+
+// ── DN card for pending list ──────────────────────────
+function pendingCard(n) {
+	const addr = stripHtml(n.shipping_address || '');
+	const hasAddr = addr.length > 0;
+	const addrBadge = hasAddr
+		? `<span class="addr-badge addr-badge-ok"><span class="msr" style="font-size:16px">location_on</span>Address available</span>`
+		: `<span class="addr-badge addr-badge-missing"><span class="msr" style="font-size:16px">location_off</span>No address available</span>`;
+	return `<button class="dn-card" onclick="location.href='/delivery-note?name=${encodeURIComponent(n.name)}'">
+		<div class="dn-card-top">
+			<span class="dn-number">${esc(n.name)}</span>
+			${badgeHtml(n)}
+		</div>
+		<div class="dn-customer">${esc(n.customer_name || '')}</div>
+		<div class="dn-meta">
+			<span class="dn-meta-item"><span class="msr">event</span>${fmtDate(n.posting_date)}</span>
+		</div>
+		${addrBadge}
+	</button>`;
+}
+
+// ── DN card for completed list ────────────────────────
+function completedCard(n) {
+	return `<button class="dn-card" onclick="location.href='/delivery-note?name=${encodeURIComponent(n.name)}'">
+		<div class="dn-card-top">
+			<span class="dn-number">${esc(n.name)}</span>
+			${badgeHtml(n)}
+		</div>
+		<div class="dn-customer">${esc(n.customer_name || '')}</div>
+		<div class="card-bottom">
+			<span class="proof-meta"><span class="msr">attachment</span>${n.item_count || 0} item${n.item_count === 1 ? '' : 's'}</span>
+			<span class="card-view">View<span class="msr">chevron_right</span></span>
+		</div>
+	</button>`;
+}
+
+// ── Data cache ────────────────────────────────────────
+let pendingNotes = null;
+let completedNotes = null;
+
+// ── Section switching ─────────────────────────────────
+const SECTIONS = ['home', 'pending', 'completed', 'profile'];
+const SIDEBAR_IDS = ['snav-home', 'snav-pending', 'snav-completed', 'snav-profile'];
+const BNAV_IDS = ['bnav-home', 'bnav-pending', 'bnav-completed', 'bnav-profile'];
+
+function setSection(sec) {
+	if (!SECTIONS.includes(sec)) sec = 'home';
+	SECTIONS.forEach(s => {
+		const el = document.getElementById('s-' + s);
+		if (el) {
+			el.classList.toggle('active', s === sec);
+		}
+	});
+	SIDEBAR_IDS.forEach(id => {
+		const btn = document.getElementById(id);
+		if (btn) btn.classList.toggle('active', id === 'snav-' + sec);
+	});
+	BNAV_IDS.forEach(id => {
+		const btn = document.getElementById(id);
+		if (btn) btn.classList.toggle('active', id === 'bnav-' + sec);
+	});
+	const url = new URL(location.href);
+	url.searchParams.set('tab', sec);
+	history.replaceState(null, '', url);
+	if (sec === 'pending') loadPending();
+	if (sec === 'completed') loadCompleted();
+}
+
+// ── Load functions ────────────────────────────────────
+async function loadPending() {
+	if (pendingNotes !== null) { renderList('pending-list', pendingNotes, 'pending'); return; }
+	document.getElementById('pending-list').innerHTML = '<div class="empty-state">Loading…</div>';
+	pendingNotes = await get('dms.api.delivery.get_delivery_notes', { status: 'pending' }) || [];
+	renderList('pending-list', pendingNotes, 'pending');
+	const badge = document.getElementById('pending-count-badge');
+	if (badge) badge.textContent = pendingNotes.length;
+}
+
+async function loadCompleted() {
+	if (completedNotes !== null) { renderList('completed-list', completedNotes, 'completed'); return; }
+	document.getElementById('completed-list').innerHTML = '<div class="empty-state">Loading…</div>';
+	completedNotes = await get('dms.api.delivery.get_delivery_notes', { status: 'completed' }) || [];
+	renderList('completed-list', completedNotes, 'completed');
+	const badge = document.getElementById('completed-count-badge');
+	if (badge) badge.textContent = completedNotes.length;
+}
+
+function renderList(listId, notes, type) {
+	const list = document.getElementById(listId);
+	if (!notes.length) { list.innerHTML = '<div class="empty-state">No ' + type + ' deliveries found.</div>'; return; }
+	list.innerHTML = type === 'completed' ? notes.map(completedCard).join('') : notes.map(pendingCard).join('');
+}
+
+// ── Search / filter ───────────────────────────────────
+function filterCards(type) {
+	const q = document.getElementById('search-' + type).value.trim().toLowerCase();
+	const src = type === 'pending' ? (pendingNotes || []) : (completedNotes || []);
+	const filtered = q ? src.filter(n => (n.name || '').toLowerCase().includes(q) || (n.customer_name || '').toLowerCase().includes(q)) : src;
+	renderList(type + '-list', filtered, type);
+}
+
+// ── Greeting + date ───────────────────────────────────
+(function () {
+	const h = new Date().getHours();
+	const g = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+	const titleEl = document.getElementById('home-title');
+	if (titleEl) titleEl.textContent = titleEl.textContent.replace('morning', g);
+	const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+	const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+	const now = new Date();
+	const dateEl = document.getElementById('home-date');
+	if (dateEl) dateEl.textContent = days[now.getDay()] + ' · ' + now.getDate() + ' ' + months[now.getMonth()].toUpperCase();
+})();
+
+// ── Recent activity ───────────────────────────────────
+function renderActivity(items) {
+	const list = document.getElementById('activity-list');
+	if (!items || !items.length) {
+		list.innerHTML = '<div style="padding:12px 0;font-size:13px;color:#A59C8C;">No recent activity.</div>';
+		return;
+	}
+	const iconMap = { 1: { icon: 'task_alt', bg: '#E2EDE5', color: '#356048' } };
+	list.innerHTML = items.map(r => {
+		const meta = iconMap[r.docstatus] || { icon: 'inventory_2', bg: '#F6EAD2', color: '#9A6B12' };
+		const when = r.modified ? new Date(r.modified).toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' }) : '';
+		return `<div class="activity-row">
+			<div class="activity-icon" style="background:${meta.bg};color:${meta.color};"><span class="msr" style="font-size:20px">${meta.icon}</span></div>
+			<div class="activity-text">${esc(r.name)} — ${esc(r.customer_name || '')}</div>
+			<div class="activity-time">${when}</div>
+		</div>`;
+	}).join('');
+}
+
+// ── Init ──────────────────────────────────────────────
+(async function () {
+	const tab = new URLSearchParams(location.search).get('tab') || 'home';
+	setSection(tab);
+
+	const stats = await get('dms.api.delivery.get_delivery_dashboard');
+	if (stats) {
+		const setText = (id, val) => {
+			const el = document.getElementById(id);
+			if (el) el.textContent = val;
+		};
+		setText('stat-pending', stats.pending);
+		setText('stat-inprogress', stats.in_progress);
+		setText('stat-completed-today', stats.completed_today);
+		setText('stat-total', stats.total_assigned);
+
+		const sub = document.getElementById('home-sub');
+		if (sub) sub.textContent = 'You have ' + stats.pending + ' deliver' + (stats.pending === 1 ? 'y' : 'ies') + ' waiting today.';
+
+		renderActivity(stats.recent_activity || []);
+
+		const pendingBadge = document.getElementById('pending-count-badge');
+		if (pendingBadge && pendingBadge.textContent === '') pendingBadge.textContent = stats.pending;
+	}
+})();

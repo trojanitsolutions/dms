@@ -23,8 +23,12 @@ app_license = "mit"
 fixtures = [
     {
         "dt": "Workspace",
-        "filters": [["name", "in", ["Store Keeper", "Sales Representative"]]]
-    }
+        "filters": [["name", "in", ["Store Keeper", "Sales Representative"]]],
+    },
+    {
+        "dt": "Role",
+        "filters": [["name", "in", ["Delivery Partner"]]],
+    },
 ]
 
 # Includes in <head>

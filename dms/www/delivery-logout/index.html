@@ -1,0 +1,12 @@
+<!DOCTYPE html><meta charset="utf-8"><title>Signing out…</title>
+<script>
+(async()=>{
+  try{
+    const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);
+    const tok=m?decodeURIComponent(m[1]):'fetch';
+    await fetch('/api/method/logout',{method:'POST',headers:{'X-Frappe-CSRF-Token':tok}});
+  }finally{
+    location.replace('/delivery-login');
+  }
+})();
+</script>

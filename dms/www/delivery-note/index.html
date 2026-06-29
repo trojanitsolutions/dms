@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Delivery Note — Luxury Stationery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="/delivery-note/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Sidebar (desktop only) -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img class="sidebar-brand-logo" src="https://luxurywll.com/wp-content/uploads/2025/09/image-2.svg" alt="Luxury Stationery" onerror="this.style.display='none';document.getElementById('sb-brand-text').style.display='block';">
+      <span id="sb-brand-text" class="sidebar-brand-text" style="display:none">Luxury Stationery</span>
+    </div>
+    <div class="sidebar-footer">
+      <button class="sidebar-logout-btn" onclick="location.href='/delivery-logout'">
+        <span class="msr">logout</span><span>Logout</span>
+      </button>
+      <div class="sidebar-credit-block">
+        <span class="sidebar-credit-label">Powered by</span>
+        <span class="sidebar-credit-name">Trojan Technologies</span>
+      </div>
+    </div>
+  </aside>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-height:100vh;">
+
+    <!-- Top bar (mobile/tablet) -->
+    <div class="top-bar">
+      <button class="back-btn" onclick="location.href='/delivery-dashboard'">
+        <span class="msr">arrow_back</span>Back
+      </button>
+    </div>
+
+    <div class="main-scroll">
+
+      <!-- Error banner -->
+      <div id="err-banner" class="err-banner"></div>
+
+      <!-- Loading skeleton -->
+      <div id="loading-state" style="padding:24px 20px;display:flex;flex-direction:column;gap:14px;max-width:760px;margin:0 auto;">
+        <div class="skeleton" style="height:22px;width:120px;"></div>
+        <div class="skeleton" style="height:42px;width:60%;"></div>
+        <div class="skeleton" style="height:110px;border-radius:18px;"></div>
+        <div class="skeleton" style="height:90px;border-radius:16px;"></div>
+        <div class="skeleton" style="height:200px;border-radius:16px;"></div>
+      </div>
+
+      <!-- Main detail content (shown after load) -->
+      <div id="note-detail" class="detail-wrap" style="display:none">
+
+        <!-- Back button (desktop) -->
+        <button class="back-btn" onclick="location.href='/delivery-dashboard'" style="align-self:flex-start;">
+          <span class="msr">arrow_back</span>Back
+        </button>
+
+        <!-- Note header -->
+        <div class="note-header">
+          <div>
+            <div class="note-number" id="note-id"></div>
+            <h1 class="note-customer" id="note-customer"></h1>
+          </div>
+          <div id="note-status-badge"></div>
+        </div>
+
+        <!-- Submitted banner -->
+        <div class="submitted-banner" id="submitted-banner">
+          <span class="msr" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24">check_circle</span>
+          <div>
+            <div class="submitted-title">Delivery complete</div>
+            <div class="submitted-sub">This delivery note has been submitted and is now read-only.</div>
+          </div>
+        </div>
+
+        <!-- Customer info card -->
+        <div class="info-card">
+          <div class="info-row">
+            <div class="info-icon" style="color:#3A5E72;background:#E4ECF0;"><span class="msr">call</span></div>
+            <div>
+              <div class="info-label">Phone Number</div>
+              <div class="info-value" id="contact-value">—</div>
+            </div>
+          </div>
+          <div class="info-divider"></div>
+          <div id="address-section">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
+        <!-- Delivery summary -->
+        <div class="summary-card">
+          <div class="summary-heading">Delivery Summary</div>
+          <div class="summary-col">
+            <span class="summary-col-label">Total Ordered</span>
+            <span class="summary-col-value" id="sum-ordered">—</span>
+          </div>
+          <div class="summary-col">
+            <span class="summary-col-label">Total Delivered</span>
+            <span class="summary-col-value" id="sum-delivered">—</span>
+          </div>
+          <div class="summary-col">
+            <span class="summary-col-label">Remaining</span>
+            <span class="summary-col-value green" id="sum-remaining">—</span>
+          </div>
+        </div>
+
+        <!-- Items -->
+        <div class="items-heading">Items</div>
+        <div id="items-list" style="display:flex;flex-direction:column;gap:11px;"></div>
+
+        <!-- Proof of delivery (editable state) -->
+        <div class="proof-card" id="proof-section">
+          <div class="proof-label">Proof of Delivery</div>
+          <div id="proof-required" class="proof-required">Required</div>
+          <label class="upload-camera-label">
+            <span class="msr">photo_camera</span>
+            <span class="upload-camera-text">Camera</span>
+            <input type="file" accept="image/*" capture="environment" style="display:none" id="upload-camera">
+          </label>
+          <div class="upload-btns-row">
+            <label class="upload-btn-label">
+              <span class="msr">image</span>Photo / Gallery
+              <input type="file" accept="image/*" multiple style="display:none" id="upload-photo">
+            </label>
+            <label class="upload-btn-label">
+              <span class="msr">picture_as_pdf</span>PDF
+              <input type="file" accept=".pdf,application/pdf" multiple style="display:none" id="upload-pdf">
+            </label>
+          </div>
+          <div id="proof-hint" class="proof-hint">Upload at least one attachment to submit this delivery.</div>
+          <div class="attachment-grid" id="attachment-grid"></div>
+        </div>
+
+        <!-- Delivery remarks -->
+        <div class="remarks-card" id="remarks-card">
+          <div class="remarks-label">Delivery Remarks</div>
+          <textarea class="remarks-textarea" id="remarks-input" placeholder="Add any remarks about this delivery…"></textarea>
+        </div>
+
+        <!-- Action row -->
+        <div class="action-row" id="action-row">
+          <button class="btn-save" id="save-btn" onclick="saveDraft()">Save</button>
+          <button class="btn-submit" id="submit-btn" onclick="submitNote()">
+            <span class="msr" style="font-size:20px;font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24">check_circle</span>Submit Delivery
+          </button>
+        </div>
+
+      </div><!-- /note-detail -->
+
+      <!-- Success screen -->
+      <div id="success-screen" class="success-screen">
+        <div class="success-circle">
+          <span class="msr">check_circle</span>
+        </div>
+        <h1 class="success-title">Delivery Completed</h1>
+        <p class="success-sub" id="success-sub"></p>
+        <div class="success-notify">
+          <div class="success-notify-icon"><span class="msr" style="font-size:22px">campaign</span></div>
+          <div>
+            <div class="success-notify-title">Office Notified</div>
+            <div class="success-notify-sub">Dispatch and Procurement have been informed of this completion.</div>
+          </div>
+        </div>
+        <button class="btn-back-deliveries" onclick="location.replace('/delivery-dashboard?tab=completed')">Back to Deliveries</button>
+      </div>
+
+    </div><!-- /main-scroll -->
+
+  </div>
+
+</div><!-- /app-shell -->
+
+<!-- Bottom nav (mobile/tablet) -->
+<nav class="bottom-nav">
+  <button class="bnav-item" onclick="location.href='/delivery-dashboard'">
+    <span class="msr">home</span><span>Home</span>
+  </button>
+  <button class="bnav-item" onclick="location.href='/delivery-logout'">
+    <span class="msr">logout</span><span>Sign Out</span>
+  </button>
+</nav>
+
+<script>var DN_NAME = {{ dn_name | tojson }};</script>
+<script src="/delivery-note/script.js"></script>
+</body>
+</html>

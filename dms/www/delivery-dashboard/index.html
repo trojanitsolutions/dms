@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dashboard — Luxury Stationery Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="/delivery-dashboard/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Sidebar (desktop only) -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img class="sidebar-brand-logo" src="https://luxurywll.com/wp-content/uploads/2025/09/image-2.svg" alt="Luxury Stationery" onerror="this.style.display='none';document.getElementById('sb-brand-text').style.display='block';">
+      <span id="sb-brand-text" class="sidebar-brand-text" style="display:none">Luxury Stationery</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" id="snav-home" onclick="setSection('home')">
+        <span class="msr">home</span><span>Home</span>
+      </button>
+      <button class="nav-btn" id="snav-pending" onclick="setSection('pending')">
+        <span class="msr">inventory_2</span><span>Pending Deliveries</span>
+      </button>
+      <button class="nav-btn" id="snav-completed" onclick="setSection('completed')">
+        <span class="msr">task_alt</span><span>Completed Deliveries</span>
+      </button>
+      <button class="nav-btn" id="snav-profile" onclick="setSection('profile')">
+        <span class="msr">person</span><span>Profile</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-logout-btn" onclick="location.href='/delivery-logout'">
+        <span class="msr">logout</span><span>Logout</span>
+      </button>
+      <div class="sidebar-credit-block">
+        <span class="sidebar-credit-label">Powered by</span>
+        <span class="sidebar-credit-name">Trojan Technologies</span>
+      </div>
+    </div>
+  </aside>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-height:100vh;">
+
+    <!-- Top bar (mobile/tablet) -->
+    <div class="top-bar">
+      <img id="tb-logo" class="top-bar-logo" src="https://luxurywll.com/wp-content/uploads/2025/09/image-2.svg" alt="Luxury Stationery" onerror="this.style.display='none';document.getElementById('tb-brand-text').style.display='block';">
+      <span id="tb-brand-text" class="top-bar-brand" style="display:none">Luxury Stationery</span>
+      <button class="profile-avatar-btn" onclick="setSection('profile')" id="tb-avatar">{{ full_name[:2].upper() }}</button>
+    </div>
+
+    <div class="main-scroll">
+
+      <!-- HOME section -->
+      <div id="s-home" class="section active">
+        <div>
+          <div class="home-date" id="home-date"></div>
+          <h1 class="home-title" id="home-title">Good morning, {{ full_name.split()[0] }}</h1>
+          <p class="home-sub" id="home-sub">Loading your deliveries…</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="color:#9A6B12;background:#F6EAD2;"><span class="msr">inventory_2</span></div>
+            <div>
+              <div class="stat-value" id="stat-pending">—</div>
+              <div class="stat-label">Pending</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color:#3A5E72;background:#E4ECF0;"><span class="msr">local_shipping</span></div>
+            <div>
+              <div class="stat-value" id="stat-inprogress">—</div>
+              <div class="stat-label">In Progress</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color:#356048;background:#E2EDE5;"><span class="msr">task_alt</span></div>
+            <div>
+              <div class="stat-value" id="stat-completed-today">—</div>
+              <div class="stat-label">Completed Today</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color:#8A6A2B;background:#F1E8D6;"><span class="msr">assignment</span></div>
+            <div>
+              <div class="stat-value" id="stat-total">—</div>
+              <div class="stat-label">Total Assigned</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-start" onclick="setSection('pending')">
+          <span class="msr">local_shipping</span>Start Deliveries
+        </button>
+
+        <div class="activity-card">
+          <div class="activity-heading">Recent Activity</div>
+          <div id="activity-list"></div>
+        </div>
+      </div>
+
+      <!-- PENDING DELIVERIES section -->
+      <div id="s-pending" class="section">
+        <div class="section-header">
+          <h1 class="section-title">Pending Deliveries</h1>
+          <span class="count-badge count-badge-pending" id="pending-count-badge"></span>
+        </div>
+        <div class="search-wrap">
+          <div class="search-icon"><span class="msr">search</span></div>
+          <input class="search-input" type="search" id="search-pending" placeholder="Search by number or customer" oninput="filterCards('pending')">
+        </div>
+        <div class="grid-cards" id="pending-list">
+          <div class="empty-state">Loading…</div>
+        </div>
+      </div>
+
+      <!-- COMPLETED DELIVERIES section -->
+      <div id="s-completed" class="section">
+        <div class="section-header">
+          <h1 class="section-title">Completed Deliveries</h1>
+          <span class="count-badge count-badge-completed" id="completed-count-badge"></span>
+        </div>
+        <div class="search-wrap">
+          <div class="search-icon"><span class="msr">search</span></div>
+          <input class="search-input" type="search" id="search-completed" placeholder="Search completed deliveries" oninput="filterCards('completed')">
+        </div>
+        <div class="grid-cards" id="completed-list">
+          <div class="empty-state">Loading…</div>
+        </div>
+      </div>
+
+      <!-- PROFILE section -->
+      <div id="s-profile" class="section">
+        <div class="profile-wrap">
+          <div class="profile-hero">
+            <div class="profile-avatar">{{ full_name[:2].upper() }}</div>
+            <div>
+              <div class="profile-name">{{ full_name }}</div>
+              <div class="profile-role">Delivery Executive</div>
+            </div>
+            <span class="profile-empid">{{ email }}</span>
+          </div>
+          <div class="profile-info-card">
+            <div class="info-row">
+              <span class="msr">call</span>
+              <div>
+                <div class="info-row-label">Phone</div>
+                <div class="info-row-value">{{ mobile_no if mobile_no else '—' }}</div>
+              </div>
+            </div>
+            <div class="info-row">
+              <span class="msr">mail</span>
+              <div>
+                <div class="info-row-label">Email</div>
+                <div class="info-row-value">{{ email }}</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn-logout" onclick="location.href='/delivery-logout'">
+            <span class="msr">logout</span>Logout
+          </button>
+          <div class="profile-footer">
+            <span class="profile-footer-label">Powered by</span>
+            <span class="profile-footer-name">Trojan Technologies</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main-scroll -->
+
+  </div>
+
+</div><!-- /app-shell -->
+
+<!-- Bottom nav (mobile/tablet) -->
+<nav class="bottom-nav">
+  <button class="bnav-item active" id="bnav-home" onclick="setSection('home')">
+    <span class="msr">home</span><span>Home</span>
+  </button>
+  <button class="bnav-item" id="bnav-pending" onclick="setSection('pending')">
+    <span class="msr">inventory_2</span><span>Pending</span>
+  </button>
+  <button class="bnav-item" id="bnav-completed" onclick="setSection('completed')">
+    <span class="msr">task_alt</span><span>Completed</span>
+  </button>
+  <button class="bnav-item" id="bnav-profile" onclick="setSection('profile')">
+    <span class="msr">person</span><span>Profile</span>
+  </button>
+</nav>
+
+<script src="/delivery-dashboard/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Manrope',sans-serif;background:#ECE7DD;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px 44px;-webkit-font-smoothing:antialiased;}
+input::placeholder{color:#B4AC9D;}
+
+.page-wrap{width:100%;max-width:420px;display:flex;flex-direction:column;gap:20px;align-items:center;}
+
+.login-card{width:100%;background:#FBFAF6;border-radius:24px;border:1px solid #E4DDD0;box-shadow:0 40px 90px -34px rgba(40,34,28,.28),0 8px 30px -14px rgba(40,34,28,.10);overflow:hidden;}
+
+.brand-block{display:flex;flex-direction:column;align-items:center;padding:36px 32px 28px;}
+.brand-logo{height:56px;width:auto;max-width:220px;object-fit:contain;margin-bottom:4px;}
+.brand-text{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;letter-spacing:.01em;color:#23201C;line-height:1.05;text-align:center;}
+.brand-divider{width:46px;height:2px;background:#A07C3B;margin:18px auto 14px;}
+.brand-sub{font-size:12.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#9A9182;}
+
+.login-form{display:flex;flex-direction:column;gap:15px;padding:0 32px 28px;}
+
+.field-label{display:block;font-size:13px;font-weight:600;color:#6F675B;margin-bottom:7px;}
+.field-input{width:100%;padding:15px 16px;border:1px solid #DCD5C8;border-radius:14px;font-size:16px;font-family:inherit;background:#fff;color:#23201C;outline:none;transition:border-color .15s;}
+.field-input:focus{border-color:#2E4034;}
+
+.err-banner{display:none;font-size:13px;color:#9A4A35;font-weight:600;align-items:center;gap:6px;}
+.err-banner.visible{display:flex;}
+
+.btn-login{margin-top:8px;width:100%;padding:16px;border:none;border-radius:14px;background:#2E4034;color:#F6F3ED;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.02em;box-shadow:0 12px 26px -12px rgba(46,64,52,.55);transition:opacity .15s;}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;}
+
+.login-footer{border-top:1px solid #EEE8DD;padding:22px 32px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.footer-powered{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#B0A899;}
+.footer-brand{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;letter-spacing:.03em;color:#6F675B;}
+
+.msr{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;direction:ltr;font-size:24px;font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sign In — Luxury Stationery Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="/delivery-login/style.css">
+</head>
+<body>
+<div class="page-wrap">
+  <div class="login-card">
+    <div class="brand-block">
+      <img id="brand-logo" class="brand-logo" src="https://luxurywll.com/wp-content/uploads/2025/09/image-2.svg" alt="Luxury Stationery" onerror="this.style.display='none';document.getElementById('brand-text').style.display='block';">
+      <div id="brand-text" class="brand-text" style="display:none">Luxury Stationery</div>
+      <div class="brand-divider"></div>
+      <div class="brand-sub">Delivery Executive Portal</div>
+    </div>
+
+    <div class="login-form">
+      <div id="err-banner" class="err-banner{% if error %} visible{% endif %}">
+        <span class="msr" style="font-size:17px">error</span>
+        <span id="err-text">{% if error == "access-denied" %}You don't have access to the Delivery Executive portal.{% elif error %}{{ error }}{% endif %}</span>
+      </div>
+
+      <label>
+        <span class="field-label">Username</span>
+        <input type="text" id="inp-user" class="field-input" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Enter your username">
+      </label>
+      <label>
+        <span class="field-label">Password</span>
+        <input type="password" id="inp-pass" class="field-input" autocomplete="current-password" placeholder="Enter your password">
+      </label>
+
+      <button type="button" id="submit-btn" class="btn-login">Log In</button>
+    </div>
+
+    <div class="login-footer">
+      <span class="footer-powered">Powered by</span>
+      <span class="footer-brand">Trojan Technologies</span>
+    </div>
+  </div>
+</div>
+<script src="/delivery-login/script.js"></script>
+</body>
+</html>
