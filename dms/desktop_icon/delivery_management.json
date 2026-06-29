@@ -1,0 +1,20 @@
+{
+ "app": "dms",
+ "bg_color": "blue",
+ "creation": "2026-06-29 15:23:14.174337",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Delivery Management",
+ "link_to": "Delivery Management",
+ "link_type": "Workspace Sidebar",
+ "modified": "2026-06-29 15:25:44.731852",
+ "modified_by": "Administrator",
+ "name": "Delivery Management",
+ "owner": "Administrator",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}
