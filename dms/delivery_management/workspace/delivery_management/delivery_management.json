@@ -1,0 +1,39 @@
+{
+ "app": "dms",
+ "charts": [],
+ "content": "[{\"id\":\"e7f-xEhjQH\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Welcome to the Delivery Management workspace</span>\",\"col\":12}},{\"id\":\"a-w-k99f-2\",\"type\":\"paragraph\",\"data\":{\"text\":\"Click on \\n\\t\\t\\t\\n\\t\\t\\t\\n\\t\\t to edit\",\"col\":12}},{\"id\":\"NXGK_H-kLS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}}]",
+ "creation": "2026-06-29 15:23:14.010311",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "aperture",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Delivery Management",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-06-30 16:59:15.822821",
+ "modified_by": "Administrator",
+ "module": "Delivery Management",
+ "name": "Delivery Management",
+ "number_cards": [],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "Delivery Note",
+   "link_to": "Delivery Note",
+   "stats_filter": "[[\"Delivery Note\",\"status\",\"=\",\"Draft\"],[\"Delivery Note\",\"_assign\",\"is\",\"not set\"]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Delivery Management",
+ "type": "Workspace"
+}
