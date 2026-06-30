@@ -30,6 +30,9 @@
       <button class="nav-btn" id="snav-completed" onclick="setSection('completed')">
         <span class="msr">task_alt</span><span>Completed Deliveries</span>
       </button>
+      <button class="nav-btn" id="snav-assign" onclick="setSection('assign')">
+        <span class="msr">assignment_ind</span><span>Delivery Assign</span>
+      </button>
       <button class="nav-btn" id="snav-profile" onclick="setSection('profile')">
         <span class="msr">person</span><span>Profile</span>
       </button>
@@ -135,6 +138,49 @@
         </div>
       </div>
 
+      <!-- ASSIGN section -->
+      <div id="s-assign" class="section">
+        <div>
+          <div class="home-date">Self Service</div>
+          <h1 class="section-title" style="font-size:30px;margin:6px 0 4px;">Delivery Assign</h1>
+          <p class="home-sub">Pick up unassigned deliveries or release ones assigned to you.</p>
+        </div>
+        <div style="display:flex;gap:11px;flex-wrap:wrap;">
+          <div class="search-wrap" style="flex:1;min-width:220px;">
+            <div class="search-icon"><span class="msr">search</span></div>
+            <input class="search-input" type="search" id="search-assign" placeholder="Search by number or customer" oninput="filterAssignCards()">
+          </div>
+          <div class="assign-date-wrap">
+            <span class="msr assign-date-icon">event</span>
+            <span class="msr assign-date-chevron">expand_more</span>
+            <select class="assign-date-select" id="assign-date-filter" onchange="filterAssignCards()">
+              <option value="">All Dates</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
+            <h2 style="margin:0;font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;color:#23201C;">Unassigned Deliveries</h2>
+            <span class="count-badge count-badge-assign" id="assign-unassigned-count-badge"></span>
+          </div>
+          <div class="grid-cards" id="assign-unassigned-list">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
+            <h2 style="margin:0;font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;color:#23201C;">My Assigned Deliveries</h2>
+            <span class="count-badge count-badge-mine" id="assign-mine-count-badge"></span>
+          </div>
+          <div class="grid-cards" id="assign-mine-list">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+      </div>
+
       <!-- PROFILE section -->
       <div id="s-profile" class="section">
         <div class="profile-wrap">
@@ -189,11 +235,15 @@
   <button class="bnav-item" id="bnav-completed" onclick="setSection('completed')">
     <span class="msr">task_alt</span><span>Completed</span>
   </button>
+  <button class="bnav-item" id="bnav-assign" onclick="setSection('assign')">
+    <span class="msr">assignment_ind</span><span>Assign</span>
+  </button>
   <button class="bnav-item" id="bnav-profile" onclick="setSection('profile')">
     <span class="msr">person</span><span>Profile</span>
   </button>
 </nav>
 
+<script>var CURRENT_USER = "{{ email }}";</script>
 <script src="/delivery-dashboard/script.js"></script>
 </body>
 </html>

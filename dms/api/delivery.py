@@ -26,7 +26,7 @@ def get_delivery_dashboard():
 	pending = frappe.db.sql(
 		"""SELECT COUNT(*) FROM `tabDelivery Note`
 		   WHERE docstatus = 0
-		     AND JSON_CONTAINS(COALESCE(_assign,'[]'), %s)""",
+		     AND JSON_CONTAINS(COALESCE(NULLIF(_assign,''),'[]'), %s)""",
 		(user_json,),
 	)[0][0]
 
@@ -35,7 +35,7 @@ def get_delivery_dashboard():
 		   FROM `tabDelivery Note` dn
 		   INNER JOIN `tabFile` f ON f.attached_to_doctype = 'Delivery Note' AND f.attached_to_name = dn.name
 		   WHERE dn.docstatus = 0
-		     AND JSON_CONTAINS(COALESCE(dn._assign,'[]'), %s)""",
+		     AND JSON_CONTAINS(COALESCE(NULLIF(dn._assign,''),'[]'), %s)""",
 		(user_json,),
 	)[0][0]
 
@@ -43,21 +43,21 @@ def get_delivery_dashboard():
 		"""SELECT COUNT(*) FROM `tabDelivery Note`
 		   WHERE docstatus = 1
 		     AND DATE(modified) = %s
-		     AND JSON_CONTAINS(COALESCE(_assign,'[]'), %s)""",
+		     AND JSON_CONTAINS(COALESCE(NULLIF(_assign,''),'[]'), %s)""",
 		(today, user_json),
 	)[0][0]
 
 	total_assigned = frappe.db.sql(
 		"""SELECT COUNT(*) FROM `tabDelivery Note`
 		   WHERE docstatus != 2
-		     AND JSON_CONTAINS(COALESCE(_assign,'[]'), %s)""",
+		     AND JSON_CONTAINS(COALESCE(NULLIF(_assign,''),'[]'), %s)""",
 		(user_json,),
 	)[0][0]
 
 	recent = frappe.db.sql(
 		"""SELECT name, customer_name, status, docstatus, modified
 		   FROM `tabDelivery Note`
-		   WHERE JSON_CONTAINS(COALESCE(_assign,'[]'), %s)
+		   WHERE JSON_CONTAINS(COALESCE(NULLIF(_assign,''),'[]'), %s)
 		   ORDER BY modified DESC
 		   LIMIT 5""",
 		(user_json,),
@@ -93,7 +93,7 @@ def get_delivery_notes(status: str = "pending"):
 		   FROM `tabDelivery Note` dn
 		   LEFT JOIN `tabDelivery Note Item` dni ON dni.parent = dn.name
 		   WHERE dn.docstatus = %(ds)s
-		     AND JSON_CONTAINS(COALESCE(dn._assign,'[]'), %(uj)s)
+		     AND JSON_CONTAINS(COALESCE(NULLIF(dn._assign,''),'[]'), %(uj)s)
 		   GROUP BY dn.name
 		   ORDER BY dn.posting_date DESC, dn.creation DESC
 		   LIMIT 50""",
@@ -198,6 +198,58 @@ def save_delivery_note(name: str, items_json: str, remarks: str = ""):
 	return {"name": doc.name}
 
 
+@frappe.whitelist(methods=["GET"])
+def get_assignable_delivery_notes():
+	_require_delivery_partner()
+	user = frappe.session.user
+	user_json = json.dumps(user)
+
+	rows = frappe.db.sql(
+		"""SELECT dn.name, dn.customer_name, dn.posting_date, dn.shipping_address,
+		          COALESCE(NULLIF(dn._assign,''),'[]') AS _assign, COUNT(dni.name) AS item_count
+		   FROM `tabDelivery Note` dn
+		   LEFT JOIN `tabDelivery Note Item` dni ON dni.parent = dn.name
+		   WHERE dn.docstatus = 0
+		     AND (COALESCE(NULLIF(dn._assign,''),'[]') = '[]' OR JSON_CONTAINS(COALESCE(NULLIF(dn._assign,''),'[]'), %s))
+		   GROUP BY dn.name
+		   ORDER BY dn.posting_date DESC, dn.creation DESC LIMIT 100""",
+		(user_json,),
+		as_dict=True,
+	)
+
+	for row in rows:
+		assigned = json.loads(row._assign or "[]")
+		row["is_mine"] = user in assigned
+		del row["_assign"]
+
+	return rows
+
+
+@frappe.whitelist(methods=["POST"])
+def assign_delivery_note(name: str):
+	_require_delivery_partner()
+	doc = frappe.get_doc("Delivery Note", name, ignore_permissions=True)
+	assigned = json.loads(doc._assign or "[]")
+	if assigned:
+		frappe.throw(_("This delivery note is already assigned"))
+	from frappe.desk.form import assign_to
+	assign_to.add(
+		{"assign_to": [frappe.session.user], "doctype": "Delivery Note", "name": name},
+		ignore_permissions=True,
+	)
+	return {"name": name}
+
+
+@frappe.whitelist(methods=["POST"])
+def unassign_delivery_note(name: str):
+	_require_delivery_partner()
+	doc = frappe.get_doc("Delivery Note", name, ignore_permissions=True)
+	_verify_assignment(doc)
+	from frappe.desk.form import assign_to
+	assign_to.remove("Delivery Note", name, frappe.session.user, ignore_permissions=True)
+	return {"name": name}
+
+
 @frappe.whitelist(methods=["POST"])
 def submit_delivery_note(name: str):
 	_require_delivery_partner()
@@ -222,9 +274,48 @@ def submit_delivery_note(name: str):
 	frappe.local.user_perms = None
 	try:
 		doc.submit()
+		_sync_invoice_qty(doc)
 	finally:
 		frappe.session.user = _user
 		frappe.local.role_permissions = {}
 		frappe.local.user_perms = None
 
 	return {"name": doc.name}
+
+
+def _sync_invoice_qty(dn_doc):
+	"""Update draft Sales Invoice qty to match submitted Delivery Note qty."""
+	# Build map: so_detail row name → delivered qty
+	delivered = {item.so_detail: item.qty for item in dn_doc.items if item.so_detail}
+	if not delivered:
+		return
+
+	# Find draft Sales Invoices that have items referencing these SO detail rows
+	si_items = frappe.db.sql(
+		"""SELECT sii.parent, sii.name, sii.so_detail, sii.qty, sii.rate
+		   FROM `tabSales Invoice Item` sii
+		   INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+		   WHERE si.docstatus = 0
+		     AND sii.so_detail IN %(ids)s""",
+		{"ids": list(delivered.keys())},
+		as_dict=True,
+	)
+
+	# Group by SI
+	si_map = {}
+	for row in si_items:
+		si_map.setdefault(row.parent, []).append(row)
+
+	for si_name, rows in si_map.items():
+		si = frappe.get_doc("Sales Invoice", si_name)
+		changed = False
+		for si_item in si.items:
+			if si_item.so_detail in delivered:
+				new_qty = delivered[si_item.so_detail]
+				if si_item.qty != new_qty:
+					si_item.qty = new_qty
+					changed = True
+		if changed:
+			si.run_method("calculate_taxes_and_totals")
+			si.save(ignore_permissions=True)
+		si.submit()

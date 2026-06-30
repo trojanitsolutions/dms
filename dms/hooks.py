@@ -148,13 +148,14 @@ fixtures = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sales Order": {
+		"on_submit": "dms.automation.dn_si_auto_create.create_draft_si_from_so",
+	},
+	"Delivery Note": {
+		"on_submit": "dms.automation.dn_si_auto_create.sync_si_on_dn_submit",
+	},
+}
 
 # Scheduled Tasks
 # ---------------

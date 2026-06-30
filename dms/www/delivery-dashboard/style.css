@@ -130,6 +130,14 @@ input::placeholder{color:#B4AC9D;}
 .profile-footer-label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#B0A899;}
 .profile-footer-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;letter-spacing:.03em;color:#6F675B;}
 
+/* ── Assign section ───────────────────────────────── */
+.count-badge-assign{color:#9A6B12;background:#F6EAD2;}
+.count-badge-mine{color:#2E4034;background:#EAF0EC;}
+.assign-date-wrap{position:relative;min-width:182px;}
+.assign-date-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:20px;color:#A59C8C;pointer-events:none;}
+.assign-date-chevron{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:20px;color:#A59C8C;pointer-events:none;}
+.assign-date-select{width:100%;padding:14px 38px 14px 44px;border:1px solid #DCD5C8;border-radius:14px;font-size:15px;font-family:inherit;background:#fff;color:#23201C;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;}
+
 /* ── Desktop layout ───────────────────────────────── */
 @media(min-width:1024px){
   body{display:flex;}

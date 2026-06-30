@@ -10,6 +10,15 @@ async function get(method, args) {
 	if (!r.ok) return null;
 	return (await r.json()).message;
 }
+async function post(method, args) {
+	const r = await fetch('/api/method/' + method, {
+		method: 'POST',
+		headers: { 'X-Frappe-CSRF-Token': csrf(), 'Content-Type': 'application/json', 'Accept': 'application/json' },
+		body: JSON.stringify(args),
+	});
+	if (!r.ok) return null;
+	return (await r.json()).message;
+}
 
 function fmtDate(s) {
 	if (!s) return '';
@@ -69,11 +78,12 @@ function completedCard(n) {
 // ── Data cache ────────────────────────────────────────
 let pendingNotes = null;
 let completedNotes = null;
+let assignNotes = null;
 
 // ── Section switching ─────────────────────────────────
-const SECTIONS = ['home', 'pending', 'completed', 'profile'];
-const SIDEBAR_IDS = ['snav-home', 'snav-pending', 'snav-completed', 'snav-profile'];
-const BNAV_IDS = ['bnav-home', 'bnav-pending', 'bnav-completed', 'bnav-profile'];
+const SECTIONS = ['home', 'pending', 'completed', 'assign', 'profile'];
+const SIDEBAR_IDS = ['snav-home', 'snav-pending', 'snav-completed', 'snav-assign', 'snav-profile'];
+const BNAV_IDS = ['bnav-home', 'bnav-pending', 'bnav-completed', 'bnav-assign', 'bnav-profile'];
 
 function setSection(sec) {
 	if (!SECTIONS.includes(sec)) sec = 'home';
@@ -96,6 +106,7 @@ function setSection(sec) {
 	history.replaceState(null, '', url);
 	if (sec === 'pending') loadPending();
 	if (sec === 'completed') loadCompleted();
+	if (sec === 'assign') loadAssign();
 }
 
 // ── Load functions ────────────────────────────────────
@@ -129,6 +140,93 @@ function filterCards(type) {
 	const src = type === 'pending' ? (pendingNotes || []) : (completedNotes || []);
 	const filtered = q ? src.filter(n => (n.name || '').toLowerCase().includes(q) || (n.customer_name || '').toLowerCase().includes(q)) : src;
 	renderList(type + '-list', filtered, type);
+}
+
+// ── Assign card ───────────────────────────────────────
+function assignCard(n, isMine) {
+	const addr = stripHtml(n.shipping_address || '');
+	const hasAddr = addr.length > 0;
+	const addrStyle = hasAddr
+		? 'display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#3A5A48;background:#EAF0EC;padding:4px 10px;border-radius:999px;'
+		: 'display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#9A4A35;background:#F4E6E0;padding:4px 10px;border-radius:999px;';
+	const addrIcon = hasAddr ? 'location_on' : 'location_off';
+	const addrText = hasAddr ? 'Address available' : 'No address';
+	const btnStyle = isMine
+		? 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #DCD5C8;border-radius:13px;background:#fff;color:#6F675B;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;'
+		: 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:13px;background:#2E4034;color:#F6F3ED;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;';
+	const btnIcon = isMine ? 'person_remove' : 'person_add';
+	const btnLabel = isMine ? 'Unassign Me' : 'Assign to Me';
+	// ponytail: single-quote arg — DN names never contain single quotes, avoids broken onclick="doAssign("...")"
+	const onclick = isMine ? `doUnassign('${n.name}')` : `doAssign('${n.name}')`;
+	const itemsLabel = (n.item_count || 0) + ' item' + (n.item_count === 1 ? '' : 's');
+	return `<div style="background:#fff;border:1px solid #ECE6DB;border-radius:18px;padding:17px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(35,32,28,.04);">
+		<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+			<span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;font-weight:600;color:#8A8275;letter-spacing:.02em;">${esc(n.name)}</span>
+			<span style="${addrStyle}"><span class="msr" style="font-size:16px;">${addrIcon}</span>${addrText}</span>
+		</div>
+		<div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#23201C;line-height:1.08;">${esc(n.customer_name || '')}</div>
+		<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:#6F675B;">
+			<span style="display:inline-flex;align-items:center;gap:6px;"><span class="msr" style="font-size:17px;color:#A59C8C;">event</span>${fmtDate(n.posting_date)}</span>
+			<span style="display:inline-flex;align-items:center;gap:6px;"><span class="msr" style="font-size:17px;color:#A59C8C;">inventory_2</span>${itemsLabel}</span>
+		</div>
+		<button onclick="${onclick}" style="${btnStyle}"><span class="msr" style="font-size:19px">${btnIcon}</span>${btnLabel}</button>
+	</div>`;
+}
+
+// ── Load / filter assign ──────────────────────────────
+async function loadAssign() {
+	if (assignNotes !== null) { renderAssignFiltered(); return; }
+	document.getElementById('assign-unassigned-list').innerHTML = '<div class="empty-state">Loading…</div>';
+	document.getElementById('assign-mine-list').innerHTML = '<div class="empty-state">Loading…</div>';
+	assignNotes = await get('dms.api.delivery.get_assignable_delivery_notes') || [];
+	renderAssignFiltered();
+}
+
+function renderAssignFiltered() {
+	const q = (document.getElementById('search-assign').value || '').trim().toLowerCase();
+	const dateVal = document.getElementById('assign-date-filter').value;
+	const now = new Date();
+	const todayStr = now.toISOString().slice(0, 10);
+	const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+	const weekStr = weekStart.toISOString().slice(0, 10);
+	const monthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+
+	let list = assignNotes;
+	if (q) list = list.filter(n => (n.name || '').toLowerCase().includes(q) || (n.customer_name || '').toLowerCase().includes(q));
+	if (dateVal === 'today') list = list.filter(n => n.posting_date === todayStr);
+	else if (dateVal === 'week') list = list.filter(n => (n.posting_date || '') >= weekStr);
+	else if (dateVal === 'month') list = list.filter(n => (n.posting_date || '') >= monthStr);
+
+	const unassigned = list.filter(n => !n.is_mine);
+	const mine = list.filter(n => n.is_mine);
+
+	const uContainer = document.getElementById('assign-unassigned-list');
+	uContainer.innerHTML = unassigned.length
+		? unassigned.map(n => assignCard(n, false)).join('')
+		: '<div style="text-align:center;padding:38px 20px;color:#A59C8C;font-size:14px;background:#fff;border:1px dashed #E0D9CB;border-radius:18px;">No deliveries are available for assignment.</div>';
+
+	const mContainer = document.getElementById('assign-mine-list');
+	mContainer.innerHTML = mine.length
+		? mine.map(n => assignCard(n, true)).join('')
+		: '<div style="text-align:center;padding:38px 20px;color:#A59C8C;font-size:14px;background:#fff;border:1px dashed #E0D9CB;border-radius:18px;">You have no assigned deliveries.</div>';
+
+	const uBadge = document.getElementById('assign-unassigned-count-badge');
+	if (uBadge) uBadge.textContent = unassigned.length;
+	const mBadge = document.getElementById('assign-mine-count-badge');
+	if (mBadge) mBadge.textContent = mine.length;
+}
+
+function filterAssignCards() { renderAssignFiltered(); }
+
+// ── Assign / Unassign actions ─────────────────────────
+async function doAssign(name) {
+	const result = await post('dms.api.delivery.assign_delivery_note', { name });
+	if (result) { assignNotes = null; pendingNotes = null; loadAssign(); }
+}
+
+async function doUnassign(name) {
+	const result = await post('dms.api.delivery.unassign_delivery_note', { name });
+	if (result) { assignNotes = null; pendingNotes = null; loadAssign(); }
 }
 
 // ── Greeting + date ───────────────────────────────────
