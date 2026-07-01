@@ -214,6 +214,8 @@ function renderAssignFiltered() {
 	if (uBadge) uBadge.textContent = unassigned.length;
 	const mBadge = document.getElementById('assign-mine-count-badge');
 	if (mBadge) mBadge.textContent = mine.length;
+	const openEl = document.getElementById('stat-open-deliveries');
+	if (openEl) openEl.textContent = (assignNotes || []).filter(n => !n.is_mine).length;
 }
 
 function filterAssignCards() { renderAssignFiltered(); }
@@ -265,6 +267,7 @@ function renderActivity(items) {
 (async function () {
 	const tab = new URLSearchParams(location.search).get('tab') || 'home';
 	setSection(tab);
+	loadAssign(); // populates stat-open-deliveries with unassigned count
 
 	const stats = await get('dms.api.delivery.get_delivery_dashboard');
 	if (stats) {
