@@ -232,11 +232,9 @@ def assign_delivery_note(name: str):
 	assigned = json.loads(doc._assign or "[]")
 	if assigned:
 		frappe.throw(_("This delivery note is already assigned"))
-	from frappe.desk.form import assign_to
-	assign_to.add(
-		{"assign_to": [frappe.session.user], "doctype": "Delivery Note", "name": name},
-		ignore_permissions=True,
-	)
+	# ponytail: skip assign_to.add() — it checks doctype permissions and throws when
+	# disable_document_sharing=True on production. Portal reads _assign directly; no ToDo needed.
+	frappe.db.set_value("Delivery Note", name, "_assign", json.dumps([frappe.session.user]), update_modified=False)
 	return {"name": name}
 
 
@@ -245,8 +243,8 @@ def unassign_delivery_note(name: str):
 	_require_delivery_partner()
 	doc = frappe.get_doc("Delivery Note", name, ignore_permissions=True)
 	_verify_assignment(doc)
-	from frappe.desk.form import assign_to
-	assign_to.remove("Delivery Note", name, frappe.session.user, ignore_permissions=True)
+	remaining = [u for u in json.loads(doc._assign or "[]") if u != frappe.session.user]
+	frappe.db.set_value("Delivery Note", name, "_assign", json.dumps(remaining), update_modified=False)
 	return {"name": name}
 
 
