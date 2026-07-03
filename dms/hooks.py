@@ -31,6 +31,10 @@ fixtures = [
     },
 ]
 
+after_install = ["dms.customisation.warehouse.create_custom_fields"]
+after_uninstall = ["dms.customisation.warehouse.delete_custom_fields"]
+after_migrate = ["dms.customisation.warehouse.create_custom_fields"]
+
 # Includes in <head>
 # ------------------
 
