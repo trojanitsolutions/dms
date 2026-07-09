@@ -24,10 +24,24 @@ def _convert_drive_url(file_url):
         return file_url
     if "drive.google.com" not in file_url:
         return file_url
-    # Convert https://drive.google.com/file/d/<FILE_ID>/view to direct URL
+    # Extract Drive file ID from various URL formats:
+    # 1. https://drive.google.com/file/d/<ID>/view...
+    # 2. https://drive.google.com/file/d/<ID>...
+    # 3. https://drive.google.com/open?id=<ID>
+    # 4. ?id= parameter anywhere in URL
+    file_id = None
+
+    # Try /file/d/<ID> format first (most common)
     match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', file_url)
     if match:
         file_id = match.group(1)
+    # Try ?id= parameter (older Google Drive format)
+    elif "id=" in file_url:
+        match = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', file_url)
+        if match:
+            file_id = match.group(1)
+
+    if file_id:
         return f"https://drive.google.com/uc?export=view&id={file_id}"
     return file_url
 
