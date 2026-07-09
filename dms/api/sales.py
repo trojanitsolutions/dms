@@ -18,34 +18,6 @@ def _get_default_company():
     return company or ""
 
 
-def _convert_drive_url(file_url):
-    """Convert Google Drive sharing URL to direct image URL."""
-    if not file_url:
-        return file_url
-    if "drive.google.com" not in file_url:
-        return file_url
-    # Extract Drive file ID from various URL formats:
-    # 1. https://drive.google.com/file/d/<ID>/view...
-    # 2. https://drive.google.com/file/d/<ID>...
-    # 3. https://drive.google.com/open?id=<ID>
-    # 4. ?id= parameter anywhere in URL
-    file_id = None
-
-    # Try /file/d/<ID> format first (most common)
-    match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', file_url)
-    if match:
-        file_id = match.group(1)
-    # Try ?id= parameter (older Google Drive format)
-    elif "id=" in file_url:
-        match = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', file_url)
-        if match:
-            file_id = match.group(1)
-
-    if file_id:
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
-    return file_url
-
-
 def _is_probable_image(file_url):
     if not file_url:
         return False
@@ -56,6 +28,22 @@ def _is_probable_image(file_url):
     return any(url.endswith(ext) for ext in _IMAGE_EXTS)
 
 
+def _convert_drive_url_to_embed(file_url):
+
+    if not file_url or "drive.google.com" not in file_url:
+        return file_url
+    file_id = None
+    match = re.search(r'/file/d/([^/?]+)', file_url)
+    if match:
+        file_id = match.group(1)
+    else:
+        match = re.search(r'[?&]id=([^&]+)', file_url)
+        if match:
+            file_id = match.group(1)
+    if file_id:
+        return f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
+    return file_url
+
 def _get_credit_info(customer, company=None):
     if not company:
         company = _get_default_company()
@@ -65,8 +53,6 @@ def _get_credit_info(customer, company=None):
         get_customer_outstanding,
     )
 
-    # bypass_credit_limit_check mirrors the Customer Credit Balance report logic:
-    # when set, unbilled Sales Orders are excluded from outstanding
     bypass = (
         frappe.db.get_value(
             "Customer Credit Limit",
@@ -277,7 +263,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     )
     for r in attach_rows:
         if r.item_code not in img_map and _is_probable_image(r.file_url):
-            img_map[r.item_code] = r.file_url
+            img_map[r.item_code] = _convert_drive_url_to_embed(r.file_url)
 
     bins = frappe.db.sql(
         """SELECT item_code, warehouse, actual_qty, COALESCE(reserved_stock, 0) AS reserved_stock
@@ -300,11 +286,12 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         pl_rate = price_map.get(item["name"])
         if pl_rate:
             item["standard_rate"] = pl_rate
-        # Prioritize attachment image, fall back to Item.image field, convert Drive URLs
+        # Prioritize attachment image (local file), fall back to Item.image field
         if item["name"] in img_map:
-            item["image"] = _convert_drive_url(img_map[item["name"]])
+            item["image"] = img_map[item["name"]]
         elif item.get("image"):
-            item["image"] = _convert_drive_url(item["image"])
+            # Only convert Google Drive URLs; other URLs used as-is
+            item["image"] = _convert_drive_url_to_embed(item["image"]) if "drive.google.com" in item.get("image", "") else item["image"]
         else:
             item["image"] = None
         stock_map = wh_stock.get(item["name"], {})
