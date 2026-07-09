@@ -1,4 +1,5 @@
 import json
+import re
 import frappe
 from frappe import _
 
@@ -15,6 +16,30 @@ def _get_default_company():
     if not company:
         company = frappe.db.get_single_value("Global Defaults", "default_company")
     return company or ""
+
+
+def _convert_drive_url(file_url):
+    """Convert Google Drive sharing URL to direct image URL."""
+    if not file_url:
+        return file_url
+    if "drive.google.com" not in file_url:
+        return file_url
+    # Convert https://drive.google.com/file/d/<FILE_ID>/view to direct URL
+    match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', file_url)
+    if match:
+        file_id = match.group(1)
+        return f"https://drive.google.com/uc?export=view&id={file_id}"
+    return file_url
+
+
+def _is_probable_image(file_url):
+    if not file_url:
+        return False
+    if "drive.google.com" in file_url:
+        return True
+    url = file_url.split("?")[0].lower()
+    _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif")
+    return any(url.endswith(ext) for ext in _IMAGE_EXTS)
 
 
 def _get_credit_info(customer, company=None):
@@ -224,25 +249,21 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     )
     price_map = {p.item_code: float(p.price_list_rate or 0) for p in price_rows}
 
-    # Resolve item images from tabFile for items whose image field is not set
-    _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif")
-    no_image_codes = [i["name"] for i in items if not i.get("image")]
+    # Load attachment images — prioritize attachments, fall back to Item.image field
+    item_codes = [i["name"] for i in items]
     img_map = {}
-    if no_image_codes:
-        attach_rows = frappe.db.sql(
-            """SELECT attached_to_name AS item_code, file_url
-               FROM `tabFile`
-               WHERE attached_to_doctype = 'Item'
-                 AND attached_to_name IN %(codes)s
-               ORDER BY attached_to_name, creation ASC""",
-            {"codes": no_image_codes},
-            as_dict=True,
-        )
-        for r in attach_rows:
-            if r.item_code not in img_map:
-                url = (r.file_url or "").split("?")[0].lower()
-                if any(url.endswith(ext) for ext in _IMAGE_EXTS):
-                    img_map[r.item_code] = r.file_url
+    attach_rows = frappe.db.sql(
+        """SELECT attached_to_name AS item_code, file_url
+           FROM `tabFile`
+           WHERE attached_to_doctype = 'Item'
+             AND attached_to_name IN %(codes)s
+           ORDER BY attached_to_name, creation ASC""",
+        {"codes": item_codes},
+        as_dict=True,
+    )
+    for r in attach_rows:
+        if r.item_code not in img_map and _is_probable_image(r.file_url):
+            img_map[r.item_code] = r.file_url
 
     bins = frappe.db.sql(
         """SELECT item_code, warehouse, actual_qty, COALESCE(reserved_stock, 0) AS reserved_stock
@@ -265,8 +286,13 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         pl_rate = price_map.get(item["name"])
         if pl_rate:
             item["standard_rate"] = pl_rate
-        if not item.get("image") and item["name"] in img_map:
-            item["image"] = img_map[item["name"]]
+        # Prioritize attachment image, fall back to Item.image field, convert Drive URLs
+        if item["name"] in img_map:
+            item["image"] = _convert_drive_url(img_map[item["name"]])
+        elif item.get("image"):
+            item["image"] = _convert_drive_url(item["image"])
+        else:
+            item["image"] = None
         stock_map = wh_stock.get(item["name"], {})
         avail_map = wh_available.get(item["name"], {})
         item["warehouse_stocks"] = stock_map

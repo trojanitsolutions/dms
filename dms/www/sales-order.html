@@ -697,8 +697,9 @@ function makeGridCard(item){
   const oos=isCardOos(item.name);
   const whCount=Object.keys(item.warehouse_stocks||{}).length;
   const peekBtn=whCount>0?`<button class="wh-peek-btn" onclick="showWhPopup(event,'${code}')">${EYE_ICON}${whCount}</button>`:'';
+  const imgContent=item.image?`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">` :'';
   return`<div class="item-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}">
-    <div class="item-img">${item.image?`<img src="${esc(item.image)}" alt="">`:`<div>${itemIcon(item.item_group)}</div>`}${oos?'<div class="oos-badge">OOS</div>':''}</div>
+    <div class="item-img">${imgContent}${oos?'<div class="oos-badge">OOS</div>':''}</div>
     <div class="item-body">
       <div class="item-group-label">${esc(item.item_group)}</div>
       <div class="item-name" title="${esc(item.item_name)}">${esc(item.item_name)}</div>
@@ -718,8 +719,8 @@ function makeListRow(item){
   const whCount=Object.keys(item.warehouse_stocks||{}).length;
   const peekBtn=whCount>0?`<button class="wh-peek-btn" onclick="showWhPopup(event,'${code}')">${EYE_ICON}${whCount} wh</button>`:'';
   const thumb=item.image
-    ?`<div class="item-row-thumb"><img src="${esc(item.image)}" alt=""></div>`
-    :`<div class="item-row-thumb">${itemIcon(item.item_group)}</div>`;
+    ?`<div class="item-row-thumb"><img src="${esc(item.image)}" alt="" onerror="this.style.display='none'"></div>`
+    :`<div class="item-row-thumb"></div>`;
   return`<div class="item-row-wrap" id="card-${CSS.escape(item.name)}">
     <div class="item-row${oos?' oos':''}">
       ${thumb}
