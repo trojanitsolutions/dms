@@ -744,6 +744,8 @@ function applyFilters(){
   sessionStorage.setItem('instockFilter',instockOnly?'1':'0');
   const q=document.getElementById('item-search').value.toLowerCase().trim();
   const wh=getWarehouse();
+  // DEBUG: Log filter state
+  console.log(`DEBUG applyFilters: instockOnly=${instockOnly}, wh="${wh}", activeGroup="${activeGroup}", total_items=${allItems.length}, items_with_stock=${allItems.filter(i=>i.any_stock).length}`);
   filteredItems=allItems.filter(i=>{
     if(activeGroup!=='All'&&i.item_group!==activeGroup)return false;
     if(instockOnly){
@@ -756,6 +758,7 @@ function applyFilters(){
     }
     return true;
   });
+  console.log(`DEBUG applyFilters result: filtered_count=${filteredItems.length}`);
   renderedCount=0;
   renderItems(filteredItems);
 }

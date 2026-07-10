@@ -44,6 +44,34 @@ def _convert_drive_url_to_embed(file_url):
         return f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
     return file_url
 
+def _get_sales_person_for_user():
+    user = frappe.session.user
+
+    employee = frappe.db.get_value(
+        "Employee",
+        {"user_id": user, "status": "Active"},
+        "name",
+    )
+    if not employee:
+        frappe.throw(
+            _("No active Employee found for user {0}. Employee must have a user_id linked.").format(user),
+            frappe.DoesNotExistError,
+        )
+
+    sales_person = frappe.db.get_value(
+        "Sales Person",
+        {"employee": employee, "enabled": 1},
+        "name",
+    )
+    if not sales_person:
+        frappe.throw(
+            _("No enabled Sales Person found for Employee {0}. Sales Person must be linked to this Employee.").format(employee),
+            frappe.DoesNotExistError,
+        )
+
+    return sales_person
+
+
 def _get_credit_info(customer, company=None):
     if not company:
         company = _get_default_company()
@@ -273,6 +301,9 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         as_dict=True,
     )
 
+    # DEBUG: Log bin query results
+    frappe.logger().info(f"DEBUG get_items: items_count={len(items)}, bins_count={len(bins)}, warehouse_param={warehouse}")
+
     wh_stock = {}
     wh_available = {}
     for b in bins:
@@ -282,6 +313,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         wh_stock.setdefault(b.item_code, {})[b.warehouse] = actual
         wh_available.setdefault(b.item_code, {})[b.warehouse] = avail
 
+    items_with_stock = 0
     for item in items:
         pl_rate = price_map.get(item["name"])
         if pl_rate:
@@ -301,7 +333,12 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         item["any_stock"] = any(q > 0 for q in avail_map.values()) if avail_map else False
         item["stock_qty"] = float(avail_map.get(warehouse, 0)) if warehouse else None
         item["in_stock"] = item["any_stock"]
+        if item["any_stock"]:
+            items_with_stock += 1
+            if items_with_stock <= 5:
+                frappe.logger().info(f"DEBUG item with stock: {item['name']}, any_stock={item['any_stock']}, warehouse_available={avail_map}")
 
+    frappe.logger().info(f"DEBUG final: returning {len(items)} items, {items_with_stock} with any_stock=True")
     return items
 
 
@@ -359,6 +396,8 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
                 )
             )
 
+    sales_person = _get_sales_person_for_user()
+
     so = frappe.get_doc(
         {
             "doctype": "Sales Order",
@@ -374,6 +413,12 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
                     "rate": it.get("rate"),
                 }
                 for it in items
+            ],
+            "sales_team": [
+                {
+                    "sales_person": sales_person,
+                    "allocated_percentage": 100,
+                }
             ],
         }
     )
