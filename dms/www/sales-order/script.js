@@ -1,6 +1,6 @@
-const CUSTOMER_ID = '{{ customer }}';
-const CUSTOMER_NAME = '{{ customer_name }}';
 const IS_DESKTOP = () => window.innerWidth >= 768;
+const CUSTOMER_ID = window.pageData?.customer || '';
+const CUSTOMER_NAME = window.pageData?.customer_name || '';
 
 function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
 async function get(method,args={}){
