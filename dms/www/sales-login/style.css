@@ -1,0 +1,324 @@
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ── Body ──────────────────────────────────────────────── */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #13294B;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ── Hero (mobile: full-bleed top / desktop: left panel) ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 52px 28px 64px;
+  background: #13294B;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.brand-badge {
+  width: 42px;
+  height: 42px;
+  background: #2A6FDB;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: .02em;
+}
+
+.hero-content { margin-top: 28px; }
+
+/* hidden on mobile, shown on desktop */
+.hero-label {
+  display: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  color: #7FA8D8;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.hero-tagline {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+  text-wrap: balance;
+  margin-bottom: 10px;
+}
+
+.hero-sub {
+  font-size: 14px;
+  color: #9FC0F0;
+  line-height: 1.55;
+}
+
+/* hidden on mobile */
+.feature-list {
+  display: none;
+  flex-direction: column;
+  gap: 13px;
+  list-style: none;
+  margin-top: 28px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 14px;
+  color: #C5DAEF;
+}
+
+.feature-icon { width: 18px; height: 18px; color: #2A6FDB; flex-shrink: 0; }
+
+/* hidden on mobile */
+.hero-footer {
+  display: none;
+  font-size: 12px;
+  color: #3D5A7A;
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+/* ── Bottom sheet (mobile) / Right panel (desktop) ─────── */
+.sheet {
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  flex: 1;
+  margin-top: -28px;
+  padding: 0 24px calc(36px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, .18);
+  position: relative;
+}
+
+/* Drag-handle pill — reinforces the bottom-sheet metaphor */
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #DDE1EA;
+  border-radius: 2px;
+  margin: 20px auto 28px;
+}
+
+/* Wraps form content; on desktop becomes the white card */
+.form-inner { width: 100%; }
+
+.form-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.form-sub {
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.45;
+  margin-bottom: 24px;
+}
+
+/* ── Error banner ──────────────────────────────────────── */
+.error-banner {
+  display: none;
+  align-items: flex-start;
+  gap: 10px;
+  background: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin-bottom: 18px;
+}
+
+.error-banner.visible { display: flex; }
+
+.error-icon { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; }
+
+/* ── Form fields ───────────────────────────────────────── */
+.field { margin-bottom: 16px; }
+
+.field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.field-label { font-size: 13px; font-weight: 500; color: #374151; }
+
+.forgot-link {
+  font-size: 13px;
+  color: #2A6FDB;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgot-link:active { opacity: .7; }
+
+.field-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 16px; /* 16px prevents iOS auto-zoom */
+  font-family: inherit;
+  color: #111827;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field-input:focus {
+  border-color: #2A6FDB;
+  box-shadow: 0 0 0 3px rgba(42, 111, 219, .11);
+}
+
+.field-input::placeholder { color: #9CA3AF; }
+
+/* ── Sign-in button ────────────────────────────────────── */
+.btn-submit {
+  width: 100%;
+  height: 52px;
+  margin-top: 8px;
+  background: #2A6FDB;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-submit:hover { background: #1e5bbf; }
+.btn-submit:active { background: #1a53b0; }
+.btn-submit:disabled { background: #9DB9E8; cursor: not-allowed; }
+
+/* Spinner inside button */
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, .3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+  display: none;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-submit.loading .btn-spinner { display: block; }
+.btn-submit.loading .btn-label { display: none; }
+
+/* ── Footer (mobile only) ──────────────────────────────── */
+.page-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 32px;
+}
+
+/* ── Desktop (≥768px) ──────────────────────────────────── */
+@media (min-width: 768px) {
+  body {
+    flex-direction: row;
+    background: #F3F4F3;
+    overflow: hidden;
+  }
+
+  /* Left panel */
+  .hero {
+    flex: 0 0 420px;
+    padding: 52px 48px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    justify-content: flex-start;
+  }
+
+  .hero-content { margin-top: 52px; }
+  .hero-label { display: block; }
+  .hero-tagline { font-size: 32px; }
+  .hero-sub { font-size: 15px; }
+  .feature-list { display: flex; }
+  .hero-footer { display: block; }
+
+  /* Right panel */
+  .sheet {
+    flex: 1;
+    border-radius: 0;
+    margin-top: 0;
+    padding: 0;
+    background: #F3F4F3;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .sheet-handle { display: none; }
+
+  /* White card on desktop */
+  .form-inner {
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 36px 32px calc(36px + env(safe-area-inset-bottom));
+    box-shadow: 0 2px 14px rgba(0, 0, 0, .06);
+    margin: 24px;
+  }
+
+  .form-title { font-size: 24px; }
+  .form-sub { font-size: 15px; margin-bottom: 28px; }
+  .field-input { font-size: 15px; }
+  .btn-submit { font-size: 15px; }
+  .page-footer { display: none; }
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner { animation: none; }
+  .btn-submit, .field-input { transition: none; }
+}
