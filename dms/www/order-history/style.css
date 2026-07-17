@@ -18,8 +18,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI'
 .topbar{padding:18px 16px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:#F4F2EE}
 .page-title{font-size:23px;font-weight:800;letter-spacing:-0.02em;color:#1B1814}
 .page-sub{font-size:14px;color:#6E6860;margin-top:4px}
-.btn-back{padding:0 16px;background:#fff;color:#4A453E;border:1px solid #DAD4CA;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;height:40px;white-space:nowrap;transition:all .15s}
-.btn-back:hover{background:#F7F5F1}
+.btn-back{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid transparent;color:#4A453E;font-size:13.5px;font-weight:500;cursor:pointer;text-decoration:none;padding:8px 12px;border-radius:8px;transition:all .15s ease;white-space:nowrap}
+.btn-back:hover{background:#F7F5F1;border-color:#D4CCC0;color:#1B1814}
 
 .content{padding:18px 16px 26px;background:#F4F2EE}
 
@@ -108,7 +108,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI'
 	.logout-btn{opacity:0;transition:opacity .15s;flex-shrink:0;background:none;border:none;cursor:pointer;color:#7FA8D8;padding:4px;border-radius:4px}
 	.logout-btn:hover{color:#fff}
 	.main{flex:1;min-width:0;padding-bottom:0;overflow-y:auto}
-	.topbar{padding:28px 36px 0}
+	.topbar{padding:28px 36px 16px;align-items:center}
 	.page-greeting{font-size:26px}
 	.content{padding:28px 36px}
 	#order-list{margin:0 auto}

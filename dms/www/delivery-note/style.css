@@ -32,8 +32,10 @@ input::placeholder,textarea::placeholder{color:#B4AC9D;}
 .bnav-item .msr{font-size:24px;}
 
 /* ── Back button ─────────────────────────────────── */
-.back-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:#6F675B;padding:4px 0;}
-.back-btn .msr{font-size:20px;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid transparent;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;color:#6F675B;padding:8px 12px;border-radius:8px;transition:all .15s ease;}
+.back-btn:hover{background:#FBF0EC;border-color:#E6D7D0;color:#23201C}
+.back-btn:active{background:#F7EBE6}
+.back-btn .msr{font-size:20px;font-weight:500;}
 
 /* ── Error banner ────────────────────────────────── */
 .err-banner{display:none;background:#F7EBE6;color:#9A4A35;border:1px solid #ECD8D0;border-radius:14px;padding:14px 18px;font-size:13.5px;font-weight:600;margin:18px 20px;}
