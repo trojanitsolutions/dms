@@ -81,7 +81,15 @@ function getStatusBadgeClass(status){
 }
 
 function itemRow(it){
-	return `<tr><td>${esc(it.item_code)}</td><td>${esc(it.item_name)}</td><td>${it.qty}</td><td>${fmt(it.rate)}</td><td>${fmt(it.amount)}</td></tr>`;
+	return `<div class="order-item">
+		<div class="order-item-code">${esc(it.item_code)}</div>
+		<div class="order-item-name">${esc(it.item_name)}</div>
+		<div class="order-item-details">
+			<div class="order-item-detail"><span class="order-item-detail-label">Qty:</span><span class="order-item-detail-value">${it.qty}</span></div>
+			<div class="order-item-detail"><span class="order-item-detail-label">Rate:</span><span class="order-item-detail-value">${fmt(it.rate)}</span></div>
+			<div class="order-item-detail"><span class="order-item-detail-label">Amount:</span><span class="order-item-detail-value">${fmt(it.amount)}</span></div>
+		</div>
+	</div>`;
 }
 
 function orderCard(o){
@@ -90,16 +98,15 @@ function orderCard(o){
 	const statusText=(o.status||'Draft').replace('_',' ');
 	return `<div class="order-card">
 		<div class="order-card-header">
-			<span class="order-number">${esc(o.name)}</span>
-			<span class="order-customer">${esc(o.customer_name)}</span>
+			<div class="order-number">${esc(o.name)}</div>
+			<div class="order-header-top">
+				<span class="order-customer">${esc(o.customer_name)}</span>
+				<span class="order-date">${fmtDate(o.transaction_date)}</span>
+			</div>
 			<span class="order-status-badge ${statusClass}">${esc(statusText)}</span>
-			<span class="order-date">${fmtDate(o.transaction_date)}</span>
 		</div>
 		<div class="order-items-wrap">
-			<table class="order-items">
-				<thead><tr><th>Item Code</th><th>Item Name</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
-				<tbody>${itemsHtml}</tbody>
-			</table>
+			${itemsHtml}
 		</div>
 		<div class="order-card-footer">
 			<span class="order-footer-label">Grand Total</span>
