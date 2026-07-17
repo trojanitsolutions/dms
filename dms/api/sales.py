@@ -353,15 +353,13 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
     if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
         frappe.throw(_("Delivery date cannot be in the past."))
 
-    # Server-side credit limit check
+    
     company = _get_default_company()
 
-    # Customer frozen/disabled check — reuses ERPNext's existing party validation
+    
     from erpnext.accounts.party import validate_party_frozen_disabled
     validate_party_frozen_disabled(company, "Customer", customer)
 
-    # Stock availability check using tabBin — same source as the UI display so they stay consistent.
-    # ERPNext's own on_submit will still catch genuine overstock via SRE creation.
     item_codes = [it["item_code"] for it in items]
     bin_rows = frappe.db.sql(
         """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
@@ -423,10 +421,7 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
         }
     )
     so.insert(ignore_permissions=True)
-    # ERPNext's on_submit creates Stock Reservation Entries which require create
-    # permission on that doctype. Swap only session.user so permission checks
-    # pass as Administrator, without touching session.sid (which set_user would
-    # corrupt, causing logout).
+
     _user = frappe.session.user
     frappe.session.user = "Administrator"
     frappe.local.role_permissions = {}

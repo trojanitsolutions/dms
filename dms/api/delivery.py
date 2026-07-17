@@ -111,7 +111,7 @@ def get_delivery_note(name: str):
 	doc = frappe.get_doc("Delivery Note", name, ignore_permissions=True)
 	_verify_assignment(doc)
 
-	# Batch-fetch original SO item qtys
+	
 	so_detail_ids = [i.so_detail for i in doc.items if i.so_detail]
 	so_qty_map = {}
 	if so_detail_ids:
@@ -232,8 +232,8 @@ def assign_delivery_note(name: str):
 	assigned = json.loads(doc._assign or "[]")
 	if assigned:
 		frappe.throw(_("This delivery note is already assigned"))
-	# ponytail: skip assign_to.add() — it checks doctype permissions and throws when
-	# disable_document_sharing=True on production. Portal reads _assign directly; no ToDo needed.
+	
+	
 	frappe.db.set_value("Delivery Note", name, "_assign", json.dumps([frappe.session.user]), update_modified=False)
 	return {"name": name}
 
@@ -282,8 +282,7 @@ def submit_delivery_note(name: str):
 
 
 def _sync_invoice_qty(dn_doc):
-	"""Update draft Sales Invoice qty to match submitted Delivery Note qty."""
-	# Build map: so_detail row name → delivered qty
+	
 	delivered = {item.so_detail: item.qty for item in dn_doc.items if item.so_detail}
 	if not delivered:
 		return
