@@ -138,34 +138,52 @@ function resetAndReload(){
 	loadNextPage();
 }
 
-document.getElementById('search-input').addEventListener('input',e=>{
-	clearTimeout(window.searchDebounceTimer);
-	window.searchDebounceTimer=setTimeout(()=>{
-		searchTerm=e.target.value.trim();
+const searchInputEl = document.getElementById('search-input');
+if (searchInputEl) {
+	searchInputEl.addEventListener('input',e=>{
+		clearTimeout(window.searchDebounceTimer);
+		window.searchDebounceTimer=setTimeout(()=>{
+			searchTerm=e.target.value.trim();
+			resetAndReload();
+		},350);
+	});
+}
+
+const postingDateEl = document.getElementById('posting-date-filter');
+if (postingDateEl) {
+	postingDateEl.addEventListener('change',e=>{
+		postingDate=e.target.value;
 		resetAndReload();
-	},350);
-});
+	});
+}
 
-document.getElementById('posting-date-filter').addEventListener('change',e=>{
-	postingDate=e.target.value;
-	resetAndReload();
-});
+const deliveryDateEl = document.getElementById('delivery-date-filter');
+if (deliveryDateEl) {
+	deliveryDateEl.addEventListener('change',e=>{
+		deliveryDate=e.target.value;
+		resetAndReload();
+	});
+}
 
-document.getElementById('delivery-date-filter').addEventListener('change',e=>{
-	deliveryDate=e.target.value;
-	resetAndReload();
-});
+const statusEl = document.getElementById('status-filter');
+if (statusEl) {
+	statusEl.addEventListener('change',e=>{
+		status=e.target.value;
+		resetAndReload();
+	});
+}
 
-document.getElementById('status-filter').addEventListener('change',e=>{
-	status=e.target.value;
-	resetAndReload();
-});
+const retryBtn = document.getElementById('retry-btn');
+if (retryBtn) {
+	retryBtn.addEventListener('click',loadNextPage);
+}
 
-document.getElementById('retry-btn').addEventListener('click',loadNextPage);
-
-const observer=new IntersectionObserver(entries=>{
-	if(entries[0].isIntersecting)loadNextPage();
-},{root:null,rootMargin:'400px',threshold:0});
-observer.observe(document.getElementById('sentinel'));
+const sentinel = document.getElementById('sentinel');
+if (sentinel) {
+	const observer=new IntersectionObserver(entries=>{
+		if(entries[0].isIntersecting)loadNextPage();
+	},{root:null,rootMargin:'400px',threshold:0});
+	observer.observe(sentinel);
+}
 
 loadNextPage();
