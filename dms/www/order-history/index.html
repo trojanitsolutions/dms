@@ -63,6 +63,33 @@
 			<input type="text" id="search-input" placeholder="Search order #, customer…" autocomplete="off">
 		</div>
 
+		<div class="filter-container">
+			<div class="filter-row">
+				<div class="filter-group">
+					<label for="posting-date-filter">Posting Date</label>
+					<input type="date" id="posting-date-filter" />
+				</div>
+				<div class="filter-group">
+					<label for="delivery-date-filter">Delivery Date</label>
+					<input type="date" id="delivery-date-filter" />
+				</div>
+				<div class="filter-group">
+					<label for="status-filter">Status</label>
+					<select id="status-filter">
+						<option value="">All Statuses</option>
+						<option value="Draft">Draft</option>
+						<option value="To Deliver">To Deliver</option>
+						<option value="To Bill">To Bill</option>
+						<option value="To Deliver and Bill">To Deliver and Bill</option>
+						<option value="Completed">Completed</option>
+						<option value="Cancelled">Cancelled</option>
+					</select>
+				</div>
+			</div>
+			<div class="filter-divider"></div>
+			<div class="filter-count"><span id="order-count">0</span> Orders</div>
+		</div>
+
 		<div id="order-list"></div>
 		<div id="sentinel"></div>
 		<div id="loading-indicator" hidden>Loading more orders…</div>

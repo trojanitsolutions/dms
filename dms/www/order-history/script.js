@@ -17,6 +17,9 @@ function fmtDate(dateStr){
 }
 
 let searchTerm='';
+let postingDate='';
+let deliveryDate='';
+let status='';
 let offset=0;
 let loading=false;
 let hasMore=true;
@@ -37,7 +40,7 @@ async function loadNextPage(){
 
 	let result;
 	try{
-		result=await get('dms.api.order_history.get_order_history',{search:searchTerm,limit_start:offset,limit_page_length:PAGE_SIZE});
+		result=await get('dms.api.order_history.get_order_history',{search:searchTerm,posting_date:postingDate,delivery_date:deliveryDate,status:status,limit_start:offset,limit_page_length:PAGE_SIZE});
 	}catch(e){
 		result=null;
 	}
@@ -62,6 +65,11 @@ function updateEmptyState(){
 	if(isFirstPage&&loadedNames.size===0){
 		showEmptyState(searchTerm?`No orders match "${esc(searchTerm)}".`:'You have no orders yet.');
 	}
+	updateOrderCount();
+}
+
+function updateOrderCount(){
+	document.getElementById('order-count').textContent=loadedNames.size;
 }
 
 function getStatusBadgeClass(status){
@@ -117,6 +125,7 @@ function orderCard(o){
 
 function appendCards(orders){
 	document.getElementById('order-list').insertAdjacentHTML('beforeend',orders.map(orderCard).join(''));
+	updateOrderCount();
 }
 
 function resetAndReload(){
@@ -135,6 +144,21 @@ document.getElementById('search-input').addEventListener('input',e=>{
 		searchTerm=e.target.value.trim();
 		resetAndReload();
 	},350);
+});
+
+document.getElementById('posting-date-filter').addEventListener('change',e=>{
+	postingDate=e.target.value;
+	resetAndReload();
+});
+
+document.getElementById('delivery-date-filter').addEventListener('change',e=>{
+	deliveryDate=e.target.value;
+	resetAndReload();
+});
+
+document.getElementById('status-filter').addEventListener('change',e=>{
+	status=e.target.value;
+	resetAndReload();
 });
 
 document.getElementById('retry-btn').addEventListener('click',loadNextPage);

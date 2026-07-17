@@ -11,13 +11,20 @@ def _require_sales_rep():
 
 
 @frappe.whitelist(methods=["GET"])
-def get_order_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20):
+def get_order_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20, posting_date: str = "", delivery_date: str = "", status: str = ""):
 	_require_sales_rep()
 
 	limit_start = cint(limit_start)
 	limit_page_length = cint(limit_page_length) or 20
 
 	filters = {"owner": frappe.session.user, "docstatus": ["!=", 2]}
+
+	if posting_date:
+		filters["transaction_date"] = posting_date
+	if delivery_date:
+		filters["delivery_date"] = delivery_date
+	if status and status != "All":
+		filters["status"] = status
 
 	or_filters = None
 	if search:
@@ -31,7 +38,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 		"Sales Order",
 		filters=filters,
 		or_filters=or_filters,
-		fields=["name", "customer", "customer_name", "transaction_date", "grand_total", "status"],
+		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "status"],
 		order_by="transaction_date desc, creation desc, name desc",
 		limit_start=limit_start,
 		limit_page_length=limit_page_length + 1,
