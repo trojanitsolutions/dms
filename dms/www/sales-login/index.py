@@ -15,7 +15,7 @@ def _get_company_logo():
     company = _get_default_company()
     if not company:
         return None
-    logo = frappe.db.get_value("Company", company, "company_logo")
+    logo = frappe.db.get_value("Company", company, "company_logos")
     return logo or None
 
 

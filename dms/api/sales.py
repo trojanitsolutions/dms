@@ -119,6 +119,16 @@ def get_customer_credit(customer: str):
 
 
 @frappe.whitelist(methods=["GET"])
+def get_company_logo():
+    _require_sales_rep()
+    company = _get_default_company()
+    if not company:
+        return None
+    logo = frappe.db.get_value("Company", company, "company_logos")
+    return logo or None
+
+
+@frappe.whitelist(methods=["GET"])
 def get_dashboard_stats():
     _require_sales_rep()
     today = frappe.utils.today()
