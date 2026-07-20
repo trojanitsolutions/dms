@@ -11,7 +11,11 @@
 <!-- Mobile: hero top section / Desktop: left panel -->
 <div class="hero">
   <div class="brand">
+    {% if company_logo %}
+    <img src="{{ company_logo }}" alt="Company Logo" class="brand-logo">
+    {% else %}
     <div class="brand-badge">LS</div>
+    {% endif %}
     <div class="brand-name">Luxury Stationery Wholesale</div>
   </div>
 

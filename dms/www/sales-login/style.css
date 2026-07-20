@@ -41,6 +41,14 @@ body {
   flex-shrink: 0;
 }
 
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+
 .brand-name {
   font-size: 16px;
   font-weight: 600;
