@@ -1,3 +1,4 @@
+@import '/theme.css';
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* ── Body ──────────────────────────────────────────────── */
@@ -5,7 +6,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
-  background: #13294B;
+  background: var(--color-sidebar-bg);
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -17,7 +18,7 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   padding: 52px 28px 64px;
-  background: #13294B;
+  background: var(--color-sidebar-bg);
 }
 
 .brand {
@@ -29,7 +30,7 @@ body {
 .brand-badge {
   width: 42px;
   height: 42px;
-  background: #2A6FDB;
+  background: var(--color-primary);
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -37,7 +38,7 @@ body {
   font-weight: 800;
   font-size: 14px;
   letter-spacing: 1.5px;
-  color: #fff;
+  color: var(--color-bg-surface);
   flex-shrink: 0;
 }
 
@@ -52,7 +53,7 @@ body {
 .brand-name {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-bg-surface);
   letter-spacing: .02em;
 }
 
@@ -64,7 +65,7 @@ body {
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: .13em;
-  color: #7FA8D8;
+  color: var(--color-sidebar-text);
   text-transform: uppercase;
   margin-bottom: 14px;
 }
@@ -73,14 +74,14 @@ body {
   font-size: 24px;
   font-weight: 800;
   line-height: 1.2;
-  color: #fff;
+  color: var(--color-bg-surface);
   text-wrap: balance;
   margin-bottom: 10px;
 }
 
 .hero-sub {
   font-size: 14px;
-  color: #9FC0F0;
+  color: var(--color-blue-lightest);
   line-height: 1.55;
 }
 
@@ -98,23 +99,23 @@ body {
   align-items: center;
   gap: 11px;
   font-size: 14px;
-  color: #C5DAEF;
+  color: var(--color-sidebar-text-light);
 }
 
-.feature-icon { width: 18px; height: 18px; color: #2A6FDB; flex-shrink: 0; }
+.feature-icon { width: 18px; height: 18px; color: var(--color-primary); flex-shrink: 0; }
 
 /* hidden on mobile */
 .hero-footer {
   display: none;
   font-size: 12px;
-  color: #3D5A7A;
+  color: var(--color-sidebar-accent-darker);
   margin-top: auto;
   padding-top: 40px;
 }
 
 /* ── Bottom sheet (mobile) / Right panel (desktop) ─────── */
 .sheet {
-  background: #fff;
+  background: var(--color-bg-surface);
   border-radius: 24px 24px 0 0;
   flex: 1;
   margin-top: -28px;
@@ -127,7 +128,7 @@ body {
 .sheet-handle {
   width: 36px;
   height: 4px;
-  background: #DDE1EA;
+  background: var(--color-tint-blue-pale);
   border-radius: 2px;
   margin: 20px auto 28px;
 }
@@ -138,13 +139,13 @@ body {
 .form-title {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin-bottom: 6px;
 }
 
 .form-sub {
   font-size: 14px;
-  color: #6B7280;
+  color: var(--color-text-tertiary);
   line-height: 1.45;
   margin-bottom: 24px;
 }
@@ -154,9 +155,9 @@ body {
   display: none;
   align-items: flex-start;
   gap: 10px;
-  background: #FEF2F2;
-  color: #991B1B;
-  border: 1px solid #FECACA;
+  background: var(--color-status-error-alt-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-tint-error-light);
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 13.5px;
@@ -178,11 +179,11 @@ body {
   margin-bottom: 7px;
 }
 
-.field-label { font-size: 13px; font-weight: 500; color: #374151; }
+.field-label { font-size: 13px; font-weight: 500; color: var(--color-text-muted); }
 
 .forgot-link {
   font-size: 13px;
-  color: #2A6FDB;
+  color: var(--color-primary);
   text-decoration: none;
   font-weight: 500;
 }
@@ -193,12 +194,12 @@ body {
   width: 100%;
   height: 52px;
   padding: 0 14px;
-  border: 1.5px solid #D1D5DB;
+  border: 1.5px solid var(--color-gray-300);
   border-radius: 10px;
   font-size: 16px; /* 16px prevents iOS auto-zoom */
   font-family: inherit;
-  color: #111827;
-  background: #fff;
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
   outline: none;
   transition: border-color .15s, box-shadow .15s;
   -webkit-appearance: none;
@@ -206,19 +207,19 @@ body {
 }
 
 .field-input:focus {
-  border-color: #2A6FDB;
-  box-shadow: 0 0 0 3px rgba(42, 111, 219, .11);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-overlay-blue-medium);
 }
 
-.field-input::placeholder { color: #9CA3AF; }
+.field-input::placeholder { color: var(--color-text-secondary); }
 
 /* ── Sign-in button ────────────────────────────────────── */
 .btn-submit {
   width: 100%;
   height: 52px;
   margin-top: 8px;
-  background: #2A6FDB;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-bg-surface);
   border: none;
   border-radius: 10px;
   font-family: inherit;
@@ -234,16 +235,16 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.btn-submit:hover { background: #1e5bbf; }
-.btn-submit:active { background: #1a53b0; }
-.btn-submit:disabled { background: #9DB9E8; cursor: not-allowed; }
+.btn-submit:hover { background: var(--color-primary-dark); }
+.btn-submit:active { background: var(--color-blue-dark-status); }
+.btn-submit:disabled { background: var(--color-primary-light); cursor: not-allowed; }
 
 /* Spinner inside button */
 .btn-spinner {
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(255, 255, 255, .3);
-  border-top-color: #fff;
+  border: 2.5px solid var(--color-overlay-white-pale);
+  border-top-color: var(--color-bg-surface);
   border-radius: 50%;
   animation: spin .65s linear infinite;
   display: none;
@@ -259,7 +260,7 @@ body {
 .page-footer {
   text-align: center;
   font-size: 12px;
-  color: #9CA3AF;
+  color: var(--color-text-secondary);
   margin-top: 32px;
 }
 
@@ -267,7 +268,7 @@ body {
 @media (min-width: 768px) {
   body {
     flex-direction: row;
-    background: #F3F4F3;
+    background: var(--color-bg-page);
     overflow: hidden;
   }
 
@@ -293,7 +294,7 @@ body {
     border-radius: 0;
     margin-top: 0;
     padding: 0;
-    background: #F3F4F3;
+    background: var(--color-bg-page);
     box-shadow: none;
     display: flex;
     flex-direction: column;
@@ -310,8 +311,8 @@ body {
   .form-inner {
     width: 100%;
     max-width: 400px;
-    background: #fff;
-    border: 1px solid #E5E7EB;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-light);
     border-radius: 16px;
     padding: 36px 32px calc(36px + env(safe-area-inset-bottom));
     box-shadow: 0 2px 14px rgba(0, 0, 0, .06);

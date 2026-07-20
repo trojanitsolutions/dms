@@ -1,0 +1,143 @@
+/* Centralized color theme for Sales App */
+:root {
+  /* Primary brand colors */
+  --color-primary: #2A6FDB;           /* Main blue */
+  --color-primary-dark: #1e5bbf;      /* Hover/pressed state */
+  --color-primary-light: #9DB9E8;     /* Light variant */
+  --color-primary-lighter: #BFDBFE;   /* Very light variant */
+  --color-primary-tint: #F0F5FF;      /* Background tint */
+
+  /* Sidebar colors */
+  --color-sidebar-bg: #13294B;         /* Dark blue sidebar */
+  --color-sidebar-text: #7FA8D8;       /* Light blue text in sidebar */
+  --color-sidebar-text-hover: #fff;    /* White on hover */
+
+  /* Text colors */
+  --color-text-primary: #111827;       /* Dark text */
+  --color-text-secondary: #9CA3AF;     /* Medium gray text */
+  --color-text-tertiary: #6B7280;      /* Lighter gray text */
+  --color-text-muted: #374151;         /* Muted text */
+
+  /* Background colors */
+  --color-bg-page: #F3F4F3;            /* Page background */
+  --color-bg-surface: #fff;            /* Card/surface background */
+  --color-bg-hover: #f5f5f5;           /* Hover background */
+
+  /* Border colors */
+  --color-border-light: #E5E7EB;       /* Light borders */
+  --color-border-lighter: #F3F4F3;     /* Very light borders */
+  --color-border-section: #F9FAFB;     /* Section dividers */
+
+  /* Status colors */
+  --color-success: #16a34a;
+  --color-success-light: #10B981;
+  --color-success-bg: #1B8A5A;
+  --color-warning: #AF6D0B;
+  --color-warning-bg: #d97706;
+  --color-error: #C0463F;
+  --color-error-light: #dc2626;
+  --color-error-bg: #fee2e2;
+  --color-error-text: #991B1B;
+  --color-info: #1E40AF;
+
+  /* Status badges */
+  --color-badge-green-bg: #dcfce7;
+  --color-badge-green-text: #166534;
+  --color-badge-orange-bg: #fef3c7;
+  --color-badge-orange-text: #92400E;
+  --color-badge-gray-bg: #f3f4f6;
+  --color-badge-gray-text: #6b7280;
+
+  /* Neutral grays */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+
+  /* Accent/secondary colors */
+  --color-accent-teal: #1B8A5A;
+  --color-accent-purple: #7A5BD6;
+  --color-accent-sage: #4A6A8A;
+  --color-accent-muted: #9A938A;
+  --color-accent-warm: #4A453E;
+
+  /* Activity/indicator colors */
+  --color-dot-blue: #2A6FDB;
+  --color-dot-green: #10B981;
+  --color-dot-orange: #F59E0B;
+  --color-dot-gray: #D1D5DB;
+
+  /* Light backgrounds/tints */
+  --color-tint-blue: #F0F5FF;
+  --color-tint-blue-light: #F8FBFF;
+  --color-tint-blue-lighter: #EAF1FC;
+  --color-tint-blue-lightest: #EBF4FF;
+  --color-tint-blue-pale: #DDE1EA;
+  --color-tint-error: #FEF2F2;
+  --color-tint-error-light: #FED7AA;
+  --color-tint-warning: #FFF3CD;
+  --color-tint-warning-light: #FEF3C7;
+  --color-tint-success: #E9F5EE;
+
+  /* Sidebar secondary colors */
+  --color-sidebar-accent: #4A6A8A;
+  --color-sidebar-accent-darker: #3D5A7A;
+  --color-sidebar-text-light: #C5DAEF;
+  --color-sidebar-nav-hover: rgba(255, 255, 255, .08);
+  --color-sidebar-nav-active: rgba(42, 111, 219, .25);
+
+  /* Additional semantic colors */
+  --color-text-light: #1B1814;
+  --color-text-warm: #4A453E;
+  --color-text-muted-warm: #9A938A;
+  --color-text-muted-warm-light: #A89F92;
+  --color-status-teal: #1B8A5A;
+  --color-status-teal-light: #E9F5EE;
+  --color-status-purple: #7A5BD6;
+  --color-status-error-dark: #1a53b0;
+  --color-status-error-alt: #C0463F;
+  --color-status-error-alt-bg: #FEF2F2;
+
+  /* Neutrals for backgrounds */
+  --color-neutral-50: #F7F5F1;
+  --color-neutral-100: #F6F3EE;
+  --color-neutral-150: #F4F2EE;
+  --color-neutral-200: #F2EEE8;
+  --color-neutral-250: #F1EEE9;
+  --color-neutral-300: #E9E5DE;
+  --color-neutral-350: #DAD4CA;
+  --color-neutral-400: #D4CCC0;
+  --color-neutral-light: #1B1814;
+  --color-neutral-warm: #6E6860;
+  --color-neutral-very-light: #F3EEFB;
+  --color-neutral-pale-pink: #FDF3F2;
+
+  /* Additional blue tints */
+  --color-blue-lighter: #EBF2FF;
+  --color-blue-lightest: #9FC0F0;
+  --color-blue-ultra-light: #BFDBFE;
+  --color-blue-status: #1E5BC0;
+  --color-blue-dark-status: #1a53b0;
+
+  /* Additional green tints */
+  --color-green-very-light: #E9F5EE;
+  --color-green-light-tint: #EAF1FC;
+
+  /* Hover/Active overlays */
+  --color-overlay-black-light: rgba(0, 0, 0, .06);
+  --color-overlay-black-medium: rgba(0, 0, 0, .15);
+  --color-overlay-black-dark: rgba(0, 0, 0, .18);
+  --color-overlay-black-darker: rgba(0, 0, 0, .5);
+  --color-overlay-blue-light: rgba(42, 111, 219, .1);
+  --color-overlay-blue-medium: rgba(42, 111, 219, .11);
+  --color-overlay-blue-active: rgba(42, 111, 219, .25);
+  --color-overlay-blue-glow: rgba(42, 111, 219, .6);
+  --color-overlay-brown-light: rgba(28, 24, 20, 0.03);
+  --color-overlay-white-light: rgba(255, 255, 255, .08);
+  --color-overlay-white-lighter: rgba(255, 255, 255, .1);
+  --color-overlay-white-lightest: rgba(255, 255, 255, .15);
+  --color-overlay-white-pale: rgba(255, 255, 255, .3);
+}
