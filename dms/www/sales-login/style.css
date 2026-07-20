@@ -1,3 +1,5 @@
+@import '/theme.css';
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* ── Body ──────────────────────────────────────────────── */
@@ -5,7 +7,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
-  background: #13294B;
+  background: var(--color-bg-sidebar);
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -17,7 +19,7 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   padding: 52px 28px 64px;
-  background: #13294B;
+  background: var(--color-bg-sidebar);
 }
 
 .brand {
@@ -29,7 +31,7 @@ body {
 .brand-badge {
   width: 42px;
   height: 42px;
-  background: #2A6FDB;
+  background: var(--color-accent-default);
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -73,14 +75,14 @@ body {
   font-size: 24px;
   font-weight: 800;
   line-height: 1.2;
-  color: #fff;
+  color: var(--color-text-primary);
   text-wrap: balance;
   margin-bottom: 10px;
 }
 
 .hero-sub {
   font-size: 14px;
-  color: #9FC0F0;
+  color: var(--color-text-secondary);
   line-height: 1.55;
 }
 
@@ -98,10 +100,10 @@ body {
   align-items: center;
   gap: 11px;
   font-size: 14px;
-  color: #C5DAEF;
+  color: var(--color-text-secondary);
 }
 
-.feature-icon { width: 18px; height: 18px; color: #2A6FDB; flex-shrink: 0; }
+.feature-icon { width: 18px; height: 18px; color: var(--color-accent-default); flex-shrink: 0; }
 
 /* hidden on mobile */
 .hero-footer {
@@ -114,7 +116,7 @@ body {
 
 /* ── Bottom sheet (mobile) / Right panel (desktop) ─────── */
 .sheet {
-  background: #fff;
+  background: var(--color-bg-surface);
   border-radius: 24px 24px 0 0;
   flex: 1;
   margin-top: -28px;
@@ -138,13 +140,13 @@ body {
 .form-title {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin-bottom: 6px;
 }
 
 .form-sub {
   font-size: 14px;
-  color: #6B7280;
+  color: var(--color-text-secondary);
   line-height: 1.45;
   margin-bottom: 24px;
 }
@@ -178,11 +180,11 @@ body {
   margin-bottom: 7px;
 }
 
-.field-label { font-size: 13px; font-weight: 500; color: #374151; }
+.field-label { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
 
 .forgot-link {
   font-size: 13px;
-  color: #2A6FDB;
+  color: var(--color-accent-default);
   text-decoration: none;
   font-weight: 500;
 }
@@ -193,12 +195,12 @@ body {
   width: 100%;
   height: 52px;
   padding: 0 14px;
-  border: 1.5px solid #D1D5DB;
+  border: 1.5px solid var(--color-card-border);
   border-radius: 10px;
   font-size: 16px; /* 16px prevents iOS auto-zoom */
   font-family: inherit;
-  color: #111827;
-  background: #fff;
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
   outline: none;
   transition: border-color .15s, box-shadow .15s;
   -webkit-appearance: none;
@@ -206,18 +208,18 @@ body {
 }
 
 .field-input:focus {
-  border-color: #2A6FDB;
-  box-shadow: 0 0 0 3px rgba(42, 111, 219, .11);
+  border-color: var(--color-accent-default);
+  box-shadow: 0 0 0 3px rgba(45, 43, 43, .11);
 }
 
-.field-input::placeholder { color: #9CA3AF; }
+.field-input::placeholder { color: var(--color-text-secondary); }
 
 /* ── Sign-in button ────────────────────────────────────── */
 .btn-submit {
   width: 100%;
   height: 52px;
   margin-top: 8px;
-  background: #2A6FDB;
+  background: var(--color-accent-default);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -234,9 +236,9 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.btn-submit:hover { background: #1e5bbf; }
-.btn-submit:active { background: #1a53b0; }
-.btn-submit:disabled { background: #9DB9E8; cursor: not-allowed; }
+.btn-submit:hover { background: var(--color-accent-pressed); }
+.btn-submit:active { background: var(--color-accent-pressed); }
+.btn-submit:disabled { background: var(--color-card-border); cursor: not-allowed; }
 
 /* Spinner inside button */
 .btn-spinner {
@@ -267,7 +269,7 @@ body {
 @media (min-width: 768px) {
   body {
     flex-direction: row;
-    background: #F3F4F3;
+    background: var(--color-bg-page);
     overflow: hidden;
   }
 
@@ -293,7 +295,7 @@ body {
     border-radius: 0;
     margin-top: 0;
     padding: 0;
-    background: #F3F4F3;
+    background: var(--color-bg-page);
     box-shadow: none;
     display: flex;
     flex-direction: column;
@@ -310,11 +312,11 @@ body {
   .form-inner {
     width: 100%;
     max-width: 400px;
-    background: #fff;
-    border: 1px solid #E5E7EB;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-card-border);
     border-radius: 16px;
     padding: 36px 32px calc(36px + env(safe-area-inset-bottom));
-    box-shadow: 0 2px 14px rgba(0, 0, 0, .06);
+    box-shadow: var(--color-card-shadow);
     margin: 24px;
   }
 

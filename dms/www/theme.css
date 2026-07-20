@@ -1,0 +1,52 @@
+
+
+:root {
+
+  --color-bg-page: #f3f2f2;
+  --color-bg-sidebar: #eae9e9;
+  --color-bg-surface: #ffffff;
+
+  
+  --color-text-primary: #201e1d;
+  --color-text-secondary: #7d7979;
+
+  
+  --color-accent-default: #2d2b2b;
+  --color-accent-pressed: #201e1d;
+  --color-accent-tint: #eae7e7;
+
+  
+  --color-card-border: rgba(32, 30, 29, 0.16);
+  --color-card-shadow: 0 2px 14px rgba(32, 30, 29, 0.08);
+
+  
+  --color-sidebar-text-primary: #ffffff;
+  --color-sidebar-text-secondary: #8a8888;
+  --color-sidebar-bg-hover: rgba(45, 43, 43, 0.08);
+  --color-sidebar-bg-active: rgba(45, 43, 43, 0.12);
+
+  
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #3b82f6;
+
+  
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+
+  
+  --color-badge-green: #dcfce7;
+  --color-badge-green-text: #166534;
+  --color-badge-orange: #fef3c7;
+  --color-badge-orange-text: #92400e;
+  --color-badge-gray: #f3f4f6;
+  --color-badge-gray-text: #6b7280;
+  --color-badge-red: #fee2e2;
+  --color-badge-red-text: #991b1b;
+}
