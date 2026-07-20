@@ -1,39 +1,62 @@
-/* Clean, minimal theme with neutral color palette */
+/* Enterprise theme with dark sidebar and improved contrast */
 :root {
   /* Layout colors */
-  --color-bg-page: #f3f2f2;
-  --color-bg-sidebar: #eae9e9;
+  --color-bg-page: #ece9e6;
+  --color-bg-sidebar: #2d2b2b;
   --color-bg-surface: #ffffff;
-  --color-border-divider: rgba(32, 30, 29, 0.16);
+  --color-border-divider: #d9d5d3;
 
   /* Typography colors */
   --color-text-primary: #201e1d;
-  --color-text-secondary: #7d7979;
-  --color-text-tertiary: #9a9795;
-  --color-text-muted: #7d7979;
+  --color-text-secondary: #6f6b69;
+  --color-text-tertiary: #6f6b69;
+  --color-text-muted: #6f6b69;
 
   /* Interactive colors */
   --color-primary: #2d2b2b;
-  --color-primary-dark: #201e1d;
-  --color-primary-pressed: #201e1d;
-  --color-primary-hover-tint: #eae7e7;
-  --color-primary-light: #9a9795;
+  --color-primary-dark: #1f1d1d;
+  --color-primary-pressed: #1f1d1d;
+  --color-primary-hover-tint: #f3f2f2;
+  --color-primary-light: #6f6b69;
 
   /* Background variants */
-  --color-bg-hover: #f9f8f8;
-  --color-bg-page: #f3f2f2;
+  --color-bg-hover: #f3f2f2;
+  --color-bg-page: #ece9e6;
 
   /* Border colors */
-  --color-border-light: rgba(32, 30, 29, 0.08);
-  --color-border-section: #f3f2f2;
+  --color-border-light: #d9d5d3;
+  --color-border-section: #f5f3f2;
 
   /* Sidebar specific */
-  --color-sidebar-bg: #eae9e9;
-  --color-sidebar-text: #7d7979;
-  --color-sidebar-text-light: #7d7979;
-  --color-sidebar-text-hover: #201e1d;
-  --color-sidebar-accent: #9a9795;
-  --color-sidebar-accent-darker: #7d7979;
+  --color-sidebar-bg: #2d2b2b;
+  --color-sidebar-logo-bg: #383535;
+  --color-sidebar-text: #ffffff;
+  --color-sidebar-text-secondary: rgba(255, 255, 255, 0.7);
+  --color-sidebar-text-hover: #ffffff;
+  --color-sidebar-hover: #444040;
+  --color-sidebar-active: #ffffff;
+  --color-sidebar-active-bg: #f5f3f2;
+  --color-sidebar-active-text: #2d2b2b;
+
+  /* Card styling */
+  --color-card-bg: #ffffff;
+  --color-card-border: #d9d5d3;
+  --color-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --color-card-radius: 14px;
+
+  /* Button colors */
+  --color-btn-primary-bg: #2d2b2b;
+  --color-btn-primary-hover: #1f1d1d;
+  --color-btn-primary-text: #ffffff;
+  --color-btn-secondary-bg: #ffffff;
+  --color-btn-secondary-border: #d9d5d3;
+  --color-btn-secondary-hover: #f3f2f2;
+
+  /* Input styling */
+  --color-input-bg: #ffffff;
+  --color-input-border: #d9d5d3;
+  --color-input-focus-border: #2d2b2b;
+  --color-input-focus-shadow: 0 0 0 3px rgba(45, 43, 43, 0.1);
 
   /* Status colors (desaturated/neutral-friendly palette) */
   --color-success: #3d8a50;
@@ -76,12 +99,12 @@
   --color-tint-success: #e8f3ea;
 
   /* Neutral grays */
-  --color-gray-50: #f9f8f8;
-  --color-gray-100: #f3f2f2;
-  --color-gray-200: #e8e6e5;
-  --color-gray-300: #d9d5d1;
+  --color-gray-50: #f5f3f2;
+  --color-gray-100: #ece9e6;
+  --color-gray-200: #e0dbd8;
+  --color-gray-300: #d9d5d3;
   --color-gray-400: #a89f9b;
-  --color-gray-500: #7d7979;
+  --color-gray-500: #6f6b69;
   --color-gray-600: #5a5855;
 
   /* Overlay/interactive states */
@@ -101,21 +124,21 @@
   --color-status-error-alt-bg: #f3e8e8;
   --color-status-teal: #3d8a50;
   --color-status-teal-light: #e8f3ea;
-  --color-status-purple: #7d7979;
+  --color-status-purple: #6f6b69;
 
   /* Activity indicator dots */
   --color-dot-blue: #2d2b2b;
   --color-dot-green: #3d8a50;
   --color-dot-orange: #9a7a3d;
-  --color-dot-gray: #d9d5d1;
+  --color-dot-gray: #d9d5d3;
 
   /* Additional blue tints (mapped to neutral variants) */
   --color-blue-lighter: #e8eff5;
-  --color-blue-lightest: #7d7979;
+  --color-blue-lightest: #6f6b69;
   --color-blue-ultra-light: #e8eff5;
   --color-blue-status: #2d2b2b;
   --color-blue-dark-status: #201e1d;
-  --color-tint-blue-pale: #d9d5d1;
+  --color-tint-blue-pale: #d9d5d3;
 
   /* Additional overlay states */
   --color-overlay-blue-medium: rgba(45, 43, 43, 0.08);
