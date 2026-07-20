@@ -100,9 +100,9 @@
   <!-- Catalog panel (items) -->
   <div class="catalog-panel" id="catalog-panel">
     <!-- Mobile warehouse selector -->
-    <div class="warehouse-row" style="padding:10px 16px;border-bottom:1px solid #E5E7EB;background:#fff">
-      <label style="font-size:12px;color:#6B7280;display:block;margin-bottom:4px">Warehouse</label>
-      <select class="warehouse-row" id="mob-warehouse-select" style="width:100%;padding:10px 12px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:14px;outline:none;-webkit-appearance:none;background:#fff">
+    <div class="warehouse-row">
+      <label>Warehouse</label>
+      <select id="mob-warehouse-select">
         <option value="">Select warehouse…</option>
       </select>
     </div>
@@ -132,7 +132,7 @@
       </label>
     </div>
     <div class="items-grid" id="items-grid">
-      <div style="grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF">Loading items…</div>
+      <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--color-text-secondary)">Loading items…</div>
     </div>
   </div>
 
@@ -155,9 +155,9 @@
     </div>
 
     <!-- Mobile warehouse (inside cart for cart tab) -->
-    <div class="warehouse-row" id="mob-wh-cart-row" style="display:none;padding:10px 16px;border-bottom:1px solid #F3F4F3;background:#fff">
+    <div class="warehouse-row" id="mob-wh-cart-row" style="display:none">
       <label>Warehouse</label>
-      <select id="mob-warehouse-select-2" style="width:100%;padding:10px 12px;border:1.5px solid #D1D5DB;border-radius:8px;font-size:14px;outline:none;-webkit-appearance:none;background:#fff">
+      <select id="mob-warehouse-select-2">
         <option value="">Select warehouse…</option>
       </select>
     </div>
@@ -188,7 +188,7 @@
       <div class="delivery-row">
         <label>Delivery date</label>
         <input type="date" id="delivery-date">
-        <div id="delivery-date-err" style="display:none;font-size:11.5px;color:#DC2626;margin-top:4px">Delivery date cannot be in the past.</div>
+        <div id="delivery-date-err" style="display:none;font-size:11.5px;color:var(--color-error);margin-top:4px">Delivery date cannot be in the past.</div>
       </div>
       {% if customer %}
       <button class="btn-submit" id="submit-btn">Submit Sales Order</button>
