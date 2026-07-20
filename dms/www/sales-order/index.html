@@ -14,11 +14,13 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
   </button>
   <div class="sidebar-brand">
-    {% if company_logo %}
-    <img src="{{ company_logo }}" alt="Company Logo" class="brand-logo">
-    {% else %}
-    <div class="brand-badge">LS</div>
-    {% endif %}
+    <div class="brand-logo-container">
+      {% if company_logo %}
+      <img src="{{ company_logo }}" alt="Company Logo" class="brand-logo">
+      {% else %}
+      <div class="brand-badge">LS</div>
+      {% endif %}
+    </div>
     <div class="brand-text">
       <div class="name">Luxury Stationery</div>
       <div class="role">Field Sales</div>
