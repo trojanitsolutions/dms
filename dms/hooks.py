@@ -29,10 +29,7 @@ fixtures = [
         "dt": "Role",
         "filters": [["name", "in", ["Delivery Partner","Sales Rep"]]]
     },
-    {
-        "dt": "Custom DocPerm",
-        "filters": [["role", "in", ["Delivery Partner","Sales Rep"]]]
-    },
+
 ]
 
 after_install = ["dms.customisation.warehouse.create_custom_fields"]
