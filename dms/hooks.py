@@ -27,7 +27,11 @@ fixtures = [
     },
     {
         "dt": "Role",
-        "filters": [["name", "in", ["Delivery Partner"]]],
+        "filters": [["name", "in", ["Delivery Partner","Sales Rep"]]]
+    },
+    {
+        "dt": "Custom DocPerm",
+        "filters": [["role", "in", ["Delivery Partner","Sales Rep"]]]
     },
 ]
 
