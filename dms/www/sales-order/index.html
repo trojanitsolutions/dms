@@ -74,6 +74,35 @@
 </div>
 
 <!-- Main order layout -->
+<div class="main-content" id="main-content">
+
+  {% if customer %}
+  <section class="addr-section" id="addr-section">
+    <div class="addr-col" id="billing-addr-col">
+      <label>Billing address</label>
+      <select id="billing-address-select" style="display:none">
+        <option value="">Select address…</option>
+      </select>
+      <div id="billing-address-loading" class="addr-msg">Loading addresses…</div>
+      <div id="billing-address-none-msg" class="addr-msg" style="display:none">No billing addresses found.</div>
+      <div id="billing-address-card" class="addr-card" style="display:none"></div>
+    </div>
+    <div class="addr-col" id="shipping-addr-col">
+      <label>Shipping address</label>
+      <label class="addr-same-row">
+        <input type="checkbox" id="shipping-same-checkbox" checked>
+        <span>Same as Billing Address</span>
+      </label>
+      <select id="shipping-address-select" style="display:none" disabled>
+        <option value="">Select address…</option>
+      </select>
+      <div id="shipping-address-loading" class="addr-msg">Loading addresses…</div>
+      <div id="shipping-address-none-msg" class="addr-msg" style="display:none">No shipping addresses found.</div>
+      <div id="shipping-address-card" class="addr-card" style="display:none"></div>
+    </div>
+  </section>
+  {% endif %}
+
 <div class="order-wrap" id="order-wrap">
 
   <!-- Desktop: category sidebar -->
@@ -154,6 +183,7 @@
       <div class="meta-row"><span class="meta-key">Customer</span><span class="meta-val" id="sum-customer">{% if customer %}{{ customer_name or customer }}{% else %}—{% endif %}</span></div>
     </div>
 
+
     <!-- Mobile warehouse (inside cart for cart tab) -->
     <div class="warehouse-row" id="mob-wh-cart-row" style="display:none">
       <label>Warehouse</label>
@@ -199,6 +229,8 @@
   </div>
 
 </div><!-- /order-wrap -->
+
+</div><!-- /main-content -->
 
 <!-- Bottom nav (mobile) -->
 <nav class="bottom-nav">

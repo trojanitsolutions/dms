@@ -1,6 +1,10 @@
 const IS_DESKTOP = () => window.innerWidth >= 768;
 const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
+let customerAddresses = [];
+let selectedBillingAddress = '';
+let selectedShippingAddress = '';
+let shippingSameAsBilling = true;
 
 function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
 async function get(method,args={}){
@@ -309,12 +313,20 @@ function addToCart(code){
   cart[code]={item,qty:1};
   updateCartUI();refreshCard(code);
 }
+function setQty(code,rawValue){
+  if(!cart[code])return;
+  let n=parseInt(rawValue,10);
+  if(isNaN(n)||n<0)n=0;
+  const maxAvail=displayedAvailable(code)+cart[code].qty;
+  n=Math.min(n,maxAvail);
+  cart[code].qty=n;
+  if(n===0)delete cart[code];
+  updateCartUI();refreshCard(code);
+}
 function changeQty(code,delta){
   if(!cart[code])return;
   if(delta>0&&displayedAvailable(code)<=0)return;
-  cart[code].qty=Math.max(0,cart[code].qty+delta);
-  if(cart[code].qty===0)delete cart[code];
-  updateCartUI();refreshCard(code);
+  setQty(code,cart[code].qty+delta);
 }
 function removeFromCart(code){delete cart[code];updateCartUI();refreshCard(code)}
 
@@ -333,7 +345,7 @@ function refreshCard(code){
     actionEl.innerHTML=`<button class="add-btn"${listStyle} disabled>OOS</button>`;
   }else if(inCart){
     const plusDis=!canMore?' disabled style="opacity:.45;cursor:not-allowed"':'';
-    actionEl.innerHTML=`<div class="qty-ctrl"><button class="qty-btn" data-item-code="${code}" data-delta="-1">−</button><span class="qty-num">${inCart.qty}</span><button class="qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div>`;
+    actionEl.innerHTML=`<div class="qty-ctrl"><button class="qty-btn" data-item-code="${code}" data-delta="-1">−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num" data-item-code="${code}" value="${inCart.qty}" aria-label="Quantity"><button class="qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div>`;
   }else{
     actionEl.innerHTML=`<button class="add-btn" data-item-code="${code}" data-action="add">Add</button>`;
   }
@@ -454,6 +466,76 @@ async function loadCreditInfo(){
   updateCreditWarning();
 }
 
+function _fmtAddressLabel(a){
+  return [a.address_title, a.address_line1, a.address_line2, a.city, a.state, a.country, a.pincode].filter(Boolean).join(', ');
+}
+
+function _renderAddressCard(a, targetElId){
+  const el=document.getElementById(targetElId);
+  if(!el)return;
+  if(!a){el.style.display='none';el.innerHTML='';return}
+  const lines=[a.address_line1, a.address_line2, [a.city,a.state].filter(Boolean).join(', '), [a.country,a.pincode].filter(Boolean).join(' ')].filter(Boolean);
+  el.innerHTML=`<div class="addr-card-title">${esc(a.address_title||'')}</div>`+lines.map(l=>`<div class="addr-card-line">${esc(l)}</div>`).join('');
+  el.style.display='block';
+}
+
+function _populateAddressSelect(sel, addresses){
+  sel.innerHTML='<option value="">Select address…</option>';
+  addresses.forEach(a=>{
+    const o=document.createElement('option');
+    o.value=a.name;o.textContent=_fmtAddressLabel(a);
+    sel.appendChild(o);
+  });
+}
+
+async function loadCustomerAddresses(){
+  if(!CUSTOMER_ID)return;
+  const billLoad=document.getElementById('billing-address-loading');
+  const billNone=document.getElementById('billing-address-none-msg');
+  const billSel=document.getElementById('billing-address-select');
+  const shipLoad=document.getElementById('shipping-address-loading');
+  const shipNone=document.getElementById('shipping-address-none-msg');
+  const shipSel=document.getElementById('shipping-address-select');
+
+  let addresses=null;
+  try{ addresses=await get('dms.api.sales.get_customer_addresses',{customer:CUSTOMER_ID}); }
+  catch(e){ addresses=null; }
+
+  customerAddresses=addresses||[];
+  if(billLoad)billLoad.style.display='none';
+  if(shipLoad)shipLoad.style.display='none';
+
+  if(!customerAddresses.length){
+    if(billNone)billNone.style.display='block';
+    if(shipNone)shipNone.style.display='block';
+    return;
+  }
+
+  if(billSel){_populateAddressSelect(billSel,customerAddresses);billSel.style.display='block'}
+  if(shipSel){_populateAddressSelect(shipSel,customerAddresses);shipSel.style.display='block'}
+
+  if(customerAddresses.length===1){
+    selectedBillingAddress=customerAddresses[0].name;
+    if(billSel)billSel.value=selectedBillingAddress;
+  }
+  _renderAddressCard(customerAddresses.find(a=>a.name===selectedBillingAddress)||null,'billing-address-card');
+
+  shippingSameAsBilling=true;
+  applyShippingMirror();
+}
+
+function applyShippingMirror(){
+  const cb=document.getElementById('shipping-same-checkbox');
+  const shipSel=document.getElementById('shipping-address-select');
+  if(cb)cb.checked=shippingSameAsBilling;
+  if(shipSel)shipSel.disabled=shippingSameAsBilling;
+  if(shippingSameAsBilling){
+    selectedShippingAddress=selectedBillingAddress;
+    if(shipSel)shipSel.value=selectedBillingAddress;
+  }
+  _renderAddressCard(customerAddresses.find(a=>a.name===selectedShippingAddress)||null,'shipping-address-card');
+}
+
 /* ── Submit order ────────────────────────────────────────── */
 async function submitOrder(){
   const items=Object.values(cart);
@@ -482,7 +564,9 @@ async function submitOrder(){
       customer:CUSTOMER_ID,
       warehouse:wh,
       items_json:JSON.stringify(items.map(({item,qty})=>({item_code:item.name,qty,rate:item.standard_rate}))),
-      delivery_date:document.getElementById('delivery-date').value||''
+      delivery_date:document.getElementById('delivery-date').value||'',
+      customer_address:selectedBillingAddress||'',
+      shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||''
     });
     alert(`Order ${result.name} submitted! Total: ${fmt(result.grand_total)}`);
     cart={};updateCartUI();
@@ -503,6 +587,32 @@ async function submitOrder(){
     if(this.value<_todayStr){this.value=_todayStr;if(errEl)errEl.style.display='block';setTimeout(()=>{if(errEl)errEl.style.display='none'},3000);}
     else{if(errEl)errEl.style.display='none';}
   });
+
+  // Billing address select change handler
+  const billSel=document.getElementById('billing-address-select');
+  if(billSel){
+    billSel.addEventListener('change',function(){
+      selectedBillingAddress=this.value;
+      _renderAddressCard(customerAddresses.find(a=>a.name===selectedBillingAddress)||null,'billing-address-card');
+      if(shippingSameAsBilling)applyShippingMirror();
+    });
+  }
+  // Shipping same-as-billing checkbox handler
+  const sameCb=document.getElementById('shipping-same-checkbox');
+  if(sameCb){
+    sameCb.addEventListener('change',function(){
+      shippingSameAsBilling=this.checked;
+      applyShippingMirror();
+    });
+  }
+  // Shipping address select change handler
+  const shipSel=document.getElementById('shipping-address-select');
+  if(shipSel){
+    shipSel.addEventListener('change',function(){
+      selectedShippingAddress=this.value;
+      _renderAddressCard(customerAddresses.find(a=>a.name===selectedShippingAddress)||null,'shipping-address-card');
+    });
+  }
 
   // Restore view preference
   setView(currentView);
@@ -562,6 +672,8 @@ async function submitOrder(){
 
   // Load credit info
   await loadCreditInfo();
+  // Load customer addresses
+  await loadCustomerAddresses();
 
   // Initial submit button state
   const btn=document.getElementById('submit-btn');
@@ -606,6 +718,28 @@ document.addEventListener('click',e=>{
   if(e.target.classList.contains('cart-remove')||e.target.closest('.cart-remove')){
     const el=e.target.closest('.cart-remove');
     removeFromCart(el.dataset.itemCode);
+  }
+});
+
+// live keystroke sanitation — no cart/DOM update, so focus/cursor survive
+document.addEventListener('input',e=>{
+  if(e.target.tagName==='INPUT'&&e.target.classList.contains('qty-num')){
+    const cleaned=e.target.value.replace(/\D/g,'');
+    if(cleaned!==e.target.value)e.target.value=cleaned;
+  }
+});
+
+// commit on blur
+document.addEventListener('focusout',e=>{
+  if(e.target.tagName==='INPUT'&&e.target.classList.contains('qty-num')){
+    setQty(e.target.dataset.itemCode,e.target.value);
+  }
+});
+
+// Enter commits immediately
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.target.classList.contains('qty-num')&&e.key==='Enter'){
+    e.target.blur();
   }
 });
 

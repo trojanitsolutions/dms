@@ -203,6 +203,22 @@ def get_customers(search: str = ""):
     return customers
 
 
+@frappe.whitelist(methods=["GET"])
+def get_customer_addresses(customer: str):
+    _require_sales_rep()
+    return frappe.get_all(
+        "Address",
+        filters=[
+            ["Dynamic Link", "link_doctype", "=", "Customer"],
+            ["Dynamic Link", "link_name", "=", customer],
+            ["Dynamic Link", "parenttype", "=", "Address"],
+            ["disabled", "=", 0],
+        ],
+        fields=["name", "address_title", "address_line1", "address_line2", "city", "state", "country", "pincode"],
+        order_by="is_primary_address desc, creation asc",
+    )
+
+
 @frappe.whitelist(methods=["POST"])
 def create_customer(customer_name: str, territory: str = "All Territories", mobile_no: str = ""):
     _require_sales_rep()
@@ -353,7 +369,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
 
 
 @frappe.whitelist(methods=["POST"])
-def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = ""):
+def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = ""):
     _require_sales_rep()
     items = json.loads(items_json)
     if not items:
@@ -363,12 +379,38 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
     if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
         frappe.throw(_("Delivery date cannot be in the past."))
 
-    
+
     company = _get_default_company()
 
-    
+
     from erpnext.accounts.party import validate_party_frozen_disabled
     validate_party_frozen_disabled(company, "Customer", customer)
+
+    if customer_address:
+        linked = frappe.db.exists(
+            "Dynamic Link",
+            {
+                "parent": customer_address,
+                "parenttype": "Address",
+                "link_doctype": "Customer",
+                "link_name": customer,
+            },
+        )
+        if not linked:
+            frappe.throw(_("Selected address does not belong to this customer."))
+
+    if shipping_address:
+        linked = frappe.db.exists(
+            "Dynamic Link",
+            {
+                "parent": shipping_address,
+                "parenttype": "Address",
+                "link_doctype": "Customer",
+                "link_name": customer,
+            },
+        )
+        if not linked:
+            frappe.throw(_("Selected shipping address does not belong to this customer."))
 
     item_codes = [it["item_code"] for it in items]
     bin_rows = frappe.db.sql(
@@ -413,6 +455,8 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             "company": company,
             "transaction_date": frappe.utils.today(),
             "delivery_date": delivery_date,
+            "customer_address": customer_address or None,
+            "shipping_address_name": shipping_address or None,
             "items": [
                 {
                     "item_code": it["item_code"],
