@@ -79,7 +79,9 @@
   {% if customer %}
   <section class="addr-section" id="addr-section">
     <div class="addr-col" id="billing-addr-col">
-      <label>Billing address</label>
+      <div class="addr-col-header">
+        <label class="addr-col-title">Billing address</label>
+      </div>
       <select id="billing-address-select" style="display:none">
         <option value="">Select address…</option>
       </select>
@@ -88,11 +90,13 @@
       <div id="billing-address-card" class="addr-card" style="display:none"></div>
     </div>
     <div class="addr-col" id="shipping-addr-col">
-      <label>Shipping address</label>
-      <label class="addr-same-row">
-        <input type="checkbox" id="shipping-same-checkbox" checked>
-        <span>Same as Billing Address</span>
-      </label>
+      <div class="addr-col-header">
+        <label class="addr-col-title">Shipping address</label>
+        <label class="addr-same-row">
+          <input type="checkbox" id="shipping-same-checkbox" checked>
+          <span>Same as Billing Address</span>
+        </label>
+      </div>
       <select id="shipping-address-select" style="display:none" disabled>
         <option value="">Select address…</option>
       </select>
