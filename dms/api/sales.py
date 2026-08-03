@@ -368,6 +368,70 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     return items
 
 
+def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str):
+	return frappe.get_doc(
+		{
+			"doctype": "Sales Order",
+			"customer": customer,
+			"company": company,
+			"transaction_date": frappe.utils.today(),
+			"delivery_date": delivery_date or frappe.utils.today(),
+			"customer_address": customer_address or None,
+			"shipping_address_name": shipping_address or None,
+			"disable_rounded_total": frappe.db.get_single_value("Global Defaults", "disable_rounded_total") or 0,
+			"items": [
+				{
+					"item_code": it["item_code"],
+					"qty": it["qty"],
+					"warehouse": warehouse,
+					"rate": it.get("rate"),
+				}
+				for it in items
+			],
+			"sales_team": [
+				{
+					"sales_person": sales_person,
+					"allocated_percentage": 100,
+				}
+			],
+		}
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = ""):
+	_require_sales_rep()
+	items = json.loads(items_json)
+	if not items:
+		return {
+			"net_total": 0,
+			"total_taxes_and_charges": 0,
+			"grand_total": 0,
+			"rounding_adjustment": 0,
+			"rounded_total": 0,
+			"disable_rounded_total": 0,
+			"items": [],
+			"taxes": [],
+		}
+
+	company = _get_default_company()
+	sales_person = _get_sales_person_for_user()
+	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
+	so.run_method("set_missing_values")
+	so.run_method("calculate_taxes_and_totals")
+
+	return {
+		"total": so.total,
+		"total_taxes_and_charges": so.total_taxes_and_charges,
+		"grand_total": so.grand_total,
+		"rounding_adjustment": so.rounding_adjustment,
+		"rounded_total": so.rounded_total,
+		"disable_rounded_total": so.disable_rounded_total,
+		"items": [{"item_code": d.item_code, "qty": d.qty, "rate": d.rate, "amount": d.amount} for d in so.items],
+		"taxes": [{"description": t.description, "tax_amount": t.tax_amount, "total": t.total} for t in so.taxes],
+	}
+
+
 @frappe.whitelist(methods=["POST"])
 def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = ""):
     _require_sales_rep()
@@ -430,50 +494,25 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
                 ).format(it["item_code"], float(it["qty"]), avail, warehouse)
             )
 
+    sales_person = _get_sales_person_for_user()
+    so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
+    so.run_method("set_missing_values")
+    so.run_method("calculate_taxes_and_totals")
+
     credit_info = _get_credit_info(customer, company)
     if credit_info["credit_limit"] > 0:
-        grand_total = sum(float(it["qty"]) * float(it.get("rate", 0)) for it in items)
-        if grand_total > credit_info["available_credit"]:
+        if so.grand_total > credit_info["available_credit"]:
             frappe.throw(
                 _(
                     "Order total ({0}) exceeds available credit ({1}). "
                     "Credit limit: {2}, Outstanding: {3}."
                 ).format(
-                    frappe.utils.flt(grand_total, 2),
+                    frappe.utils.flt(so.grand_total, 2),
                     frappe.utils.flt(credit_info["available_credit"], 2),
                     frappe.utils.flt(credit_info["credit_limit"], 2),
                     frappe.utils.flt(credit_info["outstanding"], 2),
                 )
             )
-
-    sales_person = _get_sales_person_for_user()
-
-    so = frappe.get_doc(
-        {
-            "doctype": "Sales Order",
-            "customer": customer,
-            "company": company,
-            "transaction_date": frappe.utils.today(),
-            "delivery_date": delivery_date,
-            "customer_address": customer_address or None,
-            "shipping_address_name": shipping_address or None,
-            "items": [
-                {
-                    "item_code": it["item_code"],
-                    "qty": it["qty"],
-                    "warehouse": warehouse,
-                    "rate": it.get("rate"),
-                }
-                for it in items
-            ],
-            "sales_team": [
-                {
-                    "sales_person": sales_person,
-                    "allocated_percentage": 100,
-                }
-            ],
-        }
-    )
     so.insert(ignore_permissions=True)
 
     _user = frappe.session.user
@@ -486,7 +525,13 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
         frappe.session.user = _user
         frappe.local.role_permissions = {}
         frappe.local.user_perms = None
-    return {"name": so.name, "grand_total": so.grand_total}
+    return {
+        "name": so.name,
+        "total": so.total,
+        "grand_total": so.grand_total,
+        "rounded_total": so.rounded_total,
+        "disable_rounded_total": so.disable_rounded_total,
+    }
 
 
 @frappe.whitelist(methods=["GET"])

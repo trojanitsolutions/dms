@@ -135,16 +135,19 @@ async function onWarehouseChange(){
   const wh=document.getElementById('warehouse-select').value;
   setWarehouseSelects(wh);
   await reloadItems(wh);
+  refreshTotals();
 }
 async function onMobWarehouseChange(){
   const wh=document.getElementById('mob-warehouse-select').value;
   setWarehouseSelects(wh);
   await reloadItems(wh);
+  refreshTotals();
 }
 async function onMobWarehouseChange2(){
   const wh=document.getElementById('mob-warehouse-select-2').value;
   setWarehouseSelects(wh);
   await reloadItems(wh);
+  refreshTotals();
 }
 async function reloadItems(wh){
   const data=await get('dms.api.sales.get_items',{warehouse:wh});
@@ -331,6 +334,61 @@ function changeQty(code,delta){
 }
 function removeFromCart(code){delete cart[code];updateCartUI();refreshCard(code)}
 
+let totalsTimer;
+async function refreshTotals(){
+	clearTimeout(totalsTimer);
+	const items=Object.values(cart);
+	if(!items.length){
+		document.getElementById('sum-subtotal').textContent='QAR 0.00';
+		document.getElementById('sum-grand').textContent='QAR 0.00';
+		document.getElementById('cart-taxes-rows').innerHTML='';
+		currentGrandTotal=0;
+		updateCreditWarning();
+		return;
+	}
+	totalsTimer=setTimeout(async()=>{
+		try{
+			const wh=getWarehouse();
+			const result=await post('dms.api.sales.get_order_totals',{
+				customer:CUSTOMER_ID,
+				warehouse:wh,
+				items_json:JSON.stringify(items.map(({item,qty})=>({item_code:item.name,qty,rate:item.standard_rate}))),
+				delivery_date:document.getElementById('delivery-date').value||'',
+				customer_address:document.getElementById('billing-address-select')?.value||'',
+				shipping_address:(shippingSameAsBilling?selectedBillingAddress:selectedShippingAddress)||''
+			});
+			if(!result)return;
+			result.items.forEach(resItem=>{
+				const el=document.querySelector(`.cart-item-total[data-item-code="${CSS.escape(resItem.item_code)}"]`);
+				if(el)el.textContent=fmt(resItem.amount);
+				const rateEl=document.querySelector(`.cart-item-rate[data-item-code="${CSS.escape(resItem.item_code)}"]`);
+				if(rateEl)rateEl.textContent=fmt(resItem.rate);
+			});
+			document.getElementById('sum-subtotal').textContent=fmt(result.total);
+			const taxEl=document.getElementById('cart-taxes-rows');
+			taxEl.innerHTML='';
+			if(result.taxes&&result.taxes.length){
+				result.taxes.forEach(t=>{
+					const div=document.createElement('div');
+					div.className='tax-row';
+					div.innerHTML=`<span class="tax-key">${esc(t.description)}</span><span>${fmt(t.tax_amount)}</span>`;
+					taxEl.appendChild(div);
+				});
+			}
+			if(result.rounding_adjustment&&result.rounding_adjustment!==0){
+				const div=document.createElement('div');
+				div.className='tax-row';
+				div.innerHTML=`<span class="tax-key">Rounding</span><span>${fmt(result.rounding_adjustment)}</span>`;
+				taxEl.appendChild(div);
+			}
+			const displayTotal=result.disable_rounded_total?result.grand_total:result.rounded_total;
+			document.getElementById('sum-grand').textContent=fmt(displayTotal);
+			currentGrandTotal=displayTotal;
+			updateCreditWarning();
+		}catch(e){console.warn('Failed to refresh totals:',e.message)}
+	},300);
+}
+
 function actionMarkup(code){
   const inCart=cart[code];
   const cardOos=isCardOos(code);
@@ -403,32 +461,23 @@ function updateCartUI(){
 
   if(!items.length){
     cartEl.innerHTML=`<div class="no-items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>No items yet.<br>Add products from the catalog.</div>`;
-    document.getElementById('sum-subtotal').textContent='QAR 0.00';
-    document.getElementById('sum-grand').textContent='QAR 0.00';
-    currentGrandTotal=0;
-    updateCreditWarning();
+    refreshTotals();
     return;
   }
 
-  let subtotal=0;
   cartEl.innerHTML=items.map(({item,qty})=>{
-    const line=item.standard_rate*qty;subtotal+=line;
     const code=item.name;
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price">${fmt(item.standard_rate)} / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
-      <div class="cart-item-total">${fmt(line)}</div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(item.standard_rate)}</span> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
+      <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
       <button class="cart-remove" data-item-code="${item.name}" title="Remove">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
       </button>
     </div>`;
   }).join('');
-
-  currentGrandTotal=subtotal;
-  document.getElementById('sum-subtotal').textContent=fmt(subtotal);
-  document.getElementById('sum-grand').textContent=fmt(subtotal);
-  updateCreditWarning();
+  refreshTotals();
 }
 
 /* ── Credit ──────────────────────────────────────────────── */
@@ -644,7 +693,8 @@ async function submitOrder(){
       customer_address:selectedBillingAddress||'',
       shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||''
     });
-    alert(`Order ${result.name} submitted! Total: ${fmt(result.grand_total)}`);
+    const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
+    alert(`Order ${result.name} submitted! Total: ${fmt(total)}`);
     cart={};updateCartUI();
     window.location.href=`/sales-customer?customer=${CUSTOMER_ID}`;
   }catch(e){alert('Error: '+e.message)}
@@ -661,7 +711,7 @@ async function submitOrder(){
   ddInput.addEventListener('change',function(){
     const errEl=document.getElementById('delivery-date-err');
     if(this.value<_todayStr){this.value=_todayStr;if(errEl)errEl.style.display='block';setTimeout(()=>{if(errEl)errEl.style.display='none'},3000);}
-    else{if(errEl)errEl.style.display='none';}
+    else{if(errEl)errEl.style.display='none';refreshTotals();}
   });
 
   // Billing address select change handler
@@ -671,6 +721,7 @@ async function submitOrder(){
       selectedBillingAddress=this.value;
       _renderAddressCard(customerAddresses.find(a=>a.name===selectedBillingAddress)||null,'billing-address-card');
       if(shippingSameAsBilling)applyShippingMirror();
+      refreshTotals();
     });
   }
   // Shipping same-as-billing checkbox handler
@@ -679,6 +730,7 @@ async function submitOrder(){
     sameCb.addEventListener('change',function(){
       shippingSameAsBilling=this.checked;
       applyShippingMirror();
+      refreshTotals();
     });
   }
   // Shipping address select change handler
@@ -687,6 +739,7 @@ async function submitOrder(){
     shipSel.addEventListener('change',function(){
       selectedShippingAddress=this.value;
       _renderAddressCard(customerAddresses.find(a=>a.name===selectedShippingAddress)||null,'shipping-address-card');
+      refreshTotals();
     });
   }
 
