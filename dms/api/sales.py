@@ -268,7 +268,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
 
     get_all_kwargs = dict(
         filters=filters,
-        fields=["name", "item_name", "item_group", "standard_rate", "image", "stock_uom"],
+        fields=["name", "item_name", "item_group", "standard_rate", "image", "stock_uom", "description"],
         limit=10000,
         order_by="item_name",
     )

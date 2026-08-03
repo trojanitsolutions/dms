@@ -256,6 +256,20 @@
   </a>
 </nav>
 
+<!-- Item detail modal -->
+<div class="item-modal-overlay" id="item-modal-overlay">
+  <div class="item-modal" role="dialog" aria-modal="true">
+    <button class="item-modal-close" id="item-modal-close" aria-label="Close">&times;</button>
+    <div class="item-modal-img" id="item-modal-img"></div>
+    <div class="item-modal-body">
+      <div class="item-modal-name" id="item-modal-name"></div>
+      <div class="item-modal-price" id="item-modal-price"></div>
+      <div class="item-modal-desc" id="item-modal-desc"></div>
+      <div class="item-modal-action" id="item-modal-action"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 window.pageData = {
   customer: '{{ customer or "" }}',

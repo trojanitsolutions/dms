@@ -30,6 +30,7 @@ let activeWhPopup=null;
 const RENDER_BATCH=100;
 let renderedCount=0;
 let scrollSentinel=null,sentinelObserver=null;
+let modalItemCode=null;
 
 /* ── Stock helpers ───────────────────────────────────────── */
 function displayedAvailable(code){
@@ -227,7 +228,7 @@ function makeGridCard(item){
   const whCount=Object.keys(item.warehouse_stocks||{}).length;
   const peekBtn=whCount>0?`<button class="wh-peek-btn" data-item-code="${item.name}">${EYE_ICON}${whCount}</button>`:'';
   const imgContent=item.image?`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">` :'';
-  return`<div class="item-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}">
+  return`<div class="item-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}" data-item-code="${item.name}">
     <div class="item-img">${imgContent}${oos?'<div class="oos-badge">OOS</div>':''}</div>
     <div class="item-body">
       <div class="item-group-label">${esc(item.item_group)}</div>
@@ -249,7 +250,7 @@ function makeListRow(item){
   const thumb=item.image
     ?`<div class="item-row-thumb"><img src="${esc(item.image)}" alt="" onerror="this.style.display='none'"></div>`
     :`<div class="item-row-thumb"></div>`;
-  return`<div class="item-row-wrap" id="card-${CSS.escape(item.name)}">
+  return`<div class="item-row-wrap" id="card-${CSS.escape(item.name)}" data-item-code="${item.name}">
     <div class="item-row${oos?' oos':''}">
       ${thumb}
       <div class="item-row-info">
@@ -330,6 +331,22 @@ function changeQty(code,delta){
 }
 function removeFromCart(code){delete cart[code];updateCartUI();refreshCard(code)}
 
+function actionMarkup(code){
+  const inCart=cart[code];
+  const cardOos=isCardOos(code);
+  const canMore=displayedAvailable(code)>0;
+  const listStyle=currentView==='list'?' style="font-size:11px;padding:5px 8px"':'';
+
+  if(cardOos){
+    return`<button class="add-btn"${listStyle} disabled>OOS</button>`;
+  }else if(inCart){
+    const plusDis=!canMore?' disabled style="opacity:.45;cursor:not-allowed"':'';
+    return`<div class="qty-ctrl"><button class="qty-btn" data-item-code="${code}" data-delta="-1">−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num" data-item-code="${code}" value="${inCart.qty}" aria-label="Quantity"><button class="qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div>`;
+  }else{
+    return`<button class="add-btn" data-item-code="${code}" data-action="add">Add</button>`;
+  }
+}
+
 function refreshCard(code){
   const actionEl=document.getElementById('action-'+CSS.escape(code));
   const stockEl=document.getElementById('stock-'+CSS.escape(code));
@@ -338,17 +355,9 @@ function refreshCard(code){
   const inCart=cart[code];
   const cardOos=isCardOos(code);
   const canMore=displayedAvailable(code)>0;
-  const listStyle=currentView==='list'?' style="font-size:11px;padding:5px 8px"':'';
 
   // Update action buttons
-  if(cardOos){
-    actionEl.innerHTML=`<button class="add-btn"${listStyle} disabled>OOS</button>`;
-  }else if(inCart){
-    const plusDis=!canMore?' disabled style="opacity:.45;cursor:not-allowed"':'';
-    actionEl.innerHTML=`<div class="qty-ctrl"><button class="qty-btn" data-item-code="${code}" data-delta="-1">−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num" data-item-code="${code}" value="${inCart.qty}" aria-label="Quantity"><button class="qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div>`;
-  }else{
-    actionEl.innerHTML=`<button class="add-btn" data-item-code="${code}" data-action="add">Add</button>`;
-  }
+  actionEl.innerHTML=actionMarkup(code);
 
   // Update stock label
   if(stockEl){
@@ -377,6 +386,12 @@ function refreshCard(code){
       else if(!cardOos&&badge)badge.remove();
     }
   }
+
+  // Sync modal action cell if this item is currently open
+  if(modalItemCode===code){
+    const modalAction=document.getElementById('item-modal-action');
+    if(modalAction)modalAction.innerHTML=actionMarkup(code);
+  }
 }
 
 function updateCartUI(){
@@ -398,8 +413,11 @@ function updateCartUI(){
   let subtotal=0;
   cartEl.innerHTML=items.map(({item,qty})=>{
     const line=item.standard_rate*qty;subtotal+=line;
+    const code=item.name;
+    const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
+    const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price">${fmt(item.standard_rate)} × ${qty} ${item.stock_uom||'ea'}</div></div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price">${fmt(item.standard_rate)} / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
       <div class="cart-item-total">${fmt(line)}</div>
       <button class="cart-remove" data-item-code="${item.name}" title="Remove">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
@@ -534,6 +552,64 @@ function applyShippingMirror(){
     if(shipSel)shipSel.value=selectedBillingAddress;
   }
   _renderAddressCard(customerAddresses.find(a=>a.name===selectedShippingAddress)||null,'shipping-address-card');
+}
+
+/* ── Item detail modal ────────────────────────────────────── */
+function openItemModal(code){
+  modalItemCode=code;
+  renderItemModal();
+  const overlay=document.getElementById('item-modal-overlay');
+  if(overlay)setTimeout(()=>overlay.classList.add('open'),10);
+}
+
+function closeItemModal(){
+  const overlay=document.getElementById('item-modal-overlay');
+  if(overlay)overlay.classList.remove('open');
+  modalItemCode=null;
+}
+
+function renderItemModal(){
+  if(!modalItemCode)return;
+  const item=allItems.find(i=>i.name===modalItemCode);
+  if(!item)return;
+
+  // Image
+  const imgEl=document.getElementById('item-modal-img');
+  if(imgEl){
+    if(item.image){
+      imgEl.innerHTML=`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">`;
+    }else{
+      imgEl.innerHTML=itemIcon(item.item_group);
+    }
+  }
+
+  // Name
+  const nameEl=document.getElementById('item-modal-name');
+  if(nameEl)nameEl.textContent=item.item_name;
+
+  // Price
+  const priceEl=document.getElementById('item-modal-price');
+  if(priceEl)priceEl.textContent=fmt(item.standard_rate);
+
+  // Description (strip HTML, hide if empty)
+  const descEl=document.getElementById('item-modal-desc');
+  if(descEl){
+    if(item.description){
+      const plain=item.description.replace(/<[^>]*>/g,'').trim();
+      if(plain){
+        descEl.textContent=plain;
+        descEl.classList.add('show');
+      }else{
+        descEl.classList.remove('show');
+      }
+    }else{
+      descEl.classList.remove('show');
+    }
+  }
+
+  // Action cell
+  const actionEl=document.getElementById('item-modal-action');
+  if(actionEl)actionEl.innerHTML=actionMarkup(modalItemCode);
 }
 
 /* ── Submit order ────────────────────────────────────────── */
@@ -678,6 +754,10 @@ async function submitOrder(){
   // Initial submit button state
   const btn=document.getElementById('submit-btn');
   if(btn)btn.disabled=true;
+
+  // Modal close button
+  const modalCloseBtn=document.getElementById('item-modal-close');
+  if(modalCloseBtn)modalCloseBtn.addEventListener('click',closeItemModal);
 })();
 
 // Event listeners for static elements
@@ -713,11 +793,25 @@ document.addEventListener('click',e=>{
     addToCart(e.target.dataset.itemCode);
   }
   if(e.target.dataset.delta){
-    changeQty(e.target.dataset.itemCode,parseInt(e.target.dataset.delta));
+    const code=e.target.dataset.itemCode;
+    const delta=parseInt(e.target.dataset.delta);
+    // Order Summary qty controls: floor at 1 (don't allow decrement below 1)
+    if(e.target.classList.contains('cart-qty-btn')&&delta<0&&cart[code]&&cart[code].qty<=1)return;
+    changeQty(code,delta);
   }
   if(e.target.classList.contains('cart-remove')||e.target.closest('.cart-remove')){
     const el=e.target.closest('.cart-remove');
     removeFromCart(el.dataset.itemCode);
+  }
+  // Open item detail modal: click anywhere on item card/row except add button, qty controls, or warehouse peek
+  const cardEl=e.target.closest('.item-card')||e.target.closest('.item-row-wrap');
+  if(cardEl&&!e.target.closest('.add-btn')&&!e.target.closest('.qty-ctrl')&&!e.target.closest('.wh-peek-btn')){
+    const code=cardEl.dataset.itemCode;
+    if(code)openItemModal(code);
+  }
+  // Close modal: click overlay (but not the modal card itself)
+  if(e.target.id==='item-modal-overlay'){
+    closeItemModal();
   }
 });
 
@@ -732,14 +826,23 @@ document.addEventListener('input',e=>{
 // commit on blur
 document.addEventListener('focusout',e=>{
   if(e.target.tagName==='INPUT'&&e.target.classList.contains('qty-num')){
-    setQty(e.target.dataset.itemCode,e.target.value);
+    let val=e.target.value;
+    // Order Summary qty inputs: clamp to minimum 1 (instead of deleting at 0)
+    if(e.target.classList.contains('cart-qty-num')){
+      const n=parseInt(val,10);
+      if(isNaN(n)||n<1)val='1';
+    }
+    setQty(e.target.dataset.itemCode,val);
   }
 });
 
-// Enter commits immediately
+// Enter commits immediately, Escape closes modal
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'&&e.target.classList.contains('qty-num')&&e.key==='Enter'){
     e.target.blur();
+  }
+  if(e.key==='Escape'&&modalItemCode){
+    closeItemModal();
   }
 });
 
