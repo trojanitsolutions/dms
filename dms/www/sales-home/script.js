@@ -6,7 +6,7 @@ async function get(method,args={}){
   return(await r.json()).message;
 }
 
-function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
 function statusDot(s){const m={Submitted:'dot-blue',Delivered:'dot-green',Cancelled:'dot-gray',Draft:'dot-gray',Completed:'dot-green'};return m[s]||'dot-gray'}
 

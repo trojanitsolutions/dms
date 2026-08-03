@@ -13,7 +13,7 @@ function relTime(s){
 const AVATAR_COLORS=['#1E40AF','#92400E','#065F46','#7C3AED','#B91C1C','#0F766E','#C2410C','#4338CA'];
 function avatarColor(name){let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))&0xFFFF;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
 function initials(name){return name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()}
-function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
 
 async function get(method,args={}){

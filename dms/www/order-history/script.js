@@ -6,7 +6,7 @@ async function get(method,args={}){
 	try{return(await r.json()).message}catch(e){return null}
 }
 
-function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
 function esc(s){const el=document.createElement('div');el.textContent=s;return el.innerHTML}
 
