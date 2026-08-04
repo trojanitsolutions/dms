@@ -72,6 +72,61 @@ def _get_sales_person_for_user():
     return sales_person
 
 
+def _resolve_discount(discount_type, discount_value):
+	if not discount_type:
+		return 0.0, 0.0
+
+	discount_value = float(discount_value or 0)
+
+	if discount_type == "Percentage":
+		if discount_value < 0 or discount_value > 100:
+			frappe.throw(_("Discount percentage must be between 0 and 100."))
+		return discount_value, 0.0
+	elif discount_type == "Amount":
+		if discount_value < 0:
+			frappe.throw(_("Discount amount must be non-negative."))
+		return 0.0, discount_value
+	else:
+		frappe.throw(_("Invalid discount type: {0}. Must be 'Percentage' or 'Amount'.").format(discount_type))
+
+
+def _validate_item_discount_amounts(so):
+	for d in so.items:
+		if d.discount_amount and d.price_list_rate:
+			if frappe.utils.flt(d.discount_amount) > frappe.utils.flt(d.price_list_rate):
+				frappe.throw(
+					_("Item {0}: Discount amount {1} cannot exceed price list rate {2}.").format(
+						d.item_code,
+						frappe.utils.flt(d.discount_amount, 2),
+						frappe.utils.flt(d.price_list_rate, 2),
+					)
+				)
+
+
+def _apply_order_level_discount(so, additional_discount_type, additional_discount_value):
+	so.run_method("calculate_taxes_and_totals")
+
+	if not additional_discount_type:
+		return
+
+	discount_percentage, discount_amount = _resolve_discount(additional_discount_type, additional_discount_value)
+
+	pre_discount_grand_total = frappe.utils.flt(so.grand_total)
+
+	if discount_amount > pre_discount_grand_total:
+		frappe.throw(
+			_("Order discount amount {0} cannot exceed grand total {1}.").format(
+				frappe.utils.flt(discount_amount, 2),
+				frappe.utils.flt(pre_discount_grand_total, 2),
+			)
+		)
+
+	so.apply_discount_on = "Grand Total"
+	so.additional_discount_percentage = discount_percentage
+	so.discount_amount = discount_amount
+	so.run_method("calculate_taxes_and_totals")
+
+
 def _get_credit_info(customer, company=None):
     if not company:
         company = _get_default_company()
@@ -369,6 +424,25 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
 
 
 def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str):
+	doc_items = []
+	for it in items:
+		discount_percentage, discount_amount = _resolve_discount(it.get("discount_type"), it.get("discount_value"))
+
+		item_row = {
+			"item_code": it["item_code"],
+			"qty": it["qty"],
+			"warehouse": warehouse,
+			"discount_percentage": discount_percentage,
+			"discount_amount": discount_amount,
+		}
+
+		doc_items.append(item_row)
+
+	selling_price_list = (
+		frappe.db.get_single_value("Selling Settings", "selling_price_list")
+		or "Standard Selling"
+	)
+
 	return frappe.get_doc(
 		{
 			"doctype": "Sales Order",
@@ -379,15 +453,8 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 			"customer_address": customer_address or None,
 			"shipping_address_name": shipping_address or None,
 			"disable_rounded_total": frappe.db.get_single_value("Global Defaults", "disable_rounded_total") or 0,
-			"items": [
-				{
-					"item_code": it["item_code"],
-					"qty": it["qty"],
-					"warehouse": warehouse,
-					"rate": it.get("rate"),
-				}
-				for it in items
-			],
+			"selling_price_list": selling_price_list,
+			"items": doc_items,
 			"sales_team": [
 				{
 					"sales_person": sales_person,
@@ -399,7 +466,7 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 
 
 @frappe.whitelist(methods=["POST"])
-def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = ""):
+def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0):
 	_require_sales_rep()
 	items = json.loads(items_json)
 	if not items:
@@ -412,13 +479,16 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 			"disable_rounded_total": 0,
 			"items": [],
 			"taxes": [],
+			"additional_discount_percentage": 0,
+			"discount_amount": 0,
 		}
 
 	company = _get_default_company()
 	sales_person = _get_sales_person_for_user()
 	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
 	so.run_method("set_missing_values")
-	so.run_method("calculate_taxes_and_totals")
+	_validate_item_discount_amounts(so)
+	_apply_order_level_discount(so, additional_discount_type, additional_discount_value)
 
 	return {
 		"total": so.total,
@@ -427,13 +497,15 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 		"rounding_adjustment": so.rounding_adjustment,
 		"rounded_total": so.rounded_total,
 		"disable_rounded_total": so.disable_rounded_total,
-		"items": [{"item_code": d.item_code, "qty": d.qty, "rate": d.rate, "amount": d.amount} for d in so.items],
+		"additional_discount_percentage": so.additional_discount_percentage or 0,
+		"discount_amount": so.discount_amount or 0,
+		"items": [{"item_code": d.item_code, "qty": d.qty, "rate": d.rate, "amount": d.amount, "discount_percentage": d.discount_percentage or 0, "discount_amount": d.discount_amount or 0} for d in so.items],
 		"taxes": [{"description": t.description, "tax_amount": t.tax_amount, "total": t.total} for t in so.taxes],
 	}
 
 
 @frappe.whitelist(methods=["POST"])
-def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = ""):
+def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0):
     _require_sales_rep()
     items = json.loads(items_json)
     if not items:
@@ -497,7 +569,8 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
     sales_person = _get_sales_person_for_user()
     so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
     so.run_method("set_missing_values")
-    so.run_method("calculate_taxes_and_totals")
+    _validate_item_discount_amounts(so)
+    _apply_order_level_discount(so, additional_discount_type, additional_discount_value)
 
     credit_info = _get_credit_info(customer, company)
     if credit_info["credit_limit"] > 0:
@@ -531,6 +604,8 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
         "grand_total": so.grand_total,
         "rounded_total": so.rounded_total,
         "disable_rounded_total": so.disable_rounded_total,
+        "additional_discount_percentage": so.additional_discount_percentage or 0,
+        "discount_amount": so.discount_amount or 0,
     }
 
 

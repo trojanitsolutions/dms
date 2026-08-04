@@ -214,9 +214,21 @@
       </div>
     </div>
 
+    <div class="order-discount-section">
+      <div class="discount-controls">
+        <select id="order-discount-type">
+          <option value="">No discount</option>
+          <option value="Percentage">Percentage</option>
+          <option value="Amount">Amount</option>
+        </select>
+        <input type="number" id="order-discount-value" min="0" placeholder="0" disabled>
+      </div>
+    </div>
+
     <div class="cart-totals">
       <div class="total-row"><span class="total-key">Subtotal</span><span id="sum-subtotal">QAR 0.00</span></div>
       <div id="cart-taxes-rows"></div>
+      <div class="total-row" id="discount-row" style="display:none"><span class="total-key">Discount</span><span id="sum-discount">QAR 0.00</span></div>
       <div class="grand-row"><span class="grand-key">Grand total</span><span class="grand-val" id="sum-grand">QAR 0.00</span></div>
     </div>
     <div class="cart-footer">

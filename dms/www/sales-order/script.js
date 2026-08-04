@@ -31,6 +31,7 @@ const RENDER_BATCH=100;
 let renderedCount=0;
 let scrollSentinel=null,sentinelObserver=null;
 let modalItemCode=null;
+let orderDiscountType='',orderDiscountValue=0;
 
 /* ── Stock helpers ───────────────────────────────────────── */
 function displayedAvailable(code){
@@ -314,7 +315,7 @@ function addToCart(code){
   const item=allItems.find(i=>i.name===code);
   if(!item||!item.any_stock)return;
   if(displayedAvailable(code)<=0)return;
-  cart[code]={item,qty:1};
+  cart[code]={item,qty:1,discountType:'',discountValue:0};
   updateCartUI();refreshCard(code);
 }
 function setQty(code,rawValue){
@@ -342,6 +343,7 @@ async function refreshTotals(){
 		document.getElementById('sum-subtotal').textContent='QAR 0.00';
 		document.getElementById('sum-grand').textContent='QAR 0.00';
 		document.getElementById('cart-taxes-rows').innerHTML='';
+		document.getElementById('discount-row').style.display='none';
 		currentGrandTotal=0;
 		updateCreditWarning();
 		return;
@@ -349,13 +351,20 @@ async function refreshTotals(){
 	totalsTimer=setTimeout(async()=>{
 		try{
 			const wh=getWarehouse();
+			const itemsData=items.map(({item,qty,discountType,discountValue})=>{
+				const row={item_code:item.name,qty,rate:item.standard_rate};
+				if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
+				return row;
+			});
 			const result=await post('dms.api.sales.get_order_totals',{
 				customer:CUSTOMER_ID,
 				warehouse:wh,
-				items_json:JSON.stringify(items.map(({item,qty})=>({item_code:item.name,qty,rate:item.standard_rate}))),
+				items_json:JSON.stringify(itemsData),
 				delivery_date:document.getElementById('delivery-date').value||'',
 				customer_address:document.getElementById('billing-address-select')?.value||'',
-				shipping_address:(shippingSameAsBilling?selectedBillingAddress:selectedShippingAddress)||''
+				shipping_address:(shippingSameAsBilling?selectedBillingAddress:selectedShippingAddress)||'',
+				additional_discount_type:orderDiscountType,
+				additional_discount_value:orderDiscountValue
 			});
 			if(!result)return;
 			result.items.forEach(resItem=>{
@@ -380,6 +389,13 @@ async function refreshTotals(){
 				div.className='tax-row';
 				div.innerHTML=`<span class="tax-key">Rounding</span><span>${fmt(result.rounding_adjustment)}</span>`;
 				taxEl.appendChild(div);
+			}
+			const discRow=document.getElementById('discount-row');
+			if(result.discount_amount&&result.discount_amount>0){
+				document.getElementById('sum-discount').textContent=fmt(result.discount_amount);
+				discRow.style.display='flex';
+			}else{
+				discRow.style.display='none';
 			}
 			const displayTotal=result.disable_rounded_total?result.grand_total:result.rounded_total;
 			document.getElementById('sum-grand').textContent=fmt(displayTotal);
@@ -465,12 +481,15 @@ function updateCartUI(){
     return;
   }
 
-  cartEl.innerHTML=items.map(({item,qty})=>{
+  cartEl.innerHTML=items.map(({item,qty,discountType,discountValue})=>{
     const code=item.name;
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
+    const discInputDis=!discountType?' disabled':'';
+    const discInputMax=discountType==='Percentage'?' max="100"':'';
     return`<div class="cart-item">
       <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(item.standard_rate)}</span> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
+      <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
       <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
       <button class="cart-remove" data-item-code="${item.name}" title="Remove">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
@@ -685,13 +704,20 @@ async function submitOrder(){
   const btn=document.getElementById('submit-btn');
   btn.disabled=true;btn.textContent='Submitting…';
   try{
+    const itemsData=items.map(({item,qty,discountType,discountValue})=>{
+      const row={item_code:item.name,qty,rate:item.standard_rate};
+      if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
+      return row;
+    });
     const result=await post('dms.api.sales.create_sales_order',{
       customer:CUSTOMER_ID,
       warehouse:wh,
-      items_json:JSON.stringify(items.map(({item,qty})=>({item_code:item.name,qty,rate:item.standard_rate}))),
+      items_json:JSON.stringify(itemsData),
       delivery_date:document.getElementById('delivery-date').value||'',
       customer_address:selectedBillingAddress||'',
-      shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||''
+      shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||'',
+      additional_discount_type:orderDiscountType,
+      additional_discount_value:orderDiscountValue
     });
     const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
     alert(`Order ${result.name} submitted! Total: ${fmt(total)}`);
@@ -739,6 +765,29 @@ async function submitOrder(){
     shipSel.addEventListener('change',function(){
       selectedShippingAddress=this.value;
       _renderAddressCard(customerAddresses.find(a=>a.name===selectedShippingAddress)||null,'shipping-address-card');
+      refreshTotals();
+    });
+  }
+
+  // Order-level discount handlers
+  const orderDiscType=document.getElementById('order-discount-type');
+  if(orderDiscType){
+    orderDiscType.addEventListener('change',function(){
+      orderDiscountType=this.value;
+      const valInput=document.getElementById('order-discount-value');
+      if(valInput){
+        valInput.disabled=!this.value;
+        if(this.value==='Percentage')valInput.max='100';
+        else valInput.removeAttribute('max');
+        if(!this.value)valInput.value='0',orderDiscountValue=0;
+      }
+      refreshTotals();
+    });
+  }
+  const orderDiscVal=document.getElementById('order-discount-value');
+  if(orderDiscVal){
+    orderDiscVal.addEventListener('change',function(){
+      orderDiscountValue=parseFloat(this.value)||0;
       refreshTotals();
     });
   }
@@ -865,6 +914,28 @@ document.addEventListener('click',e=>{
   // Close modal: click overlay (but not the modal card itself)
   if(e.target.id==='item-modal-overlay'){
     closeItemModal();
+  }
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.classList.contains('item-disc-type')){
+    const code=e.target.dataset.itemCode;
+    if(cart[code]){
+      cart[code].discountType=e.target.value;
+      if(!e.target.value)cart[code].discountValue=0;
+      const valInput=document.querySelector(`.item-disc-value[data-item-code="${CSS.escape(code)}"]`);
+      if(valInput){
+        valInput.disabled=!e.target.value;
+        if(e.target.value==='Percentage')valInput.max='100';
+        else valInput.removeAttribute('max');
+        if(!e.target.value)valInput.value='0';
+      }
+      updateCartUI();
+    }
+  }
+  if(e.target.classList.contains('item-disc-value')){
+    const code=e.target.dataset.itemCode;
+    if(cart[code])cart[code].discountValue=parseFloat(e.target.value)||0,refreshTotals();
   }
 });
 

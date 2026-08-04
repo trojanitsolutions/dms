@@ -111,12 +111,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cart-items{flex:1;overflow-y:auto;padding:10px 16px;-webkit-overflow-scrolling:touch}
 .no-items{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;gap:10px;color:var(--color-text-secondary);text-align:center;font-size:13.5px}
 .no-items svg{width:32px;height:32px;color:var(--color-gray-300)}
-.cart-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-card-border)}
+.cart-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-card-border);flex-wrap:wrap}
 .cart-item:last-child{border-bottom:none}
 .cart-item-info{flex:1;min-width:0}
 .cart-item-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
 .cart-item-price{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
 .cart-item-info .qty-ctrl{margin-top:6px}
+.item-discount-ctrl{display:flex;align-items:center;gap:4px;flex-basis:100%;margin-top:6px;font-size:12px}
+.item-disc-type{padding:4px 8px;border:1.5px solid var(--color-input-border);border-radius:6px;font-size:11px;outline:none;-webkit-appearance:none;background:var(--color-input-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='%239CA3AF'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E") no-repeat right 4px center;padding-right:18px;min-width:70px}
+.item-disc-type:focus{border-color:var(--color-input-focus-border)}
+.item-disc-type:disabled{background-color:var(--color-gray-100);color:var(--color-text-secondary);cursor:not-allowed}
+.item-disc-value{padding:4px 8px;border:1.5px solid var(--color-input-border);border-radius:6px;font-size:11px;width:50px;outline:none;transition:border .15s}
+.item-disc-value:focus{border-color:var(--color-input-focus-border)}
+.item-disc-value:disabled{background-color:var(--color-gray-100);color:var(--color-text-secondary);cursor:not-allowed}
 .cart-item-total{font-size:13px;font-weight:600;color:var(--color-text-primary);flex-shrink:0}
 .cart-remove{color:var(--color-text-secondary);cursor:pointer;background:none;border:none;padding:4px;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:color .15s}
 .cart-remove:hover{color:var(--color-error-light)}
@@ -137,11 +144,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .credit-warning{margin-top:8px;padding:8px 12px;background:var(--color-badge-error-bg);border:1px solid var(--color-status-error-alt-bg);border-radius:8px;font-size:12.5px;color:var(--color-badge-error-text);display:none;align-items:center;gap:6px}
 .credit-warning svg{flex-shrink:0;width:14px;height:14px}
 
+/* ── Order-level discount ──────────────────────────────── */
+.order-discount-section{padding:10px 16px;border-top:1px solid var(--color-card-border);border-bottom:1px solid var(--color-card-border)}
+.discount-controls{display:flex;align-items:center;gap:6px;font-size:13px}
+.discount-controls select{flex:1;padding:8px 10px;border:1.5px solid var(--color-input-border);border-radius:8px;font-size:12px;outline:none;-webkit-appearance:none;background:var(--color-input-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='%239CA3AF'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'/%3E%3C/svg%3E") no-repeat right 6px center;padding-right:20px}
+.discount-controls select:focus{border-color:var(--color-input-focus-border)}
+.discount-controls select:disabled{background-color:var(--color-gray-100);color:var(--color-text-secondary);cursor:not-allowed}
+.discount-controls input{padding:8px 10px;border:1.5px solid var(--color-input-border);border-radius:8px;font-size:12px;width:80px;outline:none;transition:border .15s}
+.discount-controls input:focus{border-color:var(--color-input-focus-border)}
+.discount-controls input:disabled{background-color:var(--color-gray-100);color:var(--color-text-secondary);cursor:not-allowed}
+
 /* ── Totals + footer ────────────────────────────────────── */
 .cart-totals{padding:12px 16px;border-top:1px solid var(--color-card-border)}
 .total-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px;color:var(--color-text-secondary)}
 .total-key{font-weight:500}
 .total-val{color:var(--color-text-primary);font-weight:600}
+.total-row #sum-discount{color:var(--color-text-primary);font-weight:600}
 .grand-row{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--color-card-border)}
 .grand-key{font-size:14px;font-weight:700;color:var(--color-text-primary)}
 .grand-val{font-size:16px;font-weight:800;color:var(--color-text-primary)}
