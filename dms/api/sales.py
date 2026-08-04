@@ -72,7 +72,7 @@ def _get_sales_person_for_user():
     return sales_person
 
 
-def _resolve_discount(discount_type, discount_value):
+def _resolve_discount(discount_type, discount_value, qty=1):
 	if not discount_type:
 		return 0.0, 0.0
 
@@ -85,7 +85,9 @@ def _resolve_discount(discount_type, discount_value):
 	elif discount_type == "Amount":
 		if discount_value < 0:
 			frappe.throw(_("Discount amount must be non-negative."))
-		return 0.0, discount_value
+		# ponytail: discount_value is per-line (UI presents it that way); convert to per-unit for ERPNext's discount_amount field
+		qty = float(qty or 1)
+		return 0.0, discount_value / qty
 	else:
 		frappe.throw(_("Invalid discount type: {0}. Must be 'Percentage' or 'Amount'.").format(discount_type))
 
@@ -439,7 +441,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
 def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str):
 	doc_items = []
 	for it in items:
-		discount_percentage, discount_amount = _resolve_discount(it.get("discount_type"), it.get("discount_value"))
+		discount_percentage, discount_amount = _resolve_discount(it.get("discount_type"), it.get("discount_value"), it.get("qty"))
 
 		item_row = {
 			"item_code": it["item_code"],
