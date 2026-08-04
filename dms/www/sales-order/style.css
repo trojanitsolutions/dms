@@ -318,6 +318,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .item-modal-desc{font-size:14px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:16px;display:none}
 .item-modal-desc.show{display:block}
 .item-modal-action{margin-top:16px}
+
+/* ── Logout Confirm Dialog ──────────────────────────────────── */
+.logout-confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center}
+.logout-confirm-overlay.open{display:flex}
+.logout-confirm-modal{background:var(--color-bg-surface);border-radius:16px;padding:24px;width:calc(100% - 32px);max-width:360px;box-shadow:0 20px 48px rgba(0,0,0,.24)}
+.logout-confirm-title{font-size:17px;font-weight:700;margin-bottom:8px}
+.logout-confirm-msg{font-size:14px;color:var(--color-text-secondary);margin-bottom:20px}
+.logout-confirm-actions{display:flex;gap:12px}
+.btn-cancel{flex:1;padding:14px;border:1.5px solid var(--color-gray-300);border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;background:var(--color-bg-surface);min-height:52px}
+.btn-logout-confirm{flex:1;padding:14px;background:var(--color-primary);color:var(--color-bg-surface);border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;min-height:52px}
+.btn-logout-confirm:hover{background:var(--color-primary-dark)}
+
 @media(min-width:768px){
   .item-modal{max-width:480px}
   .item-modal-img{height:240px}

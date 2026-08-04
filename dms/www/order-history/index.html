@@ -107,6 +107,18 @@
 	</div>
 </main>
 
+<!-- Logout Confirmation Modal -->
+<div class="logout-confirm-overlay" id="logout-confirm-overlay">
+  <div class="logout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-title">
+    <div class="logout-confirm-title" id="logout-confirm-title">Confirm Logout</div>
+    <div class="logout-confirm-msg">Are you sure you want to log out?</div>
+    <div class="logout-confirm-actions">
+      <button class="btn-cancel" id="logout-cancel-btn">Cancel</button>
+      <button class="btn-logout-confirm" id="logout-confirm-btn">Logout</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bottom nav (mobile) -->
 <nav class="bottom-nav">
   <a href="/sales-home" class="bnav-item">
@@ -136,6 +148,21 @@
   document.querySelectorAll('.nav-link').forEach(function(a){
     a.addEventListener('click',function(){if(window.innerWidth<1200)document.body.classList.remove('sidebar-expanded');});
   });
+})();
+
+(function(){
+  var overlay=document.getElementById('logout-confirm-overlay');
+  function openLogoutConfirm(e){e.preventDefault();overlay.classList.add('open')}
+  function closeLogoutConfirm(){overlay.classList.remove('open')}
+  document.querySelectorAll('a[href="/sales-logout"]').forEach(function(a){
+    a.addEventListener('click',openLogoutConfirm);
+  });
+  document.getElementById('logout-cancel-btn').addEventListener('click',closeLogoutConfirm);
+  document.getElementById('logout-confirm-btn').addEventListener('click',function(){
+    window.location.href='/sales-logout';
+  });
+  overlay.addEventListener('click',function(e){if(e.target===overlay)closeLogoutConfirm()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLogoutConfirm()});
 })();
 </script>
 </body>
