@@ -347,16 +347,29 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         frappe.db.get_single_value("Selling Settings", "selling_price_list")
         or "Standard Selling"
     )
-    price_rows = frappe.db.sql(
-        """SELECT item_code, price_list_rate
-           FROM `tabItem Price`
-           WHERE item_code IN %(codes)s
-             AND price_list = %(pl)s
-             AND selling = 1""",
-        {"codes": item_codes, "pl": selling_pl},
-        as_dict=True,
-    )
-    price_map = {p.item_code: float(p.price_list_rate or 0) for p in price_rows}
+
+    # Use ERPNext's standard get_item_price() to resolve prices, matching the order-creation flow.
+    # This ensures catalog display price == order resolved price (no divergence between listing
+    # and order due to UOM/customer/validity filters in get_item_price()).
+    from erpnext.stock.get_item_details import get_item_price
+
+    price_map = {}
+    for item in items:
+        price_list_rates = get_item_price(
+            {
+                "price_list": selling_pl,
+                "uom": item.get("stock_uom", ""),
+                "transaction_date": frappe.utils.today(),
+            },
+            item["name"],
+            ignore_party=True,  # No customer context yet; match generic rows only
+        )
+        if price_list_rates:
+            price_map[item["name"]] = float(price_list_rates[0].get("price_list_rate") or 0)
+        frappe.logger().debug(
+            f"DEBUG get_items resolved price: item={item['name']}, price_list={selling_pl}, "
+            f"uom={item.get('stock_uom')}, resolved_rate={price_map.get(item['name'], 'N/A')}"
+        )
 
     # Load attachment images — prioritize attachments, fall back to Item.image field
     item_codes = [i["name"] for i in items]
@@ -487,6 +500,11 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 	sales_person = _get_sales_person_for_user()
 	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
 	so.run_method("set_missing_values")
+	for d in so.items:
+		frappe.logger().debug(
+			f"DEBUG get_order_totals after set_missing_values: item={d.item_code}, "
+			f"price_list_rate={d.price_list_rate}, rate={d.rate}, qty={d.qty}, amount={d.amount}"
+		)
 	_validate_item_discount_amounts(so)
 	_apply_order_level_discount(so, additional_discount_type, additional_discount_value)
 
@@ -569,6 +587,11 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
     sales_person = _get_sales_person_for_user()
     so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
     so.run_method("set_missing_values")
+    for d in so.items:
+        frappe.logger().debug(
+            f"DEBUG create_sales_order after set_missing_values: item={d.item_code}, "
+            f"price_list_rate={d.price_list_rate}, rate={d.rate}, qty={d.qty}, amount={d.amount}"
+        )
     _validate_item_discount_amounts(so)
     _apply_order_level_discount(so, additional_discount_type, additional_discount_value)
 
