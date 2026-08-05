@@ -1,0 +1,46 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "creation": "2026-08-05 14:52:19.602604",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "disable_stock_validation"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "If Checked Then Stock Validation Is Not Applied",
+   "fieldname": "disable_stock_validation",
+   "fieldtype": "Check",
+   "label": "Disable Stock Validation"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-05 14:53:21.314614",
+ "modified_by": "Administrator",
+ "module": "DMS",
+ "name": "Sales Management Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

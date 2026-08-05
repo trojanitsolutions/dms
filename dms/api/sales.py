@@ -18,6 +18,10 @@ def _get_default_company():
     return company or ""
 
 
+def _stock_validation_disabled():
+    return bool(frappe.db.get_single_value("Sales Management Settings", "disable_stock_validation"))
+
+
 def _is_probable_image(file_url):
     if not file_url:
         return False
@@ -72,7 +76,7 @@ def _get_sales_person_for_user():
     return sales_person
 
 
-def _resolve_discount(discount_type, discount_value, qty=1):
+def _resolve_discount(discount_type, discount_value):
 	if not discount_type:
 		return 0.0, 0.0
 
@@ -85,9 +89,7 @@ def _resolve_discount(discount_type, discount_value, qty=1):
 	elif discount_type == "Amount":
 		if discount_value < 0:
 			frappe.throw(_("Discount amount must be non-negative."))
-		# ponytail: discount_value is per-line (UI presents it that way); convert to per-unit for ERPNext's discount_amount field
-		qty = float(qty or 1)
-		return 0.0, discount_value / qty
+		return 0.0, discount_value
 	else:
 		frappe.throw(_("Invalid discount type: {0}. Must be 'Percentage' or 'Amount'.").format(discount_type))
 
@@ -183,6 +185,12 @@ def get_company_logo():
         return None
     logo = frappe.db.get_value("Company", company, "company_logos")
     return logo or None
+
+
+@frappe.whitelist(methods=["GET"])
+def get_sales_settings():
+    _require_sales_rep()
+    return {"disable_stock_validation": _stock_validation_disabled()}
 
 
 @frappe.whitelist(methods=["GET"])
@@ -438,10 +446,10 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     return items
 
 
-def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str):
+def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str, disable_stock_validation: bool = False):
 	doc_items = []
 	for it in items:
-		discount_percentage, discount_amount = _resolve_discount(it.get("discount_type"), it.get("discount_value"), it.get("qty"))
+		discount_percentage, discount_amount = _resolve_discount(it.get("discount_type"), it.get("discount_value"))
 
 		item_row = {
 			"item_code": it["item_code"],
@@ -458,26 +466,29 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 		or "Standard Selling"
 	)
 
-	return frappe.get_doc(
-		{
-			"doctype": "Sales Order",
-			"customer": customer,
-			"company": company,
-			"transaction_date": frappe.utils.today(),
-			"delivery_date": delivery_date or frappe.utils.today(),
-			"customer_address": customer_address or None,
-			"shipping_address_name": shipping_address or None,
-			"disable_rounded_total": frappe.db.get_single_value("Global Defaults", "disable_rounded_total") or 0,
-			"selling_price_list": selling_price_list,
-			"items": doc_items,
-			"sales_team": [
-				{
-					"sales_person": sales_person,
-					"allocated_percentage": 100,
-				}
-			],
-		}
-	)
+	doc_dict = {
+		"doctype": "Sales Order",
+		"customer": customer,
+		"company": company,
+		"transaction_date": frappe.utils.today(),
+		"delivery_date": delivery_date or frappe.utils.today(),
+		"customer_address": customer_address or None,
+		"shipping_address_name": shipping_address or None,
+		"disable_rounded_total": frappe.db.get_single_value("Global Defaults", "disable_rounded_total") or 0,
+		"selling_price_list": selling_price_list,
+		"items": doc_items,
+		"sales_team": [
+			{
+				"sales_person": sales_person,
+				"allocated_percentage": 100,
+			}
+		],
+	}
+
+	if disable_stock_validation:
+		doc_dict["reserve_stock"] = 0
+
+	return frappe.get_doc(doc_dict)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -500,7 +511,8 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 
 	company = _get_default_company()
 	sales_person = _get_sales_person_for_user()
-	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
+	disable_stock_validation = _stock_validation_disabled()
+	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
 	so.run_method("set_missing_values")
 	for d in so.items:
 		frappe.logger().debug(
@@ -535,9 +547,8 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
     if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
         frappe.throw(_("Delivery date cannot be in the past."))
 
-
     company = _get_default_company()
-
+    disable_stock_validation = _stock_validation_disabled()
 
     from erpnext.accounts.party import validate_party_frozen_disabled
     validate_party_frozen_disabled(company, "Customer", customer)
@@ -568,26 +579,27 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
         if not linked:
             frappe.throw(_("Selected shipping address does not belong to this customer."))
 
-    item_codes = [it["item_code"] for it in items]
-    bin_rows = frappe.db.sql(
-        """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
-           FROM `tabBin`
-           WHERE item_code IN %(codes)s AND warehouse = %(wh)s""",
-        {"codes": item_codes, "wh": warehouse},
-        as_dict=True,
-    )
-    avail_map = {b.item_code: float(b.avail) for b in bin_rows}
-    for it in items:
-        avail = avail_map.get(it["item_code"], 0.0)
-        if float(it["qty"]) > avail:
-            frappe.throw(
-                _(
-                    "Insufficient stock for {0}: requested {1}, available {2} in {3}."
-                ).format(it["item_code"], float(it["qty"]), avail, warehouse)
-            )
+    if not disable_stock_validation:
+        item_codes = [it["item_code"] for it in items]
+        bin_rows = frappe.db.sql(
+            """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
+               FROM `tabBin`
+               WHERE item_code IN %(codes)s AND warehouse = %(wh)s""",
+            {"codes": item_codes, "wh": warehouse},
+            as_dict=True,
+        )
+        avail_map = {b.item_code: float(b.avail) for b in bin_rows}
+        for it in items:
+            avail = avail_map.get(it["item_code"], 0.0)
+            if float(it["qty"]) > avail:
+                frappe.throw(
+                    _(
+                        "Insufficient stock for {0}: requested {1}, available {2} in {3}."
+                    ).format(it["item_code"], float(it["qty"]), avail, warehouse)
+                )
 
     sales_person = _get_sales_person_for_user()
-    so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person)
+    so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
     so.run_method("set_missing_values")
     for d in so.items:
         frappe.logger().debug(

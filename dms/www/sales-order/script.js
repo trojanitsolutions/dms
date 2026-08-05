@@ -32,9 +32,11 @@ let renderedCount=0;
 let scrollSentinel=null,sentinelObserver=null;
 let modalItemCode=null;
 let orderDiscountType='',orderDiscountValue=0;
+let STOCK_VALIDATION_DISABLED=false;
 
 /* ── Stock helpers ───────────────────────────────────────── */
 function displayedAvailable(code){
+  if(STOCK_VALIDATION_DISABLED)return Infinity;
   const item=allItems.find(i=>i.name===code);
   if(!item)return 0;
   const wh=getWarehouse();
@@ -50,6 +52,7 @@ function displayedAvailable(code){
   return Math.max(0,avail-(cart[code]?.qty||0));
 }
 function isCardOos(code){
+  if(STOCK_VALIDATION_DISABLED)return false;
   const item=allItems.find(i=>i.name===code);
   if(!item||!item.any_stock)return true;
   if(cart[code])return false;
@@ -313,7 +316,8 @@ function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(applyF
 /* ── Cart ─────────────────────────────────────────────────── */
 function addToCart(code){
   const item=allItems.find(i=>i.name===code);
-  if(!item||!item.any_stock)return;
+  if(!item)return;
+  if(!STOCK_VALIDATION_DISABLED&&!item.any_stock)return;
   if(displayedAvailable(code)<=0)return;
   cart[code]={item,qty:1,discountType:'',discountValue:0};
   updateCartUI();refreshCard(code);
@@ -799,6 +803,14 @@ async function submitOrder(){
   const _savedInstock=sessionStorage.getItem('instockFilter')==='1';
   const _instockEl=document.getElementById('instock-filter');
   if(_instockEl)_instockEl.checked=_savedInstock;
+
+  // Load sales settings
+  const sSettings=await get('dms.api.sales.get_sales_settings');
+  STOCK_VALIDATION_DISABLED=!!sSettings?.disable_stock_validation;
+  if(STOCK_VALIDATION_DISABLED){
+    const filterRow=document.getElementById('instock-filter-row');
+    if(filterRow)filterRow.style.display='none';
+  }
 
   // Initial mobile tab state
   if(!IS_DESKTOP())setMobTab('catalog');
