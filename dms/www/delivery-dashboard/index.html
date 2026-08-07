@@ -6,7 +6,7 @@
 <title>Dashboard — Luxury Stationery Delivery</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="/delivery-dashboard/style.css">
 </head>
@@ -22,16 +22,16 @@
     </div>
     <nav class="sidebar-nav">
       <button class="nav-btn active" id="snav-home" onclick="setSection('home')">
-        <span class="msr">home</span><span>Home</span>
+        <span class="msr">home</span><span>Dashboard</span>
+      </button>
+      <button class="nav-btn" id="snav-assign" onclick="setSection('assign')">
+        <span class="msr">assignment_ind</span><span>Delivery Assign</span>
       </button>
       <button class="nav-btn" id="snav-pending" onclick="setSection('pending')">
         <span class="msr">inventory_2</span><span>Pending Deliveries</span>
       </button>
       <button class="nav-btn" id="snav-completed" onclick="setSection('completed')">
         <span class="msr">task_alt</span><span>Completed Deliveries</span>
-      </button>
-      <button class="nav-btn" id="snav-assign" onclick="setSection('assign')">
-        <span class="msr">assignment_ind</span><span>Delivery Assign</span>
       </button>
       <button class="nav-btn" id="snav-profile" onclick="setSection('profile')">
         <span class="msr">person</span><span>Profile</span>
@@ -61,53 +61,54 @@
 
       <!-- HOME section -->
       <div id="s-home" class="section active">
-        <div>
-          <div class="home-date" id="home-date"></div>
-          <h1 class="home-title" id="home-title">Good morning, {{ full_name.split()[0] }}</h1>
-          <p class="home-sub" id="home-sub">Loading your deliveries…</p>
+        <div class="home-top">
+          <div>
+            <div class="home-date" id="home-date"></div>
+            <h1 class="home-title" id="home-title">Good morning, {{ full_name.split()[0] }}</h1>
+            <p class="home-sub" id="home-sub">Loading your deliveries…</p>
+          </div>
+          <button class="btn-start" onclick="setSection('pending')">
+            <span class="msr">local_shipping</span>Start Deliveries
+          </button>
         </div>
 
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon" style="color:#9A6B12;background:#F6EAD2;"><span class="msr">inventory_2</span></div>
-            <div>
+            <div class="stat-icon-circle" style="color:#2E5A6A;background:#E0ECF0;"><span class="msr">inventory_2</span></div>
+            <div class="stat-card-body">
+              <span class="stat-label">Pending</span>
               <div class="stat-value" id="stat-pending">—</div>
-              <div class="stat-label">Pending</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon" style="color:#3A5E72;background:#E4ECF0;"><span class="msr">local_shipping</span></div>
-            <div>
+            <div class="stat-icon-circle" style="color:#2E5A6A;background:#E0ECF0;"><span class="msr">local_shipping</span></div>
+            <div class="stat-card-body">
+              <span class="stat-label">In Progress</span>
               <div class="stat-value" id="stat-inprogress">—</div>
-              <div class="stat-label">In Progress</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon" style="color:#356048;background:#E2EDE5;"><span class="msr">task_alt</span></div>
-            <div>
+            <div class="stat-icon-circle" style="color:#2E5A6A;background:#E0ECF0;"><span class="msr">task_alt</span></div>
+            <div class="stat-card-body">
+              <span class="stat-label">Completed Today</span>
               <div class="stat-value" id="stat-completed-today">—</div>
-              <div class="stat-label">Completed Today</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon" style="color:#8A6A2B;background:#F1E8D6;"><span class="msr">assignment</span></div>
-            <div>
-              <div class="stat-value" id="stat-total">—</div>
-              <div class="stat-label">Total Assigned</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="color:#2E5A6A;background:#E0ECF0;"><span class="msr">package_2</span></div>
-            <div>
+            <div class="stat-icon-circle" style="color:#2E5A6A;background:#E0ECF0;"><span class="msr">package_2</span></div>
+            <div class="stat-card-body">
+              <span class="stat-label">Open Deliveries</span>
               <div class="stat-value" id="stat-open-deliveries">—</div>
-              <div class="stat-label">Open Deliveries</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-circle" style="color:#2E5A6A;background:#E0ECF0;"><span class="msr">assignment</span></div>
+            <div class="stat-card-body">
+              <span class="stat-label">Total Assigned</span>
+              <div class="stat-value" id="stat-total">—</div>
             </div>
           </div>
         </div>
-
-        <button class="btn-start" onclick="setSection('pending')">
-          <span class="msr">local_shipping</span>Start Deliveries
-        </button>
 
         <div class="activity-card">
           <div class="activity-heading">Recent Activity</div>
