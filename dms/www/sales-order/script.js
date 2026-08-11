@@ -439,17 +439,26 @@ function refreshCard(code){
 
   // Update stock label
   if(stockEl){
-    const avail=displayedAvailable(code);
     const wh=getWarehouse();
     const uom=item.stock_uom||'ea';
-    if(!item.any_stock){
-      stockEl.innerHTML='';
-    }else if(wh){
-      if(avail>0)stockEl.innerHTML=`<span class="item-stock${avail<5?' low':''}">${avail} ${uom}</span>`;
-      else if(inCart)stockEl.innerHTML=`<span class="item-stock" style="color:#F59E0B;font-size:10.5px">Max in cart</span>`;
-      else stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">All reserved</span>`;
+    if(STOCK_VALIDATION_DISABLED){
+      if(wh){
+        const rawQty=(item.warehouse_stocks||{})[wh];
+        stockEl.innerHTML=`<span class="item-stock">${rawQty!==undefined?rawQty:0} ${uom}</span>`;
+      }else{
+        stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">Select wh</span>`;
+      }
     }else{
-      stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">Select wh</span>`;
+      const avail=displayedAvailable(code);
+      if(!item.any_stock){
+        stockEl.innerHTML='';
+      }else if(wh){
+        if(avail>0)stockEl.innerHTML=`<span class="item-stock${avail<5?' low':''}">${avail} ${uom}</span>`;
+        else if(inCart)stockEl.innerHTML=`<span class="item-stock" style="color:#F59E0B;font-size:10.5px">Max in cart</span>`;
+        else stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">All reserved</span>`;
+      }else{
+        stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">Select wh</span>`;
+      }
     }
   }
 
@@ -819,10 +828,11 @@ async function submitOrder(){
   const warehouses=await get('dms.api.sales.get_warehouses');
   if(warehouses&&warehouses.length){
     const opts=warehouses.map(w=>{const o=document.createElement('option');o.value=w.name;o.textContent=w.warehouse_name||w.name;return o});
+    const defaultWh=(warehouses.find(w=>w.name===sSettings?.default_warehouse)||warehouses[0]).name;
     ['warehouse-select','mob-warehouse-select','mob-warehouse-select-2'].forEach(id=>{
       const sel=document.getElementById(id);if(!sel)return;
       opts.forEach(o=>sel.appendChild(o.cloneNode(true)));
-      sel.value=warehouses[0].name;
+      sel.value=defaultWh;
     });
   }
 

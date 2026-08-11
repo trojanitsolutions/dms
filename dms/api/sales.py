@@ -190,7 +190,10 @@ def get_company_logo():
 @frappe.whitelist(methods=["GET"])
 def get_sales_settings():
     _require_sales_rep()
-    return {"disable_stock_validation": _stock_validation_disabled()}
+    return {
+        "disable_stock_validation": _stock_validation_disabled(),
+        "default_warehouse": frappe.db.get_single_value("Stock Settings", "default_warehouse"),
+    }
 
 
 @frappe.whitelist(methods=["GET"])
@@ -400,7 +403,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     bins = frappe.db.sql(
         """SELECT item_code, warehouse, actual_qty, COALESCE(reserved_stock, 0) AS reserved_stock
            FROM `tabBin`
-           WHERE item_code IN %(codes)s AND actual_qty > 0""",
+           WHERE item_code IN %(codes)s""",
         {"codes": item_codes},
         as_dict=True,
     )
@@ -454,6 +457,8 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 		item_row = {
 			"item_code": it["item_code"],
 			"qty": it["qty"],
+			"rate": it.get("rate"),
+			"price_list_rate": it.get("rate"),
 			"warehouse": warehouse,
 			"discount_percentage": discount_percentage,
 			"discount_amount": discount_amount,
