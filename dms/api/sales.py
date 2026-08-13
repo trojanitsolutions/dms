@@ -457,8 +457,7 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 		item_row = {
 			"item_code": it["item_code"],
 			"qty": it["qty"],
-			"rate": it.get("rate"),
-			"price_list_rate": it.get("rate"),
+			"price_list_rate": frappe.utils.flt(it.get("rate")),
 			"warehouse": warehouse,
 			"discount_percentage": discount_percentage,
 			"discount_amount": discount_amount,
