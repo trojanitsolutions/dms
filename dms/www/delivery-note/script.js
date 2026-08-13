@@ -83,35 +83,27 @@ function renderItems() {
 		const invalid = isOver || isNeg;
 		const isPartial = !isReadonly && delivered >= 0 && delivered < ordered;
 		const initials = (item.item_name || item.item_code || '').substring(0, 2).toUpperCase();
-		const tones = ['#E9E2D4', '#DED3C4', '#D7D8DD', '#E6D8D2', '#E2E7E2', '#DDD5CA', '#E8E3DA', '#E2DDE6'];
-		const tone = tones[item.item_code ? item.item_code.charCodeAt(0) % tones.length : 0];
 
-		const placeholder = `<div class="item-placeholder" style="background-color:${tone}">${esc(initials)}</div>`;
+		const placeholder = `<div class="item-placeholder">${esc(initials)}</div>`;
 		const partialBadge = isPartial ? '<span class="item-partial">Partial Delivery</span>' : '';
 
 		let deliveredField;
 		if (isReadonly) {
-			deliveredField = `<div class="item-qty-group"><span class="item-qty-label">Delivered</span><span class="item-qty-value">${delivered} ${esc(item.uom)}</span></div>`;
+			deliveredField = `<span class="item-unit">Delivered</span> <span class="item-delivered-ro">${delivered} ${esc(item.uom)}</span>`;
 		} else {
-			deliveredField = `<div class="item-qty-group">
-				<span class="item-qty-label">Delivered</span>
-				<div style="display:flex;align-items:center;gap:8px;">
-					<div class="stepper${invalid ? ' invalid' : ''}">
-						<button class="stepper-btn" onclick="changeQty('${esc(item.name)}',-1)" ${delivered <= 0 ? 'disabled' : ''}>−</button>
-						<input class="stepper-input" type="number" inputmode="numeric" min="0" max="${ordered}"
-						       value="${delivered}" data-item="${esc(item.name)}"
-						       onchange="setQty('${esc(item.name)}',this.value)"
-						       oninput="setQty('${esc(item.name)}',this.value)">
-						<button class="stepper-btn" onclick="changeQty('${esc(item.name)}',1)" ${delivered >= ordered ? 'disabled' : ''}>+</button>
-					</div>
-					<span style="font-size:13px;color:#8A8275;font-weight:600;">${esc(item.uom)}</span>
-				</div>
-			</div>`;
+			deliveredField = `<div class="stepper${invalid ? ' invalid' : ''}">
+				<button class="stepper-btn" onclick="changeQty('${esc(item.name)}',-1)" ${delivered <= 0 ? 'disabled' : ''}>−</button>
+				<input class="stepper-input" type="number" inputmode="numeric" min="0" max="${ordered}"
+				       value="${delivered}" data-item="${esc(item.name)}"
+				       onchange="setQty('${esc(item.name)}',this.value)"
+				       oninput="setQty('${esc(item.name)}',this.value)">
+				<button class="stepper-btn" onclick="changeQty('${esc(item.name)}',1)" ${delivered >= ordered ? 'disabled' : ''}>+</button>
+			</div>
+			<span class="item-unit">${esc(item.uom)}</span>`;
 		}
 
 		const errorHtml = isOver ? `<div class="item-error"><span class="msr">error</span>Delivered quantity cannot exceed the ordered quantity.</div>` :
 		                  isNeg  ? `<div class="item-error"><span class="msr">error</span>Delivered quantity cannot be negative.</div>` : '';
-		const changeBtn = (!isReadonly) ? `<button class="btn-change" onclick="onChangeItem('${esc(item.name)}')">Change</button>` : '';
 
 		return `<div class="item-row">
 			${placeholder}
@@ -120,18 +112,19 @@ function renderItems() {
 					<span class="item-name">${esc(item.item_name)}</span>
 					${partialBadge}
 				</div>
-				<div class="item-qtys">
-					<div class="item-qty-group">
-						<span class="item-qty-label">Ordered</span>
-						<span class="item-qty-value">${ordered} ${esc(item.uom)}</span>
-					</div>
-					${deliveredField}
-				</div>
+				<span class="item-subtitle">Ordered ${ordered} ${esc(item.uom)}</span>
 				${errorHtml}
 			</div>
-			${changeBtn}
+			<div class="item-right">
+				${deliveredField}
+			</div>
 		</div>`;
 	}).join('');
+
+	// Update item count
+	const count = noteData.items.length;
+	const countEl = document.getElementById('items-count');
+	if (countEl) countEl.textContent = count + (count === 1 ? ' item' : ' items');
 
 	// Update summary
 	const remaining = Math.max(0, totalOrdered - totalDelivered);
@@ -166,9 +159,6 @@ function hasInvalidQtys() {
 	});
 }
 
-function onChangeItem(itemRowName) {
-	showToast('Item changes must be made from the office.');
-}
 
 // ── Action state ──────────────────────────────────────
 function updateActionState() {
@@ -344,10 +334,19 @@ async function submitNote() {
 	document.getElementById('note-customer').textContent = noteData.customer_name || noteData.customer;
 	document.getElementById('note-status-badge').innerHTML = statusBadge(noteData.docstatus, noteData.status);
 
+	// Sidebar active nav (mirrors statusBadge()'s docstatus check)
+	const activeNavId = noteData.docstatus === 1 ? 'snav-completed' : 'snav-pending';
+	const activeNavEl = document.getElementById(activeNavId);
+	if (activeNavEl) activeNavEl.classList.add('active');
+
 	// Submitted banner
 	if (noteData.docstatus === 1) {
 		document.getElementById('submitted-banner').classList.add('visible');
 	}
+
+	// Customer name
+	const custNameEl = document.getElementById('customer-name-value');
+	if (custNameEl) custNameEl.textContent = noteData.customer_name || noteData.customer || '—';
 
 	// Phone
 	const contactEl = document.getElementById('contact-value');
@@ -361,7 +360,7 @@ async function submitNote() {
 		const addrText = noteData.shipping_address.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
 		const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addrText);
 		addrSection.innerHTML = `<div class="info-row">
-			<div class="info-icon" style="color:#356048;background:#E2EDE5;"><span class="msr">location_on</span></div>
+			<div class="info-icon" style="color:#3A5E72;background:#E4ECF0;"><span class="msr">location_on</span></div>
 			<div style="flex:1;">
 				<div class="info-label">Delivery Address</div>
 				<div class="info-value" style="white-space:pre-line;line-height:1.45;margin-top:2px;">${esc(addrText)}</div>

@@ -140,7 +140,8 @@ input::placeholder{color:#B4AC9D;}
 .profile-footer-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;letter-spacing:.03em;color:#6F675B;}
 
 /* ── Assign section ───────────────────────────────── */
-.count-badge-assign{color:#9A6B12;background:#F6EAD2;}
+#s-assign .section-title{font-family:'Inter',system-ui,sans-serif;font-weight:700;}
+.count-badge-assign{color:#2B6CB0;background:#E3EEFB;}
 .count-badge-mine{color:#2E4034;background:#EAF0EC;}
 .assign-date-wrap{position:relative;min-width:182px;}
 .assign-date-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:20px;color:#A59C8C;pointer-events:none;}

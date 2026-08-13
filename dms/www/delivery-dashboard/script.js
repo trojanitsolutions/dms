@@ -152,10 +152,10 @@ function assignCard(n, isMine) {
 	const addrIcon = hasAddr ? 'location_on' : 'location_off';
 	const addrText = hasAddr ? 'Address available' : 'No address';
 	const btnStyle = isMine
-		? 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #DCD5C8;border-radius:13px;background:#fff;color:#6F675B;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;'
-		: 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:13px;background:#2E4034;color:#F6F3ED;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;';
+		? 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:1px solid #DCD5C8;border-radius:999px;background:#fff;color:#6F675B;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;'
+		: 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;border-radius:999px;background:#2E4034;color:#F6F3ED;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;';
 	const btnIcon = isMine ? 'person_remove' : 'person_add';
-	const btnLabel = isMine ? 'Unassign Me' : 'Assign to Me';
+	const btnLabel = isMine ? 'Unassign' : 'Assign to Me';
 	// ponytail: single-quote arg — DN names never contain single quotes, avoids broken onclick="doAssign("...")"
 	const onclick = isMine ? `doUnassign('${n.name}')` : `doAssign('${n.name}')`;
 	const itemsLabel = (n.item_count || 0) + ' item' + (n.item_count === 1 ? '' : 's');
@@ -164,7 +164,7 @@ function assignCard(n, isMine) {
 			<span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;font-weight:600;color:#8A8275;letter-spacing:.02em;">${esc(n.name)}</span>
 			<span style="${addrStyle}"><span class="msr" style="font-size:16px;">${addrIcon}</span>${addrText}</span>
 		</div>
-		<div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#23201C;line-height:1.08;">${esc(n.customer_name || '')}</div>
+		<div style="font-family:'Inter',system-ui,sans-serif;font-size:16px;font-weight:700;color:#23201C;line-height:1.08;">${esc(n.customer_name || '')}</div>
 		<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:#6F675B;">
 			<span style="display:inline-flex;align-items:center;gap:6px;"><span class="msr" style="font-size:17px;color:#A59C8C;">event</span>${fmtDate(n.posting_date)}</span>
 			<span style="display:inline-flex;align-items:center;gap:6px;"><span class="msr" style="font-size:17px;color:#A59C8C;">inventory_2</span>${itemsLabel}</span>

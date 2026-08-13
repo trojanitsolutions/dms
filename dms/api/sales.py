@@ -544,111 +544,118 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 @frappe.whitelist(methods=["POST"])
 def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0):
     _require_sales_rep()
-    items = json.loads(items_json)
-    if not items:
-        frappe.throw(_("No items in order"))
-    if not delivery_date:
-        delivery_date = frappe.utils.today()
-    if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
-        frappe.throw(_("Delivery date cannot be in the past."))
+    try:
+        items = json.loads(items_json)
+        if not items:
+            frappe.throw(_("No items in order"))
+        if not delivery_date:
+            delivery_date = frappe.utils.today()
+        if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
+            frappe.throw(_("Delivery date cannot be in the past."))
 
-    company = _get_default_company()
-    disable_stock_validation = _stock_validation_disabled()
+        company = _get_default_company()
+        disable_stock_validation = _stock_validation_disabled()
 
-    from erpnext.accounts.party import validate_party_frozen_disabled
-    validate_party_frozen_disabled(company, "Customer", customer)
+        from erpnext.accounts.party import validate_party_frozen_disabled
+        validate_party_frozen_disabled(company, "Customer", customer)
 
-    if customer_address:
-        linked = frappe.db.exists(
-            "Dynamic Link",
-            {
-                "parent": customer_address,
-                "parenttype": "Address",
-                "link_doctype": "Customer",
-                "link_name": customer,
-            },
-        )
-        if not linked:
-            frappe.throw(_("Selected address does not belong to this customer."))
+        if customer_address:
+            linked = frappe.db.exists(
+                "Dynamic Link",
+                {
+                    "parent": customer_address,
+                    "parenttype": "Address",
+                    "link_doctype": "Customer",
+                    "link_name": customer,
+                },
+            )
+            if not linked:
+                frappe.throw(_("Selected address does not belong to this customer."))
 
-    if shipping_address:
-        linked = frappe.db.exists(
-            "Dynamic Link",
-            {
-                "parent": shipping_address,
-                "parenttype": "Address",
-                "link_doctype": "Customer",
-                "link_name": customer,
-            },
-        )
-        if not linked:
-            frappe.throw(_("Selected shipping address does not belong to this customer."))
+        if shipping_address:
+            linked = frappe.db.exists(
+                "Dynamic Link",
+                {
+                    "parent": shipping_address,
+                    "parenttype": "Address",
+                    "link_doctype": "Customer",
+                    "link_name": customer,
+                },
+            )
+            if not linked:
+                frappe.throw(_("Selected shipping address does not belong to this customer."))
 
-    if not disable_stock_validation:
-        item_codes = [it["item_code"] for it in items]
-        bin_rows = frappe.db.sql(
-            """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
-               FROM `tabBin`
-               WHERE item_code IN %(codes)s AND warehouse = %(wh)s""",
-            {"codes": item_codes, "wh": warehouse},
-            as_dict=True,
-        )
-        avail_map = {b.item_code: float(b.avail) for b in bin_rows}
-        for it in items:
-            avail = avail_map.get(it["item_code"], 0.0)
-            if float(it["qty"]) > avail:
+        if not disable_stock_validation:
+            item_codes = [it["item_code"] for it in items]
+            bin_rows = frappe.db.sql(
+                """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
+                   FROM `tabBin`
+                   WHERE item_code IN %(codes)s AND warehouse = %(wh)s""",
+                {"codes": item_codes, "wh": warehouse},
+                as_dict=True,
+            )
+            avail_map = {b.item_code: float(b.avail) for b in bin_rows}
+            for it in items:
+                avail = avail_map.get(it["item_code"], 0.0)
+                if float(it["qty"]) > avail:
+                    frappe.throw(
+                        _(
+                            "Insufficient stock for {0}: requested {1}, available {2} in {3}."
+                        ).format(it["item_code"], float(it["qty"]), avail, warehouse)
+                    )
+
+        sales_person = _get_sales_person_for_user()
+        so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
+        so.run_method("set_missing_values")
+        for d in so.items:
+            frappe.logger().debug(
+                f"DEBUG create_sales_order after set_missing_values: item={d.item_code}, "
+                f"price_list_rate={d.price_list_rate}, rate={d.rate}, qty={d.qty}, amount={d.amount}"
+            )
+        _validate_item_discount_amounts(so)
+        _apply_order_level_discount(so, additional_discount_type, additional_discount_value)
+
+        credit_info = _get_credit_info(customer, company)
+        if credit_info["credit_limit"] > 0:
+            if so.grand_total > credit_info["available_credit"]:
                 frappe.throw(
                     _(
-                        "Insufficient stock for {0}: requested {1}, available {2} in {3}."
-                    ).format(it["item_code"], float(it["qty"]), avail, warehouse)
+                        "Order total ({0}) exceeds available credit ({1}). "
+                        "Credit limit: {2}, Outstanding: {3}."
+                    ).format(
+                        frappe.utils.flt(so.grand_total, 2),
+                        frappe.utils.flt(credit_info["available_credit"], 2),
+                        frappe.utils.flt(credit_info["credit_limit"], 2),
+                        frappe.utils.flt(credit_info["outstanding"], 2),
+                    )
                 )
+        so.insert(ignore_permissions=True)
 
-    sales_person = _get_sales_person_for_user()
-    so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
-    so.run_method("set_missing_values")
-    for d in so.items:
-        frappe.logger().debug(
-            f"DEBUG create_sales_order after set_missing_values: item={d.item_code}, "
-            f"price_list_rate={d.price_list_rate}, rate={d.rate}, qty={d.qty}, amount={d.amount}"
-        )
-    _validate_item_discount_amounts(so)
-    _apply_order_level_discount(so, additional_discount_type, additional_discount_value)
-
-    credit_info = _get_credit_info(customer, company)
-    if credit_info["credit_limit"] > 0:
-        if so.grand_total > credit_info["available_credit"]:
-            frappe.throw(
-                _(
-                    "Order total ({0}) exceeds available credit ({1}). "
-                    "Credit limit: {2}, Outstanding: {3}."
-                ).format(
-                    frappe.utils.flt(so.grand_total, 2),
-                    frappe.utils.flt(credit_info["available_credit"], 2),
-                    frappe.utils.flt(credit_info["credit_limit"], 2),
-                    frappe.utils.flt(credit_info["outstanding"], 2),
-                )
-            )
-    so.insert(ignore_permissions=True)
-
-    _user = frappe.session.user
-    frappe.session.user = "Administrator"
-    frappe.local.role_permissions = {}
-    frappe.local.user_perms = None
-    try:
-        so.submit()
-    finally:
-        frappe.session.user = _user
+        _user = frappe.session.user
+        frappe.session.user = "Administrator"
         frappe.local.role_permissions = {}
         frappe.local.user_perms = None
-    return {
-        "name": so.name,
-        "total": so.total,
-        "grand_total": so.grand_total,
-        "rounded_total": so.rounded_total,
-        "disable_rounded_total": so.disable_rounded_total,
-        "additional_discount_percentage": so.additional_discount_percentage or 0,
-        "discount_amount": so.discount_amount or 0,
-    }
+        try:
+            so.submit()
+        finally:
+            frappe.session.user = _user
+            frappe.local.role_permissions = {}
+            frappe.local.user_perms = None
+        return {
+            "name": so.name,
+            "total": so.total,
+            "grand_total": so.grand_total,
+            "rounded_total": so.rounded_total,
+            "disable_rounded_total": so.disable_rounded_total,
+            "additional_discount_percentage": so.additional_discount_percentage or 0,
+            "discount_amount": so.discount_amount or 0,
+        }
+    except Exception:
+        frappe.log_error(
+            title=f"DMS Sales Order submit failed for {frappe.session.user}",
+            message=f"customer={customer}, warehouse={warehouse}\n\n{frappe.get_traceback()}",
+        )
+        raise
 
 
 @frappe.whitelist(methods=["GET"])
