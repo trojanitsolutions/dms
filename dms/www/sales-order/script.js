@@ -443,8 +443,10 @@ function refreshCard(code){
     const uom=item.stock_uom||'ea';
     if(STOCK_VALIDATION_DISABLED){
       if(wh){
-        const rawQty=(item.warehouse_stocks||{})[wh];
-        stockEl.innerHTML=`<span class="item-stock">${rawQty!==undefined?rawQty:0} ${uom}</span>`;
+        const availMap=item.warehouse_available||{};
+        const stockMap=item.warehouse_stocks||{};
+        const qty=availMap[wh]!==undefined?availMap[wh]:(stockMap[wh]!==undefined?stockMap[wh]:0);
+        stockEl.innerHTML=`<span class="item-stock">${qty} ${uom}</span>`;
       }else{
         stockEl.innerHTML=`<span class="item-stock" style="color:#9CA3AF;font-size:10px">Select wh</span>`;
       }

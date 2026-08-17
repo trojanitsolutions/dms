@@ -327,6 +327,51 @@ def get_item_groups():
     )
 
 
+def _merge_availability(bin_map: dict, booking_map: dict) -> dict:
+	"""Merge raw Bin actual_qty with Sales Booking Availability report values.
+
+	Keys are (item_code, warehouse) tuples. Booking map wins when present
+	(it already nets out ALL open submitted SO qty); otherwise falls back
+	to the raw bin qty.
+	"""
+	merged = {}
+	for key in set(bin_map) | set(booking_map):
+		value = booking_map[key] if key in booking_map else bin_map.get(key, 0)
+		merged[key] = float(value or 0)
+	return merged
+
+
+def _get_available_qty_map(item_codes: list = None, warehouse: str = None) -> dict:
+	"""Return {(item_code, warehouse): available_qty} using the Sales Booking
+	Availability report as primary source, falling back to raw tabBin.actual_qty.
+	"""
+	conditions, values = [], {}
+	if item_codes:
+		conditions.append("item_code IN %(codes)s")
+		values["codes"] = item_codes
+	if warehouse:
+		conditions.append("warehouse = %(wh)s")
+		values["wh"] = warehouse
+	where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+	bin_rows = frappe.db.sql(
+		f"""SELECT item_code, warehouse,
+		           GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
+		    FROM `tabBin` {where}""",
+		values,
+		as_dict=True,
+	)
+	bin_map = {(r.item_code, r.warehouse): float(r.avail or 0) for r in bin_rows}
+
+	from dms.dms.report.sales_booking_availablility.sales_booking_availablility import get_item_grouped_map
+
+	booking_map = get_item_grouped_map({"warehouse": warehouse} if warehouse else {})
+	if item_codes:
+		booking_map = {k: v for k, v in booking_map.items() if k[0] in item_codes}
+
+	return _merge_availability(bin_map, booking_map)
+
+
 @frappe.whitelist(methods=["GET"])
 def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     _require_sales_rep()
@@ -412,13 +457,12 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     frappe.logger().info(f"DEBUG get_items: items_count={len(items)}, bins_count={len(bins)}, warehouse_param={warehouse}")
 
     wh_stock = {}
-    wh_available = {}
     for b in bins:
-        actual = float(b.actual_qty or 0)
-        reserved = float(b.reserved_stock or 0)
-        avail = max(0.0, actual - reserved)
-        wh_stock.setdefault(b.item_code, {})[b.warehouse] = actual
-        wh_available.setdefault(b.item_code, {})[b.warehouse] = avail
+        wh_stock.setdefault(b.item_code, {})[b.warehouse] = float(b.actual_qty or 0)
+
+    wh_available = {}
+    for (item_code, wh_name), avail in _get_available_qty_map(item_codes=item_codes).items():
+        wh_available.setdefault(item_code, {})[wh_name] = avail
 
     items_with_stock = 0
     for item in items:
@@ -438,7 +482,13 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         item["warehouse_stocks"] = stock_map
         item["warehouse_available"] = avail_map
         item["any_stock"] = any(q > 0 for q in avail_map.values()) if avail_map else False
-        item["stock_qty"] = float(avail_map.get(warehouse, 0)) if warehouse else None
+        if warehouse:
+            qty = avail_map.get(warehouse)
+            if qty is None and avail_map:
+                qty = next(iter(avail_map.values()))
+            item["stock_qty"] = float(qty) if qty is not None else 0
+        else:
+            item["stock_qty"] = None
         item["in_stock"] = item["any_stock"]
         if item["any_stock"]:
             items_with_stock += 1
@@ -586,16 +636,9 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
 
         if not disable_stock_validation:
             item_codes = [it["item_code"] for it in items]
-            bin_rows = frappe.db.sql(
-                """SELECT item_code, GREATEST(0, actual_qty - COALESCE(reserved_stock, 0)) AS avail
-                   FROM `tabBin`
-                   WHERE item_code IN %(codes)s AND warehouse = %(wh)s""",
-                {"codes": item_codes, "wh": warehouse},
-                as_dict=True,
-            )
-            avail_map = {b.item_code: float(b.avail) for b in bin_rows}
+            avail_map = _get_available_qty_map(item_codes=item_codes, warehouse=warehouse)
             for it in items:
-                avail = avail_map.get(it["item_code"], 0.0)
+                avail = avail_map.get((it["item_code"], warehouse), 0.0)
                 if float(it["qty"]) > avail:
                     frappe.throw(
                         _(

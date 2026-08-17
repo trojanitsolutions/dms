@@ -58,6 +58,11 @@ frappe.query_reports["Sales Booking Availablility"] = {
 			label: __("Today"),
 			fieldtype: "Check",
 		},
+		{
+			fieldname: "group_by_item",
+			label: __("Group by Item"),
+			fieldtype: "Check",
+		},
 	],
 	onload(report) {
 		if (!document.getElementById("dms-clear-filters-style")) {
@@ -183,17 +188,18 @@ frappe.query_reports["Sales Booking Availablility"] = {
 
 		const updateSummaryCards = () => {
 			const data = (report.datatable && report.datatable.data) || report.data || [];
-			let totalAmount = 0;
-			let totalOrders = 0;
+			const bySalesOrder = new Map();
 
 			if (Array.isArray(data)) {
 				data.forEach((row) => {
-					if (row.indent === 0) {
-						totalOrders += 1;
-						totalAmount += flt(row.grand_total || 0);
+					if (row.sales_order) {
+						bySalesOrder.set(row.sales_order, flt(row.grand_total || 0));
 					}
 				});
 			}
+
+			const totalOrders = bySalesOrder.size;
+			const totalAmount = Array.from(bySalesOrder.values()).reduce((a, b) => a + b, 0);
 
 			const amountFormatted = frappe.format(totalAmount, { fieldtype: "Currency" });
 			const ordersFormatted = totalOrders.toString();

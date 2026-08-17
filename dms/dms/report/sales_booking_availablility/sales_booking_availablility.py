@@ -122,23 +122,19 @@ def get_columns() -> list[dict]:
 	]
 
 
-def get_data(filters: dict) -> list[dict]:
-	"""Return data for the report.
-
-	Calculates Available Qty = Actual Stock Qty - Open Sales Order Qty.
-	Actual stock is from tabBin (live). Open SOs are from submitted Sales Orders only.
-	Returns rows grouped by Sales Order (tree structure with indent).
-	"""
-	# Query A: live actual stock from tabBin
+def _get_bin_map() -> dict:
+	"""Query A: live actual stock from tabBin."""
 	bin_rows = frappe.db.sql(
 		"""SELECT item_code, warehouse, actual_qty
 		   FROM `tabBin`
 		   WHERE actual_qty != 0""",
 		as_dict=True,
 	)
-	bin_map = {(r.item_code, r.warehouse): flt(r.actual_qty) for r in bin_rows}
+	return {(r.item_code, r.warehouse): flt(r.actual_qty) for r in bin_rows}
 
-	# Query B: aggregated open qty per item_code/warehouse for total calculation
+
+def _get_agg_map() -> dict:
+	"""Query B: aggregated open qty per item_code/warehouse."""
 	agg_rows = frappe.db.sql(
 		"""SELECT soi.item_code, soi.warehouse,
 		          SUM(GREATEST(COALESCE(soi.qty, 0) - COALESCE(soi.delivered_qty, 0), 0)
@@ -151,10 +147,12 @@ def get_data(filters: dict) -> list[dict]:
 		   GROUP BY soi.item_code, soi.warehouse""",
 		as_dict=True,
 	)
-	agg_map = {(r.item_code, r.warehouse): flt(r.total_open_qty) for r in agg_rows}
+	return {(r.item_code, r.warehouse): flt(r.total_open_qty) for r in agg_rows}
 
-	# Query C: individual SO lines with pending qty (one row per SO)
-	so_rows = frappe.db.sql(
+
+def _get_so_lines() -> list[dict]:
+	"""Query C: individual SO lines with pending qty."""
+	return frappe.db.sql(
 		"""SELECT soi.parent AS sales_order,
 		          so.status AS so_status,
 		          so.transaction_date,
@@ -174,21 +172,25 @@ def get_data(filters: dict) -> list[dict]:
 		as_dict=True,
 	)
 
-	# Query D: resolve item names in bulk
-	item_codes = {r.item_code for r in so_rows}
-	item_names = {}
-	if item_codes:
-		item_rows = frappe.db.sql(
-			"""SELECT name, item_name
-			   FROM `tabItem`
-			   WHERE name IN %(codes)s""",
-			{"codes": list(item_codes)},
-			as_dict=True,
-		)
-		item_names = {r.name: r.item_name for r in item_rows}
 
-	# Group rows by Sales Order, apply filters, build tree structure
-	so_groups = {}
+def _get_item_names(so_rows: list[dict]) -> dict:
+	"""Query D: resolve item names in bulk."""
+	item_codes = {r.item_code for r in so_rows}
+	if not item_codes:
+		return {}
+	item_rows = frappe.db.sql(
+		"""SELECT name, item_name
+		   FROM `tabItem`
+		   WHERE name IN %(codes)s""",
+		{"codes": list(item_codes)},
+		as_dict=True,
+	)
+	return {r.name: r.item_name for r in item_rows}
+
+
+def _build_leaf_rows(so_rows: list[dict], filters: dict, bin_map: dict, agg_map: dict, item_names: dict) -> list[dict]:
+	"""Build flat list of filtered leaf rows with qty calculations."""
+	leaves = []
 	for row in so_rows:
 		sales_order = row.sales_order
 		so_status = row.so_status
@@ -196,13 +198,11 @@ def get_data(filters: dict) -> list[dict]:
 		warehouse = row.warehouse
 		open_so_qty = flt(row.open_so_qty)
 
-		# Group-level filter: skip entire SO if it doesn't match filters
 		if filters.get("sales_order") and sales_order != filters["sales_order"]:
 			continue
 		if filters.get("so_status") and so_status != filters["so_status"]:
 			continue
 
-		# Date filter: skip based on transaction_date
 		if filters.get("today"):
 			if getdate(row.transaction_date) != getdate(nowdate()):
 				continue
@@ -212,45 +212,56 @@ def get_data(filters: dict) -> list[dict]:
 			if filters.get("to_date") and getdate(row.transaction_date) > getdate(filters["to_date"]):
 				continue
 
-		# Row-level filter: skip item rows if they don't match filters
 		if filters.get("item_code") and item_code != filters["item_code"]:
 			continue
 		if filters.get("warehouse") and warehouse != filters["warehouse"]:
 			continue
 
-		# Initialize SO group if not seen yet
-		if sales_order not in so_groups:
-			so_groups[sales_order] = {"so_status": so_status, "grand_total": row.grand_total, "items": []}
-
-		# Get actual stock and total open qty for this item/warehouse combo
 		actual_qty = bin_map.get((item_code, warehouse), 0.0)
 		total_open_qty = agg_map.get((item_code, warehouse), 0.0)
 		available_qty = actual_qty - total_open_qty
 
-		so_groups[sales_order]["items"].append({
+		leaves.append({
+			"sales_order": sales_order,
+			"so_status": so_status,
+			"grand_total": row.grand_total,
 			"item_code": item_code,
 			"item_name": item_names.get(item_code) or item_code,
 			"warehouse": warehouse,
-			"sales_order": None,
-			"so_status": None,
-			"actual_stock_qty": actual_qty,
 			"open_so_qty": open_so_qty,
+			"actual_stock_qty": actual_qty,
 			"available_qty": available_qty,
-			"grand_total": row.grand_total,
 		})
 
-	# Build flat list with tree structure (indent: 0 for parent, 1 for children)
+	return leaves
+
+
+def _build_so_groups(leaf_rows: list[dict]) -> dict:
+	"""Group leaf rows by sales_order."""
+	groups = {}
+	for leaf in leaf_rows:
+		so = leaf["sales_order"]
+		if so not in groups:
+			groups[so] = {
+				"so_status": leaf["so_status"],
+				"grand_total": leaf["grand_total"],
+				"items": [],
+			}
+		groups[so]["items"].append(leaf)
+	return groups
+
+
+def _build_so_tree(so_groups: dict) -> list[dict]:
+	"""Build SO-grouped tree structure (default grouping)."""
 	data = []
 	for sales_order in sorted(so_groups.keys()):
 		group = so_groups[sales_order]
 		so_status = group["so_status"]
 		items = group["items"]
 
-		# Only emit group if it has items after filtering
 		if not items:
 			continue
 
-		# Parent row (SO group header)
 		data.append({
 			"sales_order": sales_order,
 			"so_status": so_status,
@@ -264,10 +275,124 @@ def get_data(filters: dict) -> list[dict]:
 			"indent": 0,
 		})
 
-		# Child rows (items in this SO)
 		for item in items:
-			item["indent"] = 1
-			data.append(item)
+			item_copy = item.copy()
+			item_copy["sales_order"] = None
+			item_copy["so_status"] = None
+			item_copy["indent"] = 1
+			data.append(item_copy)
+
+	return data
+
+
+def _group_leaves_by_item(leaf_rows: list[dict]) -> dict:
+	"""Group leaf rows by item_code.
+
+	Returns {item_code: {item_name, warehouses: {warehouse: leaf}, leaves: [...]}}
+	Used by _build_item_tree and get_item_grouped_map to organize leaves by item.
+	"""
+	item_groups = {}
+	for leaf in leaf_rows:
+		ic = leaf["item_code"]
+		wh = leaf["warehouse"]
+		if ic not in item_groups:
+			item_groups[ic] = {
+				"item_name": leaf["item_name"],
+				"warehouses": {},
+				"leaves": [],
+			}
+		if wh not in item_groups[ic]["warehouses"]:
+			item_groups[ic]["warehouses"][wh] = leaf
+		item_groups[ic]["leaves"].append(leaf)
+	return item_groups
+
+
+def _build_item_tree(leaf_rows: list[dict]) -> list[dict]:
+	"""Build item-grouped tree structure."""
+	item_groups = _group_leaves_by_item(leaf_rows)
+
+	data = []
+	for item_code in sorted(item_groups.keys()):
+		group = item_groups[item_code]
+		item_name = group["item_name"]
+		warehouses = group["warehouses"]
+		leaves = group["leaves"]
+
+		actual_stock_qty = sum(flt(wh_leaf["actual_stock_qty"]) for wh_leaf in warehouses.values())
+		available_qty = sum(flt(wh_leaf["available_qty"]) for wh_leaf in warehouses.values())
+		open_so_qty = sum(flt(leaf["open_so_qty"]) for leaf in leaves)
+
+		data.append({
+			"item_code": item_code,
+			"item_name": item_name,
+			"sales_order": None,
+			"so_status": None,
+			"warehouse": None,
+			"actual_stock_qty": actual_stock_qty,
+			"open_so_qty": open_so_qty,
+			"available_qty": available_qty,
+			"grand_total": None,
+			"indent": 0,
+		})
+
+		for leaf in leaves:
+			leaf_copy = leaf.copy()
+			leaf_copy["item_code"] = None
+			leaf_copy["item_name"] = None
+			leaf_copy["actual_stock_qty"] = None
+			leaf_copy["available_qty"] = None
+			leaf_copy["indent"] = 1
+			data.append(leaf_copy)
+
+	return data
+
+
+def get_item_grouped_map(filters: dict | None = None) -> dict:
+	"""Return {(item_code, warehouse): available_qty}, grouped by item.
+
+	Filters items with an open Sales Booking Availability entry (presence in
+	_get_so_lines). Absence of a key means the item has no open-SO booking there
+	— caller should fall back to Bin.
+
+	This is the non-lossy API for item-grouped availability that sales.py calls.
+	"""
+	filters = filters or {}
+	bin_map = _get_bin_map()
+	agg_map = _get_agg_map()
+	so_rows = _get_so_lines()
+	item_names = _get_item_names(so_rows)
+
+	leaf_rows = _build_leaf_rows(so_rows, filters, bin_map, agg_map, item_names)
+	item_groups = _group_leaves_by_item(leaf_rows)
+
+	return {
+		(item_code, wh): flt(leaf["available_qty"])
+		for item_code, group in item_groups.items()
+		for wh, leaf in group["warehouses"].items()
+	}
+
+
+def get_data(filters: dict) -> tuple[list[dict], list[dict]]:
+	"""Return data for the report.
+
+	Supports two grouping modes:
+	- Default (group_by_item=False): Sales Order grouping
+	- Item (group_by_item=True): Item Code grouping
+
+	Calculations remain identical; only tree structure changes.
+	"""
+	bin_map = _get_bin_map()
+	agg_map = _get_agg_map()
+	so_rows = _get_so_lines()
+	item_names = _get_item_names(so_rows)
+
+	leaf_rows = _build_leaf_rows(so_rows, filters, bin_map, agg_map, item_names)
+	so_groups = _build_so_groups(leaf_rows)
+
+	if filters.get("group_by_item"):
+		data = _build_item_tree(leaf_rows)
+	else:
+		data = _build_so_tree(so_groups)
 
 	total_sales_amount = sum(flt(g["grand_total"]) for g in so_groups.values())
 	total_orders = len(so_groups)
