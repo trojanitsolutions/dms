@@ -67,3 +67,17 @@ form.addEventListener('submit', async e => {
     setLoading(false);
   }
 });
+
+// Password visibility toggle
+const pwdInput  = document.getElementById('pwd');
+const pwdToggle = document.getElementById('pwd-toggle');
+
+if (pwdToggle && pwdInput) {
+  pwdToggle.addEventListener('click', () => {
+    const showing = pwdInput.type === 'text';
+    pwdInput.type = showing ? 'password' : 'text';
+    pwdToggle.setAttribute('aria-pressed', String(!showing));
+    pwdToggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    pwdToggle.classList.toggle('is-visible', !showing);
+  });
+}

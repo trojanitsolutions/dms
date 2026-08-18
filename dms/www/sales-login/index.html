@@ -8,54 +8,33 @@
 </head>
 <body>
 
-<!-- Mobile: hero top section / Desktop: left panel -->
-<div class="hero">
+<!-- Decorative corner line-art -->
+<svg class="deco-line deco-line--tl" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
+  <path d="M0 120 C 40 60, 90 20, 200 10" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M0 170 C 60 120, 120 70, 230 60" fill="none" stroke="currentColor" stroke-width="1"/>
+</svg>
+<svg class="deco-line deco-line--br" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
+  <path d="M240 120 C 200 180, 150 220, 40 230" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M240 70 C 180 120, 120 170, 10 180" fill="none" stroke="currentColor" stroke-width="1"/>
+</svg>
+
+<main class="page" role="main">
+
+  <!-- Centered header -->
   <div class="brand">
     {% if company_logo %}
     <img src="{{ company_logo }}" alt="Company Logo" class="brand-logo">
     {% else %}
     <div class="brand-badge">LS</div>
     {% endif %}
+    <span class="brand-divider" aria-hidden="true"></span>
     <div class="brand-name">Luxury Stationery Wholesale</div>
   </div>
 
-  <div class="hero-content">
-    <span class="hero-label">Sales Management</span>
-    <p class="hero-tagline">Take the whole catalog<br>to every customer.</p>
-    <p class="hero-sub">Live inventory, instant credit checks, and one-tap order submission.</p>
-    <ul class="feature-list">
-      <li class="feature-item">
-        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/>
-        </svg>
-        Real-time stock &amp; reservations
-      </li>
-      <li class="feature-item">
-        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/>
-        </svg>
-        Instant credit &amp; balance checks
-      </li>
-      <!-- <li class="feature-item">
-        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/>
-        </svg>
-        Submit orders straight to ERPNext
-      </li> -->
-    </ul>
-  </div>
+  <p class="page-subtitle">Sign in to access your sales workspace</p>
 
-  <div class="hero-footer">Powered by Trojan Technologies</div>
-</div>
-
-<!-- Mobile: bottom sheet / Desktop: right panel + form card -->
-<div class="sheet" role="main">
-  <div class="sheet-handle" aria-hidden="true"></div>
-
+  <!-- Login card -->
   <div class="form-inner">
-    <h1 class="form-title">Welcome back</h1>
-    <p class="form-sub">Sign in to your sales workspace</p>
-
     {% if error == "access-denied" %}
     <div class="error-banner visible" role="alert">
       <svg class="error-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -75,21 +54,38 @@
     <form id="login-form" novalidate>
       <div class="field">
         <div class="field-header">
-          <label class="field-label" for="usr">Email</label>
+          <label class="field-label" for="usr">Email address</label>
         </div>
-        <input class="field-input" type="email" id="usr" name="usr"
-               placeholder="you@company.com" required
-               autocomplete="username" inputmode="email">
+        <div class="field-input-wrap">
+          <svg class="field-icon field-icon--leading" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-width="1.5" d="M2.5 5.5h15v9h-15v-9zM2.5 5.5l7.5 5.5 7.5-5.5"/>
+          </svg>
+          <input class="field-input" type="email" id="usr" name="usr"
+                 placeholder="you@company.com" required
+                 autocomplete="username" inputmode="email">
+        </div>
       </div>
 
       <div class="field">
         <div class="field-header">
           <label class="field-label" for="pwd">Password</label>
-          <!-- <a class="forgot-link" href="/update-password">Forgot?</a> -->
         </div>
-        <input class="field-input" type="password" id="pwd" name="pwd"
-               placeholder="••••••••" required
-               autocomplete="current-password">
+        <div class="field-input-wrap">
+          <svg class="field-icon field-icon--leading" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+            <rect x="4.5" y="9" width="11" height="8" rx="1.5" stroke-width="1.5"/>
+            <path d="M6.5 9V6a3.5 3.5 0 017 0v3" stroke-width="1.5"/>
+          </svg>
+          <input class="field-input field-input--password" type="password" id="pwd" name="pwd"
+                 placeholder="••••••••" required
+                 autocomplete="current-password">
+          <button type="button" class="field-icon-btn field-icon-btn--trailing" id="pwd-toggle"
+                  aria-label="Show password" aria-pressed="false">
+            <svg class="field-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+              <path stroke-width="1.5" d="M1.5 10S4.5 4.5 10 4.5 18.5 10 18.5 10 15.5 15.5 10 15.5 1.5 10 1.5 10z"/>
+              <circle cx="10" cy="10" r="2.5" stroke-width="1.5"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <button type="submit" class="btn-submit" id="sign-in-btn">
@@ -97,10 +93,24 @@
         <span class="btn-label">Sign in</span>
       </button>
     </form>
-
-    <p class="page-footer">Powered by Trojan Technologies</p>
   </div>
-</div>
+
+  <!-- Footer below card -->
+  <div class="page-footer">
+    <p class="page-footer-line">
+      <svg class="footer-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+        <path stroke-width="1.5" d="M10 2l6.5 2.5v4.8c0 4-2.8 6.7-6.5 8.2-3.7-1.5-6.5-4.2-6.5-8.2V4.5L10 2z"/>
+        <path stroke-width="1.5" d="M7.3 10l1.9 1.9 3.5-3.9"/>
+      </svg>
+      Secure access to your workspace
+    </p>
+    <p class="page-footer-line page-footer-line--sub">
+      <span class="footer-dash" aria-hidden="true"></span>
+      Powered by <strong>Trojan Technologies</strong>
+    </p>
+  </div>
+
+</main>
 
 <script src="/sales-login/script.js"></script>
 </body>
