@@ -318,13 +318,14 @@ function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(applyF
 /* ── Cart ─────────────────────────────────────────────────── */
 function addToCart(code,qty){
   const item=allItems.find(i=>i.name===code);
-  if(!item)return;
-  if(!STOCK_VALIDATION_DISABLED&&!item.any_stock)return;
+  if(!item)return false;
+  if(!STOCK_VALIDATION_DISABLED&&!item.any_stock)return false;
   const avail=displayedAvailable(code);
-  if(avail<=0)return;
+  if(avail<=0)return false;
   qty=Math.min(Math.max(1,parseInt(qty,10)||1),avail);
   cart[code]={item,qty,discountType:'',discountValue:0};
   updateCartUI();refreshCard(code);
+  return true;
 }
 function setQty(code,rawValue){
   if(!cart[code])return;
@@ -1055,8 +1056,15 @@ document.addEventListener('click',e=>{
   if(e.target.dataset.action==='save'){
     const code=e.target.dataset.itemCode;
     const input=e.target.closest('.qty-ctrl').querySelector('.qty-num');
-    addToCart(code,input?input.value:1);
+    const added=addToCart(code,input?input.value:1);
     pendingAdd.delete(code);
+    if(added){
+      const searchInput=document.getElementById('item-search');
+      if(searchInput.value){
+        searchInput.value='';
+        applyFilters();
+      }
+    }
   }
   if(e.target.dataset.delta){
     const code=e.target.dataset.itemCode;
