@@ -5,11 +5,19 @@ def get_context(context):
     context.no_cache = 1
     _require_sales_rep()
     context.full_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
-    context.customer = frappe.request.args.get("customer", "")
-    if context.customer:
-        context.customer_name = frappe.db.get_value("Customer", context.customer, "customer_name") or ""
+    context.order = frappe.request.args.get("order", "")
+    context.customer = ""
+    context.customer_name = ""
+    if context.order:
+        owner, docstatus, customer = frappe.db.get_value("Sales Order", context.order, ["owner", "docstatus", "customer"]) or (None, None, None)
+        if owner == frappe.session.user and docstatus == 0:
+            context.customer = customer or ""
+            if context.customer:
+                context.customer_name = frappe.db.get_value("Customer", context.customer, "customer_name") or ""
     else:
-        context.customer_name = ""
+        context.customer = frappe.request.args.get("customer", "")
+        if context.customer:
+            context.customer_name = frappe.db.get_value("Customer", context.customer, "customer_name") or ""
     context.company_logo = _get_company_logo()
 
 

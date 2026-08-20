@@ -22,6 +22,19 @@ def _stock_validation_disabled():
     return bool(frappe.db.get_single_value("Sales Management Settings", "disable_stock_validation"))
 
 
+def _submit_as_admin(so):
+	_user = frappe.session.user
+	frappe.session.user = "Administrator"
+	frappe.local.role_permissions = {}
+	frappe.local.user_perms = None
+	try:
+		so.submit()
+	finally:
+		frappe.session.user = _user
+		frappe.local.role_permissions = {}
+		frappe.local.user_perms = None
+
+
 def _is_probable_image(file_url):
     if not file_url:
         return False
@@ -499,7 +512,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     return items
 
 
-def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str, disable_stock_validation: bool = False):
+def _build_item_rows(items: list, warehouse: str) -> list:
 	doc_items = []
 	for it in items:
 		discount_percentage, discount_amount = _resolve_discount(it.get("discount_type"), it.get("discount_value"))
@@ -514,6 +527,12 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 		}
 
 		doc_items.append(item_row)
+
+	return doc_items
+
+
+def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str, disable_stock_validation: bool = False):
+	doc_items = _build_item_rows(items, warehouse)
 
 	selling_price_list = (
 		frappe.db.get_single_value("Selling Settings", "selling_price_list")
@@ -591,7 +610,7 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 
 
 @frappe.whitelist(methods=["POST"])
-def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0):
+def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, submit: bool = True, existing_order: str = ""):
     _require_sales_rep()
     try:
         items = json.loads(items_json)
@@ -646,8 +665,21 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
                         ).format(it["item_code"], float(it["qty"]), avail, warehouse)
                     )
 
-        sales_person = _get_sales_person_for_user()
-        so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
+        if existing_order:
+            so = frappe.get_doc("Sales Order", existing_order)
+            if so.owner != frappe.session.user:
+                frappe.throw(_("Not permitted"), frappe.PermissionError)
+            if so.docstatus != 0:
+                frappe.throw(_("Order is not pending"))
+            so.customer = customer
+            so.delivery_date = delivery_date
+            so.customer_address = customer_address or None
+            so.shipping_address_name = shipping_address or None
+            so.set("items", _build_item_rows(items, warehouse))
+        else:
+            sales_person = _get_sales_person_for_user()
+            so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
+
         so.run_method("set_missing_values")
         for d in so.items:
             frappe.logger().debug(
@@ -671,20 +703,17 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
                         frappe.utils.flt(credit_info["outstanding"], 2),
                     )
                 )
-        so.insert(ignore_permissions=True)
 
-        _user = frappe.session.user
-        frappe.session.user = "Administrator"
-        frappe.local.role_permissions = {}
-        frappe.local.user_perms = None
-        try:
-            so.submit()
-        finally:
-            frappe.session.user = _user
-            frappe.local.role_permissions = {}
-            frappe.local.user_perms = None
+        if existing_order:
+            so.save(ignore_permissions=True)
+        else:
+            so.insert(ignore_permissions=True)
+
+        if submit:
+            _submit_as_admin(so)
         return {
             "name": so.name,
+            "docstatus": so.docstatus,
             "total": so.total,
             "grand_total": so.grand_total,
             "rounded_total": so.rounded_total,
@@ -713,6 +742,97 @@ def get_my_orders(customer: str = ""):
         order_by="creation desc",
         limit=50,
     )
+
+
+@frappe.whitelist(methods=["GET"])
+def get_pending_orders(customer: str = ""):
+    _require_sales_rep()
+    filters = {"owner": frappe.session.user, "docstatus": 0}
+    if customer:
+        filters["customer"] = customer
+    orders = frappe.get_all(
+        "Sales Order",
+        filters=filters,
+        fields=["name", "customer", "customer_name", "grand_total", "status", "transaction_date"],
+        order_by="creation desc",
+        limit=2500,  # ponytail: sales rep's unsubmitted drafts never approach this
+    )
+    names = [o["name"] for o in orders]
+    if names:
+        items = frappe.get_all("Sales Order Item", filters={"parent": ["in", names]}, fields=["parent"])
+        count_map = {}
+        for item in items:
+            count_map[item["parent"]] = count_map.get(item["parent"], 0) + 1
+        for o in orders:
+            o["item_count"] = count_map.get(o["name"], 0)
+    else:
+        for o in orders:
+            o["item_count"] = 0
+    return orders
+
+
+@frappe.whitelist(methods=["POST"])
+def submit_pending_order(name: str):
+    _require_sales_rep()
+    so = frappe.get_doc("Sales Order", name)
+    if so.owner != frappe.session.user:
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    if so.docstatus != 0:
+        frappe.throw(_("Order is not pending"))
+    _submit_as_admin(so)
+    return {"name": so.name, "grand_total": so.grand_total, "rounded_total": so.rounded_total,
+            "disable_rounded_total": so.disable_rounded_total}
+
+
+@frappe.whitelist(methods=["POST"])
+def discard_pending_order(name: str):
+    _require_sales_rep()
+    owner, docstatus = frappe.db.get_value("Sales Order", name, ["owner", "docstatus"])
+    if owner != frappe.session.user:
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    if docstatus != 0:
+        frappe.throw(_("Only pending orders can be discarded"))
+    frappe.delete_doc("Sales Order", name, ignore_permissions=True)
+    return {"ok": True}
+
+
+@frappe.whitelist(methods=["GET"])
+def get_pending_order_detail(name: str):
+    _require_sales_rep()
+    so = frappe.get_doc("Sales Order", name)
+    if so.owner != frappe.session.user:
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    if so.docstatus != 0:
+        frappe.throw(_("Order is not pending"))
+
+    def _discount(d, percentage_field="discount_percentage"):
+        if getattr(d, percentage_field, 0):
+            return "Percentage", getattr(d, percentage_field)
+        if d.discount_amount:
+            return "Amount", d.discount_amount
+        return "", 0
+
+    order_disc_type, order_disc_value = _discount(so, "additional_discount_percentage")
+    return {
+        "name": so.name,
+        "customer": so.customer,
+        "customer_name": so.customer_name,
+        "warehouse": so.items[0].warehouse if so.items else "",
+        "delivery_date": str(so.delivery_date or ""),
+        "customer_address": so.customer_address or "",
+        "shipping_address": so.shipping_address_name or "",
+        "additional_discount_type": order_disc_type,
+        "additional_discount_value": order_disc_value,
+        "items": [
+            {
+                "item_code": d.item_code,
+                "qty": d.qty,
+                "rate": d.price_list_rate,
+                **dict(zip(("discount_type", "discount_value"), _discount(d))),
+            }
+            for d in so.items
+        ],
+    }
 
 
 @frappe.whitelist(methods=["GET"])

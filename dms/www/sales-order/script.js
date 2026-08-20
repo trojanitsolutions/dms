@@ -1,6 +1,7 @@
 const IS_DESKTOP = () => window.innerWidth >= 768;
 const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
+const ORDER_NAME = window.pageData?.order || '';
 let customerAddresses = [];
 let selectedBillingAddress = '';
 let selectedShippingAddress = '';
@@ -33,6 +34,7 @@ let scrollSentinel=null,sentinelObserver=null;
 let modalItemCode=null;
 let orderDiscountType='',orderDiscountValue=0;
 let STOCK_VALIDATION_DISABLED=false;
+let pendingAdd=new Set();
 
 /* ── Stock helpers ───────────────────────────────────────── */
 function displayedAvailable(code){
@@ -314,12 +316,14 @@ let searchTimer;
 function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(applyFilters,250)}
 
 /* ── Cart ─────────────────────────────────────────────────── */
-function addToCart(code){
+function addToCart(code,qty){
   const item=allItems.find(i=>i.name===code);
   if(!item)return;
   if(!STOCK_VALIDATION_DISABLED&&!item.any_stock)return;
-  if(displayedAvailable(code)<=0)return;
-  cart[code]={item,qty:1,discountType:'',discountValue:0};
+  const avail=displayedAvailable(code);
+  if(avail<=0)return;
+  qty=Math.min(Math.max(1,parseInt(qty,10)||1),avail);
+  cart[code]={item,qty,discountType:'',discountValue:0};
   updateCartUI();refreshCard(code);
 }
 function setQty(code,rawValue){
@@ -409,17 +413,22 @@ async function refreshTotals(){
 	},300);
 }
 
-function actionMarkup(code){
+function actionMarkup(code,forModal){
   const inCart=cart[code];
   const cardOos=isCardOos(code);
   const canMore=displayedAvailable(code)>0;
   const listStyle=currentView==='list'?' style="font-size:11px;padding:5px 8px"':'';
+  const avail=displayedAvailable(code);
 
   if(cardOos){
     return`<button class="add-btn"${listStyle} disabled>OOS</button>`;
   }else if(inCart){
     const plusDis=!canMore?' disabled style="opacity:.45;cursor:not-allowed"':'';
     return`<div class="qty-ctrl"><button class="qty-btn" data-item-code="${code}" data-delta="-1">−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num" data-item-code="${code}" value="${inCart.qty}" aria-label="Quantity"><button class="qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div>`;
+  }else if(forModal||pendingAdd.has(code)){
+    const minusDis=' disabled style="opacity:.45;cursor:not-allowed"';
+    const plusDis=avail<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
+    return`<div class="qty-ctrl"><button class="qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num" data-item-code="${code}" value="1" aria-label="Quantity"><button class="qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button><button class="add-btn" data-item-code="${code}" data-action="save">Save</button></div>`;
   }else{
     return`<button class="add-btn" data-item-code="${code}" data-action="add">Add</button>`;
   }
@@ -479,7 +488,7 @@ function refreshCard(code){
   // Sync modal action cell if this item is currently open
   if(modalItemCode===code){
     const modalAction=document.getElementById('item-modal-action');
-    if(modalAction)modalAction.innerHTML=actionMarkup(code);
+    if(modalAction)modalAction.innerHTML=actionMarkup(code,true);
   }
 }
 
@@ -513,6 +522,36 @@ function updateCartUI(){
   }).join('');
   refreshTotals();
 }
+
+/* ── Confirmation modal ──────────────────────────────────── */
+function confirmAction(title,msg,confirmLabel){
+	return new Promise(resolve=>{
+		const overlay=document.getElementById('confirm-overlay');
+		document.getElementById('confirm-title').textContent=title;
+		document.getElementById('confirm-msg').textContent=msg;
+		const okBtn=document.getElementById('confirm-ok-btn');
+		const cancelBtn=document.getElementById('confirm-cancel-btn');
+		okBtn.textContent=confirmLabel;
+		overlay.classList.add('open');
+		function done(result){
+			overlay.classList.remove('open');
+			okBtn.removeEventListener('click',onOk);
+			cancelBtn.removeEventListener('click',onCancel);
+			overlay.removeEventListener('click',onBg);
+			document.removeEventListener('keydown',onKey);
+			resolve(result);
+		}
+		function onOk(){done(true)}
+		function onCancel(){done(false)}
+		function onBg(e){if(e.target===overlay)done(false)}
+		function onKey(e){if(e.key==='Escape')done(false)}
+		okBtn.addEventListener('click',onOk);
+		cancelBtn.addEventListener('click',onCancel);
+		overlay.addEventListener('click',onBg);
+		document.addEventListener('keydown',onKey);
+	});
+}
+function cartHasItems(){return Object.keys(cart).length>0}
 
 /* ── Credit ──────────────────────────────────────────────── */
 function updateCreditWarning(){
@@ -692,54 +731,75 @@ function renderItemModal(){
 
   // Action cell
   const actionEl=document.getElementById('item-modal-action');
-  if(actionEl)actionEl.innerHTML=actionMarkup(modalItemCode);
+  if(actionEl)actionEl.innerHTML=actionMarkup(modalItemCode,true);
 }
 
-/* ── Submit order ────────────────────────────────────────── */
+function validateOrderInputs(){
+	const items=Object.values(cart);
+	if(!items.length){alert('Add at least one item.');return false}
+	if(!CUSTOMER_ID){alert('No customer selected.');return false}
+	if(customerStatus.disabled){alert('This customer is disabled. Sales Orders cannot be created.');return false}
+	if(customerStatus.is_frozen){alert('This customer account is frozen. Sales Orders cannot be created.');return false}
+	const wh=getWarehouse();
+	if(!wh){alert('Select a warehouse first.');return false}
+	const ddVal=document.getElementById('delivery-date').value;
+	const _today=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dy=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dy}`})();
+	if(ddVal&&ddVal<_today){alert('Delivery date cannot be in the past.');return false}
+	if(creditInfo&&creditInfo.credit_limit>0&&currentGrandTotal>creditInfo.available_credit){
+		alert(`Order total (${fmt(currentGrandTotal)}) exceeds available credit (${fmt(creditInfo.available_credit)}).`);
+		return false;
+	}
+	return true;
+}
+function buildOrderPayload(){
+	const items=Object.values(cart);
+	const itemsData=items.map(({item,qty,discountType,discountValue})=>{
+		const row={item_code:item.name,qty,rate:item.standard_rate};
+		if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
+		return row;
+	});
+	return {
+		customer:CUSTOMER_ID,
+		warehouse:getWarehouse(),
+		items_json:JSON.stringify(itemsData),
+		delivery_date:document.getElementById('delivery-date').value||'',
+		customer_address:selectedBillingAddress||'',
+		shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||'',
+		additional_discount_type:orderDiscountType,
+		additional_discount_value:orderDiscountValue,
+		existing_order:ORDER_NAME
+	};
+}
+
 async function submitOrder(){
-  const items=Object.values(cart);
-  if(!items.length){alert('Add at least one item.');return}
-  if(!CUSTOMER_ID){alert('No customer selected.');return}
+	if(!validateOrderInputs())return;
+	const ok=await confirmAction('Submit Sales Order','This will commit stock and cannot be undone. Submit this order now?','Submit');
+	if(!ok)return;
+	const btn=document.getElementById('submit-btn');
+	btn.disabled=true;btn.textContent='Submitting…';
+	try{
+		const result=await post('dms.api.sales.create_sales_order',{...buildOrderPayload(),submit:true});
+		const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
+		alert(`Order ${result.name} submitted! Total: ${fmt(total)}`);
+		cart={};updateCartUI();
+		window.location.href=`/sales-customer?customer=${CUSTOMER_ID}`;
+	}catch(e){alert('Error: '+e.message)}
+	finally{btn.disabled=false;btn.textContent='Submit Sales Order'}
+}
 
-  if(customerStatus.disabled){alert('This customer is disabled. Sales Orders cannot be created.');return}
-  if(customerStatus.is_frozen){alert('This customer account is frozen. Sales Orders cannot be created.');return}
-
-  const wh=getWarehouse();
-  if(!wh){alert('Select a warehouse first.');return}
-
-  const ddVal=document.getElementById('delivery-date').value;
-  const _today=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dy=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dy}`})();
-  if(ddVal&&ddVal<_today){alert('Delivery date cannot be in the past.');return}
-
-  if(creditInfo&&creditInfo.credit_limit>0&&currentGrandTotal>creditInfo.available_credit){
-    alert(`Order total (${fmt(currentGrandTotal)}) exceeds available credit (${fmt(creditInfo.available_credit)}).`);
-    return;
-  }
-
-  const btn=document.getElementById('submit-btn');
-  btn.disabled=true;btn.textContent='Submitting…';
-  try{
-    const itemsData=items.map(({item,qty,discountType,discountValue})=>{
-      const row={item_code:item.name,qty,rate:item.standard_rate};
-      if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
-      return row;
-    });
-    const result=await post('dms.api.sales.create_sales_order',{
-      customer:CUSTOMER_ID,
-      warehouse:wh,
-      items_json:JSON.stringify(itemsData),
-      delivery_date:document.getElementById('delivery-date').value||'',
-      customer_address:selectedBillingAddress||'',
-      shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||'',
-      additional_discount_type:orderDiscountType,
-      additional_discount_value:orderDiscountValue
-    });
-    const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
-    alert(`Order ${result.name} submitted! Total: ${fmt(total)}`);
-    cart={};updateCartUI();
-    window.location.href=`/sales-customer?customer=${CUSTOMER_ID}`;
-  }catch(e){alert('Error: '+e.message)}
-  finally{btn.disabled=false;btn.textContent='Submit Sales Order'}
+async function saveOrder(){
+	if(!validateOrderInputs())return;
+	const ok=await confirmAction('Save as Pending Order','Save this order as a draft you can submit later from Pending Orders?','Save');
+	if(!ok)return;
+	const btn=document.getElementById('save-btn');
+	btn.disabled=true;btn.textContent='Saving…';
+	try{
+		const result=await post('dms.api.sales.create_sales_order',{...buildOrderPayload(),submit:false});
+		alert(`Order ${result.name} saved as pending.`);
+		cart={};updateCartUI();
+		window.location.href='/pending-orders';
+	}catch(e){alert('Error: '+e.message)}
+	finally{btn.disabled=false;btn.textContent='Save'}
 }
 
 /* ── Init ────────────────────────────────────────────────── */
@@ -823,6 +883,21 @@ async function submitOrder(){
     if(filterRow)filterRow.style.display='none';
   }
 
+  // Fetch reopen detail if order is set
+  let reopenDetail=null;
+  if(ORDER_NAME){
+    reopenDetail=await get('dms.api.sales.get_pending_order_detail',{name:ORDER_NAME});
+    while(!reopenDetail){
+      const retry=await confirmAction(
+        'Failed to Load Order',
+        'Could not load the saved items for this order. Retry loading, or go back to Pending Orders?',
+        'Retry'
+      );
+      if(!retry){window.location.href='/pending-orders';return}
+      reopenDetail=await get('dms.api.sales.get_pending_order_detail',{name:ORDER_NAME});
+    }
+  }
+
   // Initial mobile tab state
   if(!IS_DESKTOP())setMobTab('catalog');
 
@@ -830,7 +905,7 @@ async function submitOrder(){
   const warehouses=await get('dms.api.sales.get_warehouses');
   if(warehouses&&warehouses.length){
     const opts=warehouses.map(w=>{const o=document.createElement('option');o.value=w.name;o.textContent=w.warehouse_name||w.name;return o});
-    const defaultWh=(warehouses.find(w=>w.name===sSettings?.default_warehouse)||warehouses[0]).name;
+    const defaultWh=reopenDetail?.warehouse||sSettings?.default_warehouse||warehouses[0].name;
     ['warehouse-select','mob-warehouse-select','mob-warehouse-select-2'].forEach(id=>{
       const sel=document.getElementById(id);if(!sel)return;
       opts.forEach(o=>sel.appendChild(o.cloneNode(true)));
@@ -860,7 +935,7 @@ async function submitOrder(){
   });
 
   // Load items
-  const wh=warehouses&&warehouses.length?warehouses[0].name:'';
+  const wh=reopenDetail?.warehouse||(warehouses&&warehouses.length?warehouses[0].name:'');
   const data=await get('dms.api.sales.get_items',{warehouse:wh});
   allItems=data||[];filteredItems=allItems;
   renderedCount=0;
@@ -872,14 +947,70 @@ async function submitOrder(){
     if(el)el.textContent=cnt;
   });
 
+  // Populate cart from reopened order's items
+  if(reopenDetail&&reopenDetail.items){
+    reopenDetail.items.forEach(it=>{
+      const item=allItems.find(i=>i.name===it.item_code);
+      if(!item)return;
+      cart[it.item_code]={item,qty:it.qty,discountType:it.discount_type||'',discountValue:it.discount_value||0};
+    });
+  }
+
+  // Set delivery date from reopened order
+  if(reopenDetail?.delivery_date){
+    const ddInput=document.getElementById('delivery-date');
+    if(ddInput)ddInput.value=reopenDetail.delivery_date;
+  }
+
+  // Set order-level discount from reopened order
+  if(reopenDetail){
+    orderDiscountType=reopenDetail.additional_discount_type||'';
+    orderDiscountValue=reopenDetail.additional_discount_value||0;
+    const orderDiscType=document.getElementById('order-discount-type');
+    const orderDiscVal=document.getElementById('order-discount-value');
+    if(orderDiscType){
+      orderDiscType.value=orderDiscountType;
+      if(orderDiscVal){
+        orderDiscVal.disabled=!orderDiscountType;
+        if(orderDiscountType==='Percentage')orderDiscVal.max='100';
+        else orderDiscVal.removeAttribute('max');
+        orderDiscVal.value=orderDiscountValue;
+      }
+    }
+  }
+
   // Load credit info
   await loadCreditInfo();
   // Load customer addresses
   await loadCustomerAddresses();
 
+  // Populate billing/shipping addresses from reopened order
+  if(reopenDetail){
+    const billingAddr=reopenDetail.customer_address;
+    const shippingAddr=reopenDetail.shipping_address;
+    if(billingAddr){
+      selectedBillingAddress=billingAddr;
+      const billSel=document.getElementById('billing-address-select');
+      if(billSel)billSel.value=billingAddr;
+      const billAddr=customerAddresses.find(a=>a.name===billingAddr);
+      _renderAddressCard(billAddr||null,'billing-address-card');
+    }
+    if(shippingAddr){
+      selectedShippingAddress=shippingAddr;
+      const shipSel=document.getElementById('shipping-address-select');
+      if(shipSel)shipSel.value=shippingAddr;
+      const shipAddr=customerAddresses.find(a=>a.name===shippingAddr);
+      _renderAddressCard(shipAddr||null,'shipping-address-card');
+    }
+  }
+
+  // Update cart and totals UI
+  updateCartUI();
+  refreshTotals();
+
   // Initial submit button state
   const btn=document.getElementById('submit-btn');
-  if(btn)btn.disabled=true;
+  if(btn)btn.disabled=!reopenDetail&&Object.keys(cart).length===0;
 
   // Modal close button
   const modalCloseBtn=document.getElementById('item-modal-close');
@@ -900,6 +1031,8 @@ document.getElementById('vt-list').addEventListener('click',()=>setView('list'))
 document.getElementById('instock-filter').addEventListener('change',applyFilters);
 const submitBtn=document.getElementById('submit-btn');
 if(submitBtn)submitBtn.addEventListener('click',submitOrder);
+const saveBtn=document.getElementById('save-btn');
+if(saveBtn)saveBtn.addEventListener('click',saveOrder);
 
 // Event delegation for dynamically created elements
 document.addEventListener('click',e=>{
@@ -916,11 +1049,32 @@ document.addEventListener('click',e=>{
     if(el)filterGroup(el.dataset.group);
   }
   if(e.target.dataset.action==='add'){
-    addToCart(e.target.dataset.itemCode);
+    pendingAdd.add(e.target.dataset.itemCode);
+    refreshCard(e.target.dataset.itemCode);
+  }
+  if(e.target.dataset.action==='save'){
+    const code=e.target.dataset.itemCode;
+    const input=e.target.closest('.qty-ctrl').querySelector('.qty-num');
+    addToCart(code,input?input.value:1);
+    pendingAdd.delete(code);
   }
   if(e.target.dataset.delta){
     const code=e.target.dataset.itemCode;
     const delta=parseInt(e.target.dataset.delta);
+    // pending/modal item: adjust input directly
+    if(!cart[code]){
+      const input=e.target.closest('.qty-ctrl').querySelector('.qty-num');
+      if(!input)return;
+      let n=parseInt(input.value,10)||1;
+      n=Math.min(Math.max(1,n+delta),displayedAvailable(code));
+      input.value=n;
+      // Toggle button disabled states
+      const minusBtn=e.target.closest('.qty-ctrl').querySelector('button[data-delta="-1"]');
+      const plusBtn=e.target.closest('.qty-ctrl').querySelector('button[data-delta="1"]');
+      if(minusBtn)minusBtn.style.opacity=n<=1?'.45':'1',minusBtn.disabled=n<=1;
+      if(plusBtn)plusBtn.style.opacity=n>=displayedAvailable(code)?'.45':'1',plusBtn.disabled=n>=displayedAvailable(code);
+      return;
+    }
     // Order Summary qty controls: floor at 1 (don't allow decrement below 1)
     if(e.target.classList.contains('cart-qty-btn')&&delta<0&&cart[code]&&cart[code].qty<=1)return;
     changeQty(code,delta);
@@ -1017,3 +1171,53 @@ document.addEventListener('keydown',e=>{
   overlay.addEventListener('click',function(e){if(e.target===overlay)closeLogoutConfirm()});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLogoutConfirm()});
 })();
+
+// Nav-away guard for in-app link clicks
+(function(){
+	async function trySavePending(){
+		if(!getWarehouse()||!CUSTOMER_ID)return false;
+		try{
+			await post('dms.api.sales.create_sales_order',{...buildOrderPayload(),submit:false});
+			return true;
+		}catch(e){return false}
+	}
+	document.querySelectorAll('.nav-link, .bnav-item, .mob-back').forEach(function(a){
+		if(a.getAttribute('href')==='/sales-logout')return;
+		a.addEventListener('click',async function(e){
+			if(!cartHasItems())return;
+			e.preventDefault();
+			const dest=this.href;
+			const ok=await confirmAction('Unsaved Order','You have items in your cart. Save this order as pending before leaving?','Save & Leave');
+			if(ok)await trySavePending();
+			cart={};
+			window.location.href=dest;
+		});
+	});
+})();
+
+// Browser back button guard
+(function(){
+	history.pushState({dmsGuard:1},'',location.href);
+	let leaving=false;
+	window.addEventListener('popstate',async function(){
+		if(leaving||!cartHasItems())return;
+		history.pushState({dmsGuard:1},'',location.href);
+		const ok=await confirmAction('Unsaved Order','You have items in your cart. Save this order as pending before leaving?','Save & Leave');
+		if(ok)await (async function(){
+			if(getWarehouse()&&CUSTOMER_ID){
+				try{
+					await post('dms.api.sales.create_sales_order',{...buildOrderPayload(),submit:false});
+				}catch(e){}
+			}
+		})();
+		leaving=true;
+		history.back();
+	});
+})();
+
+// beforeunload guard
+window.addEventListener('beforeunload',function(e){
+	if(!cartHasItems())return;
+	e.preventDefault();
+	e.returnValue='';
+});
