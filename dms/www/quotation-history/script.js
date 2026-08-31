@@ -122,7 +122,7 @@ function getStatusBadgeClass(status){
 function canConvert(status){
 	if(!status)return true;
 	const lower=status.toLowerCase();
-	return!['ordered','lost','cancelled','expired'].includes(lower);
+	return!['draft','ordered','lost','cancelled','expired'].includes(lower);
 }
 
 function itemRow(it){

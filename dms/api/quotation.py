@@ -614,7 +614,7 @@ def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_len
 	limit_start = cint(limit_start)
 	limit_page_length = cint(limit_page_length) or 20
 
-	filters = {"owner": frappe.session.user, "docstatus": 1}
+	filters = {"owner": frappe.session.user, "docstatus": ["in", [0, 1]]}
 
 	if valid_till:
 		filters["valid_till"] = valid_till
