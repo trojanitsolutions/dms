@@ -6,6 +6,7 @@ def get_context(context):
     _require_sales_rep()
     context.full_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
     context.order = frappe.request.args.get("order", "")
+    context.quotation = frappe.request.args.get("quotation", "")
     context.customer = ""
     context.customer_name = ""
     if context.order:

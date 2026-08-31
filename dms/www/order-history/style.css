@@ -9,7 +9,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── Bottom nav (mobile) ────────────────────────────────── */
 .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--color-sidebar-bg);border-top:1px solid rgba(32,30,29,0.16);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
 .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;color:var(--color-text-secondary);text-decoration:none;font-size:10px;font-weight:500;gap:3px;transition:color .15s}
-.bnav-item svg{width:22px;height:22px}
+.bnav-item svg, .bnav-item img{width:22px;height:22px}
 .bnav-item.active{color:var(--color-primary)}
 .bnav-item.active svg{filter:drop-shadow(0 0 4px var(--color-overlay-blue-glow))}
 

@@ -106,21 +106,26 @@ async function showDetail(custId){
   const statusAlert=document.getElementById('d-status-alert');
   const statusAlertMsg=document.getElementById('d-status-alert-msg');
   const newOrderBtn=document.getElementById('d-new-order-btn');
+  const newQuotationBtn=document.getElementById('d-new-quotation-btn');
   if(c.disabled){
     statusBadge.className='badge badge-red';statusBadge.textContent='Disabled';
     statusAlert.className='cust-status-alert is-disabled';
     statusAlertMsg.textContent='This customer is disabled. New Sales Orders cannot be created for this account.';
     newOrderBtn.style.opacity='0.45';newOrderBtn.style.pointerEvents='none';newOrderBtn.href='#';
+    newQuotationBtn.style.opacity='0.45';newQuotationBtn.style.pointerEvents='none';newQuotationBtn.href='#';
   }else if(c.is_frozen){
     statusBadge.className='badge badge-amber';statusBadge.textContent='Frozen';
     statusAlert.className='cust-status-alert is-frozen';
     statusAlertMsg.textContent='This customer account is frozen. New Sales Orders cannot be created until the account is unfrozen.';
     newOrderBtn.style.opacity='0.45';newOrderBtn.style.pointerEvents='none';newOrderBtn.href='#';
+    newQuotationBtn.style.opacity='0.45';newQuotationBtn.style.pointerEvents='none';newQuotationBtn.href='#';
   }else{
     statusBadge.className='badge badge-green';statusBadge.textContent='Active';
     statusAlert.className='cust-status-alert';
     newOrderBtn.style.opacity='';newOrderBtn.style.pointerEvents='';
     newOrderBtn.href=`/sales-order?customer=${custId}`;
+    newQuotationBtn.style.opacity='';newQuotationBtn.style.pointerEvents='';
+    newQuotationBtn.href=`/new-quotation?customer=${custId}`;
   }
 
   document.getElementById('d-outstanding').textContent=fmt(c.outstanding||0);

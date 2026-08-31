@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Order History — Luxury Stationery Field Sales</title>
-<link rel="stylesheet" href="/order-history/style.css">
+<title>Quotation History — Luxury Stationery Field Sales</title>
+<link rel="stylesheet" href="/quotation-history/style.css">
 </head>
 <body>
 
@@ -39,15 +39,15 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
     <span>New Order</span>
   </a>
-  <a class="nav-link" href="/new-quotation">
-    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 100-2H6a1 1 0 00-1 1v1H3a1 1 0 000 2h3V7a1 1 0 100 2H5a1 1 0 000 2h1v1H4a2 2 0 01-2-2V5zm12-2a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+  <a class="nav-link" href="/sales-customer">
+    <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
     <span>Quotation</span>
   </a>
-  <a class="nav-link active" href="/order-history">
+  <a class="nav-link" href="/order-history">
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
     <span>Order History</span>
   </a>
-  <a class="nav-link" href="/quotation-history">
+  <a class="nav-link active" href="/quotation-history">
     <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
     <span>Quotation History</span>
   </a>
@@ -69,55 +69,139 @@
 <main class="main">
 	<div class="topbar">
 		<div>
-			<div class="page-title">Order History</div>
-			<div class="page-sub">View all your sales orders.</div>
+			<div class="page-title">Quotation History</div>
+			<div class="page-sub">View all your quotations.</div>
 		</div>
 		<a href="/sales-home" class="btn-back"><svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>Dashboard</a>
 	</div>
 
 	<div class="content">
-		<div class="search-bar">
-			<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
-			<input type="text" id="search-input" placeholder="Search order #, customer…" autocomplete="off">
-		</div>
-
-		<div class="filter-container">
-			<div class="filter-row">
-				<div class="filter-group">
-					<label for="posting-date-filter">Posting Date</label>
-					<input type="date" id="posting-date-filter" />
-				</div>
-				<div class="filter-group">
-					<label for="delivery-date-filter">Delivery Date</label>
-					<input type="date" id="delivery-date-filter" />
-				</div>
-				<div class="filter-group">
-					<label for="status-filter">Status</label>
-					<select id="status-filter">
-						<option value="">All Statuses</option>
-						<option value="Draft">Draft</option>
-						<option value="To Deliver">To Deliver</option>
-						<option value="To Bill">To Bill</option>
-						<option value="To Deliver and Bill">To Deliver and Bill</option>
-						<option value="Completed">Completed</option>
-						<option value="Cancelled">Cancelled</option>
-					</select>
-				</div>
+		<div id="quotation-list-view">
+			<div class="search-bar">
+				<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+				<input type="text" id="search-input" placeholder="Search quotation #, customer…" autocomplete="off">
 			</div>
-			<div class="filter-divider"></div>
-			<div class="filter-count"><span id="order-count">0</span> Orders</div>
+
+			<div class="filter-container">
+				<div class="filter-row">
+					<div class="filter-group">
+						<label for="valid-till-filter">Valid Till</label>
+						<input type="date" id="valid-till-filter" />
+					</div>
+					<div class="filter-group">
+						<label for="status-filter">Status</label>
+						<select id="status-filter">
+							<option value="">All Statuses</option>
+							<option value="Draft">Draft</option>
+							<option value="Submitted">Submitted</option>
+							<option value="Open">Open</option>
+							<option value="Replied">Replied</option>
+							<option value="Ordered">Ordered</option>
+							<option value="Lost">Lost</option>
+							<option value="Cancelled">Cancelled</option>
+							<option value="Expired">Expired</option>
+						</select>
+					</div>
+				</div>
+				<div class="filter-divider"></div>
+				<div class="filter-count"><span id="quotation-count">0</span> Quotations</div>
+			</div>
+
+			<div id="quotation-list"></div>
+			<div id="sentinel"></div>
+			<div id="loading-indicator" hidden>Loading more quotations…</div>
+			<div id="empty-state" hidden></div>
+			<div id="error-state" hidden>
+				<div class="error-message">Something went wrong loading your quotations.</div>
+				<button id="retry-btn" class="btn-retry">Retry</button>
+			</div>
 		</div>
 
-		<div id="order-list"></div>
-		<div id="sentinel"></div>
-		<div id="loading-indicator" hidden>Loading more orders…</div>
-		<div id="empty-state" hidden></div>
-		<div id="error-state" hidden>
-			<div class="error-message">Something went wrong loading your orders.</div>
-			<button id="retry-btn" class="btn-retry">Retry</button>
+		<div id="quotation-detail-view" hidden>
+			<div class="quotation-detail-full">
+				<div class="quotation-breadcrumb">
+					<a href="/quotation-history" id="quotation-detail-back">Quotation List</a>
+					<span class="quotation-breadcrumb-sep">&rsaquo;</span>
+					<span>Quotation</span>
+				</div>
+				<div class="quotation-detail-header">
+					<div class="quotation-detail-heading">
+						<span class="quotation-detail-title" id="quotation-detail-title"></span>
+						<span class="quotation-status-badge" id="quotation-detail-badge"></span>
+					</div>
+					<button class="quotation-detail-create-so-btn" id="quotation-detail-create-so" style="display:none">Create Sales Order</button>
+				</div>
+				<div class="quotation-detail-info-grid">
+					<div class="quotation-info-box">
+						<div class="quotation-info-label">Customer</div>
+						<div class="quotation-info-value" id="quotation-detail-customer"></div>
+					</div>
+					<div class="quotation-info-box">
+						<div class="quotation-info-label">Date</div>
+						<div class="quotation-info-value" id="quotation-detail-date"></div>
+					</div>
+					<div class="quotation-info-box">
+						<div class="quotation-info-label">Valid Till</div>
+						<div class="quotation-info-value" id="quotation-detail-valid-till"></div>
+					</div>
+				</div>
+				<div class="quotation-detail-table-wrap">
+					<table class="quotation-detail-table">
+						<thead>
+							<tr><th>Item</th><th>Item Code</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+						</thead>
+						<tbody id="quotation-detail-items"></tbody>
+					</table>
+				</div>
+				<div class="quotation-detail-summary">
+					<div class="quotation-summary-words" id="quotation-detail-words-wrap">
+						<div class="quotation-info-label">Amount in Words: </div>
+						<div class="quotation-words-text" id="quotation-detail-words"></div>
+					</div>
+					<div class="quotation-summary-totals">
+						<div class="detail-total-row" id="quotation-detail-taxes-row">
+							<span class="detail-total-label">Taxes & Charges</span>
+							<span class="detail-total-value" id="quotation-detail-taxes"></span>
+						</div>
+						<div class="detail-total-row" id="quotation-detail-discount-row">
+							<span class="detail-total-label">Discount</span>
+							<span class="detail-total-value" id="quotation-detail-discount"></span>
+						</div>
+						<div class="detail-total-row">
+							<span class="detail-total-label">Net total</span>
+							<span class="detail-total-value" id="quotation-detail-net-total"></span>
+						</div>
+						<div class="detail-total-row detail-grand-total">
+							<span class="detail-total-label">Grand total</span>
+							<span class="detail-total-value" id="quotation-detail-grand-total"></span>
+						</div>
+					</div>
+				</div>
+				<div class="quotation-detail-terms" id="quotation-detail-terms-wrap">
+					<div class="detail-terms-label">Terms & Conditions</div>
+					<div class="detail-terms-text" id="quotation-detail-terms"></div>
+				</div>
+				<div class="quotation-detail-linked-orders" id="quotation-detail-linked-orders-wrap">
+					<div class="detail-linked-label">Linked Sales Orders</div>
+					<div id="quotation-detail-linked-orders"></div>
+				</div>
+				<div class="quotation-detail-footer"></div>
+			</div>
 		</div>
 	</div>
 </main>
+
+<!-- Generic Confirmation Modal -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="confirm-title" id="confirm-title"></div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="confirm-cancel-btn">Cancel</button>
+      <button class="btn-confirm-primary" id="confirm-ok-btn"></button>
+    </div>
+  </div>
+</div>
 
 <!-- Logout Confirmation Modal -->
 <div class="logout-confirm-overlay" id="logout-confirm-overlay">
@@ -145,8 +229,8 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
     New Order
   </a>
-  <a href="/new-quotation" class="bnav-item">
-    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 100-2H6a1 1 0 00-1 1v1H3a1 1 0 000 2h3V7a1 1 0 100 2H5a1 1 0 000 2h1v1H4a2 2 0 01-2-2V5zm12-2a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+  <a href="/sales-customer" class="bnav-item">
+    <img src="/assets/dms/images/quote.png" alt="" width="22" height="22">
     Quotation
   </a>
   <a href="/pending-orders" class="bnav-item">
@@ -159,7 +243,7 @@
   </a>
 </nav>
 
-<script src="/order-history/script.js"></script>
+<script src="/quotation-history/script.js"></script>
 <script>
 (function(){
   var btn=document.getElementById('sidebar-toggle');

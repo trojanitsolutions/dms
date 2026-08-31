@@ -21,6 +21,7 @@ function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionD
 function fmtN(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:0})}
 function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML}
 function escJS(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+function fmtDate(d){const date=new Date(d);return date.toLocaleDateString('en',{year:'numeric',month:'short',day:'numeric'})}
 
 let allItems=[],filteredItems=[],cart={},activeGroup='All',groups=[];
 let currentGrandTotal=0;
@@ -353,8 +354,8 @@ async function refreshTotals(){
 	totalsTimer=setTimeout(async()=>{
 		try{
 			const wh=getWarehouse();
-			const itemsData=items.map(({item,qty,discountType,discountValue})=>{
-				const row={item_code:item.name,qty,rate:item.standard_rate};
+			const itemsData=items.map(({item,qty,discountType,discountValue,rate})=>{
+				const row={item_code:item.name,qty,rate:rate!==undefined?rate:item.standard_rate};
 				if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
 				return row;
 			});
@@ -494,14 +495,14 @@ function updateCartUI(){
     return;
   }
 
-  cartEl.innerHTML=items.map(({item,qty,discountType,discountValue})=>{
+  cartEl.innerHTML=items.map(({item,qty,discountType,discountValue,rate})=>{
     const code=item.name;
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const discInputDis=!discountType?' disabled':'';
     const discInputMax=discountType==='Percentage'?' max="100"':'';
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(item.standard_rate)}</span> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><input type="number" class="cart-item-rate-input" data-item-code="${code}" min="0" step="0.01" value="${rate!==undefined?rate:item.standard_rate}" aria-label="Rate"> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
       <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
       <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
       <button class="cart-remove" data-item-code="${item.name}" title="Remove">
@@ -671,12 +672,16 @@ function validateQuotationInputs(){
 	if(!CUSTOMER_ID){alert('No customer selected.');return false}
 	const wh=getWarehouse();
 	if(!wh){alert('Select a warehouse first.');return false}
+	const qDate=document.getElementById('quotation-date').value;
+	if(qDate&&qDate<new Date().toISOString().slice(0,10)){alert('Quotation date cannot be a past date.');return false}
+	const validTill=document.getElementById('valid-till').value;
+	if(validTill&&validTill<new Date().toISOString().slice(0,10)){alert('Valid until cannot be a past date.');return false}
 	return true;
 }
 function buildQuotationPayload(){
 	const items=Object.values(cart);
-	const itemsData=items.map(({item,qty,discountType,discountValue})=>{
-		const row={item_code:item.name,qty,rate:item.standard_rate};
+	const itemsData=items.map(({item,qty,discountType,discountValue,rate})=>{
+		const row={item_code:item.name,qty,rate:rate!==undefined?rate:item.standard_rate};
 		if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
 		return row;
 	});
@@ -684,6 +689,7 @@ function buildQuotationPayload(){
 		customer:CUSTOMER_ID,
 		warehouse:getWarehouse(),
 		items_json:JSON.stringify(itemsData),
+		transaction_date:document.getElementById('quotation-date').value||'',
 		valid_till:document.getElementById('valid-till').value||'',
 		customer_address:selectedBillingAddress||'',
 		shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||'',
@@ -712,6 +718,11 @@ async function createQuotation(){
 	if(!CUSTOMER_ID&&createBtn){
 		createBtn.disabled=true;
 	}
+	const _todayStr=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${day}`})();
+	const dateEl=document.getElementById('quotation-date');
+	if(dateEl){dateEl.min=_todayStr;dateEl.value=_todayStr;}
+	const validTillEl=document.getElementById('valid-till');
+	if(validTillEl)validTillEl.min=_todayStr;
 	document.getElementById('warehouse-select')?.addEventListener('change',onWarehouseChange);
 	document.getElementById('mob-warehouse-select')?.addEventListener('change',onMobWarehouseChange);
 	document.getElementById('mob-warehouse-select-2')?.addEventListener('change',onMobWarehouseChange2);
@@ -754,6 +765,12 @@ async function createQuotation(){
 		}else if(e.target.classList.contains('cart-qty-num')){
 			const code=e.target.dataset.itemCode;
 			e.target.addEventListener('blur',()=>setQty(code,e.target.value),{once:true});
+		}else if(e.target.classList.contains('cart-item-rate-input')){
+			const code=e.target.dataset.itemCode;
+			e.target.addEventListener('input',()=>{
+				const newRate=parseFloat(e.target.value)||0;
+				if(cart[code]){cart[code].rate=newRate;refreshTotals();}
+			});
 		}else if(e.target.classList.contains('cart-qty-btn')){
 			const code=e.target.dataset.itemCode;
 			const delta=parseInt(e.target.dataset.delta,10);
@@ -848,7 +865,16 @@ async function createQuotation(){
 	}
 	const wh=warehouses&&warehouses.length?warehouses[0].name:'';
 	const itemsData=await get('dms.api.sales.get_items',{warehouse:wh});
-	if(itemsData){allItems=itemsData;applyFilters();}
+	if(itemsData){
+		allItems=itemsData;
+		applyFilters();
+		groups.forEach(g=>{
+			const cnt=allItems.filter(i=>i.item_group===g.name).length;
+			const el=document.getElementById('cat-count-'+CSS.escape(g.name));
+			if(el)el.textContent=cnt;
+		});
+		document.getElementById('cat-count-all').textContent=allItems.length;
+	}
 	if(CUSTOMER_ID){
 		await loadCustomerAddresses();
 		if(itemsData)refreshTotals();

@@ -12,24 +12,37 @@ def create_custom_fields():
                 "options": "Branch",
                 "reqd": 1,
                 "unique": 1
-                
+
+            }
+        ],
+        "Sales Order": [
+            {
+                "fieldname": "quotation_name",
+                "fieldtype": "Link",
+                "label": "Created from Quotation",
+                "insert_after": "amended_from",
+                "options": "Quotation",
+                "read_only": 1,
             }
         ]
     }
 
-    for doctype, fields in custom_fields.items(): 
-        for field in fields: 
+    for doctype, fields in custom_fields.items():
+        for field in fields:
             if not frappe.db.exists("Custom Field", {"dt": doctype, "fieldname": field["fieldname"]}):
-                create_custom_field(doctype, field) 
-                frappe.db.commit() 
+                create_custom_field(doctype, field)
+                frappe.db.commit()
                 frappe.clear_cache(doctype=doctype)
 
-def delete_custom_fields(): 
-    custom_fields_to_delete = { "Warehouse": ["branch"] }  
+def delete_custom_fields():
+    custom_fields_to_delete = {
+        "Warehouse": ["branch"],
+        "Sales Order": ["quotation_name"]
+    }
 
-    for doctype, fields in custom_fields_to_delete.items(): 
-        for field_name in fields: 
-            if frappe.db.exists("Custom Field", {"dt": doctype, "fieldname": field_name}): 
-                frappe.delete_doc("Custom Field", f"{doctype}-{field_name}", ignore_missing=True) 
-                frappe.db.commit() 
+    for doctype, fields in custom_fields_to_delete.items():
+        for field_name in fields:
+            if frappe.db.exists("Custom Field", {"dt": doctype, "fieldname": field_name}):
+                frappe.delete_doc("Custom Field", f"{doctype}-{field_name}", ignore_missing=True)
+                frappe.db.commit()
                 frappe.clear_cache(doctype=doctype)      

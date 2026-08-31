@@ -2,6 +2,8 @@ const IS_DESKTOP = () => window.innerWidth >= 768;
 const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
 const ORDER_NAME = window.pageData?.order || '';
+const QUOTATION_NAME = window.pageData?.quotation || '';
+const LOCKED_ITEMS = !!QUOTATION_NAME;
 let customerAddresses = [];
 let selectedBillingAddress = '';
 let selectedShippingAddress = '';
@@ -510,15 +512,16 @@ function updateCartUI(){
     const code=item.name;
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
-    const discInputDis=!discountType?' disabled':'';
+    const discInputDis=!discountType||LOCKED_ITEMS?' disabled':'';
     const discInputMax=discountType==='Percentage'?' max="100"':'';
+    const removeBtn=!LOCKED_ITEMS?`<button class="cart-remove" data-item-code="${item.name}" title="Remove">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>`:'';
     return`<div class="cart-item">
       <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(item.standard_rate)}</span> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
-      <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
+      <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"${LOCKED_ITEMS?' disabled':''}><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
       <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
-      <button class="cart-remove" data-item-code="${item.name}" title="Remove">
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-      </button>
+      ${removeBtn}
     </div>`;
   }).join('');
   refreshTotals();
@@ -743,9 +746,11 @@ function validateOrderInputs(){
 	if(customerStatus.is_frozen){alert('This customer account is frozen. Sales Orders cannot be created.');return false}
 	const wh=getWarehouse();
 	if(!wh){alert('Select a warehouse first.');return false}
-	const ddVal=document.getElementById('delivery-date').value;
-	const _today=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dy=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dy}`})();
-	if(ddVal&&ddVal<_today){alert('Delivery date cannot be in the past.');return false}
+	if(!LOCKED_ITEMS){
+		const ddVal=document.getElementById('delivery-date').value;
+		const _today=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dy=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dy}`})();
+		if(ddVal&&ddVal<_today){alert('Delivery date cannot be in the past.');return false}
+	}
 	if(creditInfo&&creditInfo.credit_limit>0&&currentGrandTotal>creditInfo.available_credit){
 		alert(`Order total (${fmt(currentGrandTotal)}) exceeds available credit (${fmt(creditInfo.available_credit)}).`);
 		return false;
@@ -772,6 +777,30 @@ function buildOrderPayload(){
 	};
 }
 
+function buildQuotationOrderPayload(){
+	const items=Object.values(cart).map(({item,qty})=>({item_code:item.name,qty}));
+	return {
+		name:QUOTATION_NAME,
+		items_json:JSON.stringify(items),
+		customer_address:selectedBillingAddress||'',
+		shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||''
+	};
+}
+
+function showOrderCreated(name,submitted){
+	const cartPanel=document.getElementById('cart-panel');
+	if(!cartPanel)return;
+	const successPanel=document.createElement('div');
+	successPanel.className='quotation-so-success-panel';
+	const linkHref=submitted?'/order-history':`/sales-order?order=${encodeURIComponent(name)}`;
+	const linkText=submitted?'View in Order History':name;
+	successPanel.innerHTML=`<div class="quotation-so-success-title">${submitted?'Order Submitted':'Order Saved as Pending'}</div>
+		<div class="quotation-so-success-msg">Sales Order <strong>${esc(name)}</strong> has been created.</div>
+		<div style="margin-top:12px"><a href="${linkHref}" style="color:var(--color-primary);text-decoration:none;font-weight:500">${esc(linkText)}</a></div>`;
+	cartPanel.innerHTML='';
+	cartPanel.appendChild(successPanel);
+}
+
 async function submitOrder(){
 	if(!validateOrderInputs())return;
 	const ok=await confirmAction('Submit Sales Order','This will commit stock and cannot be undone. Submit this order now?','Submit');
@@ -779,11 +808,17 @@ async function submitOrder(){
 	const btn=document.getElementById('submit-btn');
 	btn.disabled=true;btn.textContent='Submitting…';
 	try{
-		const result=await post('dms.api.sales.create_sales_order',{...buildOrderPayload(),submit:true});
-		const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
-		alert(`Order ${result.name} submitted! Total: ${fmt(total)}`);
-		cart={};updateCartUI();
-		window.location.href=`/sales-customer?customer=${CUSTOMER_ID}`;
+		const payload=LOCKED_ITEMS?buildQuotationOrderPayload():buildOrderPayload();
+		const method=LOCKED_ITEMS?'dms.api.quotation.create_sales_order_from_quotation':'dms.api.sales.create_sales_order';
+		const result=await post(method,{...payload,submit:true});
+		if(LOCKED_ITEMS){
+			showOrderCreated(result.name,true);
+		}else{
+			const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
+			alert(`Order ${result.name} submitted! Total: ${fmt(total)}`);
+			cart={};updateCartUI();
+			window.location.href=`/sales-customer?customer=${CUSTOMER_ID}`;
+		}
 	}catch(e){alert('Error: '+e.message)}
 	finally{btn.disabled=false;btn.textContent='Submit Sales Order'}
 }
@@ -795,10 +830,16 @@ async function saveOrder(){
 	const btn=document.getElementById('save-btn');
 	btn.disabled=true;btn.textContent='Saving…';
 	try{
-		const result=await post('dms.api.sales.create_sales_order',{...buildOrderPayload(),submit:false});
-		alert(`Order ${result.name} saved as pending.`);
-		cart={};updateCartUI();
-		window.location.href='/pending-orders';
+		const payload=LOCKED_ITEMS?buildQuotationOrderPayload():buildOrderPayload();
+		const method=LOCKED_ITEMS?'dms.api.quotation.create_sales_order_from_quotation':'dms.api.sales.create_sales_order';
+		const result=await post(method,{...payload,submit:false});
+		if(LOCKED_ITEMS){
+			showOrderCreated(result.name,false);
+		}else{
+			alert(`Order ${result.name} saved as pending.`);
+			cart={};updateCartUI();
+			window.location.href='/pending-orders';
+		}
 	}catch(e){alert('Error: '+e.message)}
 	finally{btn.disabled=false;btn.textContent='Save'}
 }
@@ -884,7 +925,7 @@ async function saveOrder(){
     if(filterRow)filterRow.style.display='none';
   }
 
-  // Fetch reopen detail if order is set
+  // Fetch reopen detail if order or quotation is set
   let reopenDetail=null;
   if(ORDER_NAME){
     reopenDetail=await get('dms.api.sales.get_pending_order_detail',{name:ORDER_NAME});
@@ -896,6 +937,17 @@ async function saveOrder(){
       );
       if(!retry){window.location.href='/pending-orders';return}
       reopenDetail=await get('dms.api.sales.get_pending_order_detail',{name:ORDER_NAME});
+    }
+  }else if(QUOTATION_NAME){
+    reopenDetail=await get('dms.api.quotation.get_quotation_for_sales_order',{name:QUOTATION_NAME});
+    while(!reopenDetail){
+      const retry=await confirmAction(
+        'Failed to Load Quotation',
+        'Could not load items for this quotation. Retry, or go back to Quotation History?',
+        'Retry'
+      );
+      if(!retry){window.location.href='/quotation-history';return}
+      reopenDetail=await get('dms.api.quotation.get_quotation_for_sales_order',{name:QUOTATION_NAME});
     }
   }
 
@@ -1002,6 +1054,43 @@ async function saveOrder(){
       if(shipSel)shipSel.value=shippingAddr;
       const shipAddr=customerAddresses.find(a=>a.name===shippingAddr);
       _renderAddressCard(shipAddr||null,'shipping-address-card');
+    }
+  }
+
+  // Apply locking for quotation-derived orders
+  if(LOCKED_ITEMS){
+    // Disable warehouse, discounts, delivery date
+    ['warehouse-select','mob-warehouse-select','mob-warehouse-select-2'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.disabled=true;
+    });
+    const ddInput=document.getElementById('delivery-date');
+    if(ddInput)ddInput.disabled=true;
+    const discType=document.getElementById('order-discount-type');
+    const discVal=document.getElementById('order-discount-value');
+    if(discType)discType.disabled=true;
+    if(discVal)discVal.disabled=true;
+
+    // Hide catalog, show only cart on mobile
+    const catalogPanel=document.getElementById('catalog-panel');
+    if(catalogPanel)catalogPanel.style.display='none';
+    const sidebarCat=document.querySelector('.desk-cat-sidebar');
+    if(sidebarCat)sidebarCat.style.display='none';
+    const mobStrip=document.querySelector('.mob-cat-strip');
+    if(mobStrip)mobStrip.style.display='none';
+    const mobTabs=document.querySelector('.mob-tabs');
+    if(mobTabs)mobTabs.style.display='none';
+    const orderWrap=document.getElementById('order-wrap');
+    if(orderWrap)orderWrap.classList.add('locked-items');
+    if(!IS_DESKTOP())setMobTab('cart');
+
+    // Add lock banner to cart
+    const cartPanel=document.getElementById('cart-panel');
+    if(cartPanel){
+      const banner=document.createElement('div');
+      banner.className='quotation-lock-banner';
+      banner.innerHTML=`<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+        <span>Pre-filled from Quotation <strong>${esc(QUOTATION_NAME)}</strong> — only quantities can be changed.</span>`;
+      cartPanel.insertBefore(banner,cartPanel.firstChild);
     }
   }
 

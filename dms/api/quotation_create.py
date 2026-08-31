@@ -11,7 +11,7 @@ from dms.api.sales import (
 )
 
 
-def _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms):
+def _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date=""):
 	doc_items = _build_item_rows(items, warehouse)
 
 	selling_price_list = (
@@ -24,7 +24,7 @@ def _build_quotation_doc(customer, warehouse, items, valid_till, customer_addres
 		"quotation_to": "Customer",
 		"party_name": customer,
 		"company": company,
-		"transaction_date": frappe.utils.today(),
+		"transaction_date": transaction_date or frappe.utils.today(),
 		"valid_till": valid_till or None,
 		"customer_address": customer_address or None,
 		"shipping_address_name": shipping_address or None,
@@ -37,7 +37,7 @@ def _build_quotation_doc(customer, warehouse, items, valid_till, customer_addres
 @frappe.whitelist(methods=["POST"])
 def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_till: str = "",
 						 customer_address: str = "", shipping_address: str = "",
-						 additional_discount_type: str = "", additional_discount_value: float = 0):
+						 additional_discount_type: str = "", additional_discount_value: float = 0, transaction_date: str = ""):
 	_require_sales_rep()
 	items = json.loads(items_json)
 	if not items:
@@ -55,7 +55,7 @@ def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_t
 		}
 
 	company = _get_default_company()
-	qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, "")
+	qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, "", transaction_date)
 	qtn.run_method("set_missing_values")
 	_validate_item_discount_amounts(qtn)
 	_apply_order_level_discount(qtn, additional_discount_type, additional_discount_value)
@@ -78,12 +78,16 @@ def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_t
 @frappe.whitelist(methods=["POST"])
 def create_quotation(customer: str, warehouse: str, items_json: str, valid_till: str = "",
 					  customer_address: str = "", shipping_address: str = "", terms: str = "",
-					  additional_discount_type: str = "", additional_discount_value: float = 0):
+					  additional_discount_type: str = "", additional_discount_value: float = 0, transaction_date: str = ""):
 	_require_sales_rep()
 	try:
 		items = json.loads(items_json)
 		if not items:
 			frappe.throw(_("No items in quotation"))
+
+		if valid_till and frappe.utils.getdate(valid_till) < frappe.utils.getdate(frappe.utils.today()):
+			frappe.throw(_("Valid until date cannot be in the past."))
+
 		company = _get_default_company()
 
 		from erpnext.accounts.party import validate_party_frozen_disabled
@@ -115,7 +119,7 @@ def create_quotation(customer: str, warehouse: str, items_json: str, valid_till:
 			if not linked:
 				frappe.throw(_("Selected shipping address does not belong to this customer."))
 
-		qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms)
+		qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date)
 		qtn.run_method("set_missing_values")
 		_validate_item_discount_amounts(qtn)
 		_apply_order_level_discount(qtn, additional_discount_type, additional_discount_value)
