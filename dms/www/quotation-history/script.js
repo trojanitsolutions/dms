@@ -50,6 +50,57 @@ function fmtDate(dateStr){
 	return d.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'});
 }
 
+function getSalesOrderStatusBadgeClass(status){
+	if(!status)return'so-status-draft';
+	const lower=status.toLowerCase();
+	if(lower==='pending')return'so-status-pending';
+	if(lower==='draft')return'so-status-draft';
+	if(lower==='delivered')return'so-status-delivered';
+	if(lower==='completed')return'so-status-completed';
+	if(lower==='cancelled')return'so-status-cancelled';
+	if(lower==='to deliver and bill')return'so-status-to-deliver-and-bill';
+	if(lower==='to bill')return'so-status-to-bill';
+	if(lower==='to deliver')return'so-status-to-deliver';
+	if(lower==='on hold')return'so-status-on-hold';
+	if(lower==='closed')return'so-status-closed';
+	return'so-status-draft';
+}
+
+function soItemRow(it){
+	return `<div class="so-item">
+		<div class="so-item-code">${esc(it.item_code)}</div>
+		<div class="so-item-name">${esc(it.item_name)}</div>
+		<div class="so-item-details">
+			<div class="so-item-detail"><span class="so-item-detail-label">Qty:</span><span class="so-item-detail-value">${it.qty}</span></div>
+			<div class="so-item-detail"><span class="so-item-detail-label">Rate:</span><span class="so-item-detail-value">${fmtCurrency(it.rate)}</span></div>
+			<div class="so-item-detail"><span class="so-item-detail-label">Amount:</span><span class="so-item-detail-value">${fmtCurrency(it.amount)}</span></div>
+		</div>
+	</div>`;
+}
+
+function linkedOrderCard(so){
+	const itemsHtml=(so.items||[]).map(soItemRow).join('');
+	const statusClass=getSalesOrderStatusBadgeClass(so.status);
+	const statusText=(so.status||'Draft').replace('_',' ');
+	return `<div class="so-card-link">
+		<div class="so-card">
+			<div class="so-card-header">
+				<div class="so-number">${esc(so.name)}</div>
+				<div class="so-header-top">
+					<span class="so-customer">${esc(so.customer_name)}</span>
+					<span class="so-date">${fmtDate(so.transaction_date)}</span>
+				</div>
+				<span class="so-status-badge ${statusClass}">${esc(statusText)}</span>
+			</div>
+			<div class="so-items-wrap">${itemsHtml}</div>
+			<div class="so-card-footer">
+				<span class="so-footer-label">Grand Total</span>
+				<span class="so-total">${fmtCurrency(so.grand_total)}</span>
+			</div>
+		</div>
+	</div>`;
+}
+
 let searchTerm='';
 let validTill='';
 let status='';
@@ -255,7 +306,8 @@ async function loadQuotationDetail(name){
 		tbody.innerHTML='';
 		(q.items||[]).forEach(it=>{
 			const tr=document.createElement('tr');
-			tr.innerHTML=`<td>${esc(it.item_name||it.item_code)}</td><td>${esc(it.item_code)}</td><td class="quotation-table-number">${it.qty}</td><td class="quotation-table-number">${fmtCurrency(it.rate)}</td><td class="quotation-table-number">${fmtCurrency(it.amount)}</td>`;
+			const discount=it.discount_percentage?`${it.discount_percentage}%`:(it.discount_amount?fmtCurrency(it.discount_amount):'–');
+			tr.innerHTML=`<td>${esc(it.item_code)}</td><td>${esc(it.item_name)}</td><td class="quotation-table-desc">${esc(it.description||'')}</td><td class="quotation-table-number">${it.qty}</td><td>${esc(it.uom||'')}</td><td class="quotation-table-number">${fmtCurrency(it.rate)}</td><td class="quotation-table-number">${discount}</td><td class="quotation-table-number">${fmtCurrency(it.amount)}</td><td>${esc(it.warehouse||'')}</td><td>${fmtDate(q.valid_till)}</td>`;
 			tbody.appendChild(tr);
 		});
 
@@ -299,15 +351,7 @@ async function loadQuotationDetail(name){
 		const linkedOrders=await get('dms.api.quotation.get_linked_sales_orders',{quotation:name});
 		if(linkedOrders&&linkedOrders.length>0){
 			linkedWrap.hidden=false;
-			const container=document.getElementById('quotation-detail-linked-orders');
-			container.innerHTML='';
-			linkedOrders.forEach(so=>{
-				const statusClass=so.docstatus===1?'submitted':'draft';
-				const item=document.createElement('div');
-				item.className='linked-order-item';
-				item.innerHTML=`<a href="/app/sales-order/${esc(so.name)}" target="_blank" class="linked-order-name">${esc(so.name)}</a><span class="linked-order-status ${statusClass}">${so.docstatus===1?'Submitted':'Draft'}</span>`;
-				container.appendChild(item);
-			});
+			document.getElementById('quotation-detail-linked-orders').innerHTML=linkedOrders.map(linkedOrderCard).join('');
 		}else{
 			linkedWrap.hidden=true;
 		}

@@ -1,7 +1,7 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, strip_html
 
 from dms.api.sales import (
 	_get_default_company,
@@ -344,6 +344,8 @@ def get_quotation_detail(name: str):
 				"amount": d.amount,
 				"discount_percentage": d.discount_percentage or 0,
 				"discount_amount": d.discount_amount or 0,
+				"description": strip_html(d.description or "") if d.description else "",
+				"warehouse": d.warehouse or "",
 			}
 			for d in quotation.items
 		],
@@ -409,8 +411,7 @@ def _check_quotation_already_converted(name: str):
 	existing = frappe.db.sql(
 		"""
 		SELECT soi.parent FROM `tabSales Order Item` soi
-		JOIN `tabQuotation Item` qi ON soi.prevdoc_docname = qi.name
-		WHERE qi.parent = %s AND soi.docstatus != 2
+		WHERE soi.prevdoc_docname = %s AND soi.docstatus != 2
 		LIMIT 1
 		""",
 		name,
@@ -424,16 +425,30 @@ def get_linked_sales_orders(quotation: str):
 	_require_sales_rep()
 	orders = frappe.db.sql(
 		"""
-		SELECT DISTINCT soi.parent as name, so.docstatus
+		SELECT DISTINCT so.name, so.customer_name, so.transaction_date, so.status, so.grand_total
 		FROM `tabSales Order Item` soi
-		JOIN `tabQuotation Item` qi ON soi.prevdoc_docname = qi.name
 		JOIN `tabSales Order` so ON soi.parent = so.name
-		WHERE qi.parent = %s AND soi.docstatus != 2 AND so.docstatus != 2
+		WHERE soi.prevdoc_docname = %s AND soi.docstatus != 2 AND so.docstatus != 2
 		ORDER BY so.creation DESC
 		""",
 		quotation,
-		as_dict=True
+		as_dict=True,
 	)
+
+	if orders:
+		order_names = [o["name"] for o in orders]
+		items = frappe.get_all(
+			"Sales Order Item",
+			filters={"parent": ["in", order_names]},
+			fields=["parent", "item_code", "item_name", "qty", "rate", "amount"],
+			order_by="parent, idx",
+		)
+		by_parent = {}
+		for it in items:
+			by_parent.setdefault(it["parent"], []).append(it)
+		for o in orders:
+			o["items"] = by_parent.get(o["name"], [])
+
 	return orders
 
 
