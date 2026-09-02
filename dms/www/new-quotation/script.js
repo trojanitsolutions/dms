@@ -739,11 +739,23 @@ async function createQuotation(){
 		if(e.target.classList.contains('add-btn')){
 			const code=e.target.dataset.itemCode;
 			const action=e.target.dataset.action;
-			if(action==='add'){addToCart(code,1);pendingAdd.add(code);setTimeout(()=>pendingAdd.delete(code),2000);}
-			else if(action==='save'){addToCart(code,parseInt(e.target.parentElement.querySelector('.qty-num').value,10)||1);}
+			if(action==='add'){pendingAdd.add(code);refreshCard(code);}
+			else if(action==='save'){addToCart(code,parseInt(e.target.parentElement.querySelector('.qty-num').value,10)||1);pendingAdd.delete(code);}
 		}else if(e.target.classList.contains('qty-btn')){
 			const code=e.target.dataset.itemCode;
 			const delta=parseInt(e.target.dataset.delta,10);
+			if(!cart[code]){
+				const input=e.target.closest('.qty-ctrl').querySelector('.qty-num');
+				if(!input)return;
+				let n=parseInt(input.value,10)||1;
+				n=Math.min(Math.max(1,n+delta),displayedAvailable(code));
+				input.value=n;
+				const minusBtn=e.target.closest('.qty-ctrl').querySelector('button[data-delta="-1"]');
+				const plusBtn=e.target.closest('.qty-ctrl').querySelector('button[data-delta="1"]');
+				if(minusBtn)minusBtn.style.opacity=n<=1?'.45':'1',minusBtn.disabled=n<=1;
+				if(plusBtn)plusBtn.style.opacity=n>=displayedAvailable(code)?'.45':'1',plusBtn.disabled=n>=displayedAvailable(code);
+				return;
+			}
 			changeQty(code,delta);
 		}else if(e.target.classList.contains('qty-num')){
 			const code=e.target.dataset.itemCode;
