@@ -243,9 +243,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .filter-item input[type=checkbox]{accent-color:var(--color-primary);width:15px;height:15px}
   .wh-select{width:100%;padding:8px 10px;border:1.5px solid var(--color-input-border);border-radius:8px;font-size:13px;margin-top:4px;outline:none;transition:border .15s}
   .wh-select:focus{border-color:var(--color-input-focus-border)}
-  .main-content{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;overflow:hidden}
+  .main-content{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;overflow-y:auto}
   .addr-section{flex-shrink:0;grid-template-columns:repeat(2,1fr);gap:24px;padding:16px 20px}
-  .catalog-panel{flex:1;overflow:hidden}
+  .catalog-panel{flex:1;overflow-y:auto}
   .catalog-top{padding:14px 20px}
   .search-wrap input{font-size:14px}
   .items-grid{padding:16px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
@@ -256,7 +256,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .item-img{height:110px}
   .item-name{font-size:13.5px}
   .item-price{font-size:14px}
-  .cart-panel{width:320px;flex-shrink:0;border-left:1px solid var(--color-card-border);height:100%;overflow:hidden;display:flex;flex-direction:column}
+  .cart-panel{width:320px;flex-shrink:0;border-left:1px solid var(--color-card-border);height:100%;overflow-y:auto;display:flex;flex-direction:column}
   .cart-footer{padding-bottom:16px;position:static}
   .warehouse-row{display:none} /* handled by desktop sidebar filter */
 }
