@@ -215,8 +215,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wh-peek-btn:hover{background:var(--color-primary-hover-tint);color:var(--color-primary)}
 .wh-peek-btn svg{width:11px;height:11px;flex-shrink:0}
 
-/* ── Tablet + Desktop ≥768px ────────────────────────────── */
-@media(min-width:768px){
+/* ── Desktop ≥1200px (fine pointer) or ≥1367px ───────────── */
+@media(min-width:1200px) and (pointer:fine), (min-width:1367px){
   body{flex-direction:row;height:100vh;overflow:hidden}
   .bottom-nav{display:none}
   .mob-header{display:none}
@@ -283,20 +283,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .warehouse-row{display:none} /* handled by desktop sidebar filter */
 }
 
-/* ── Tablet expanded sidebar (toggle) ───────────────────── */
-@media(min-width:768px) and (max-width:1199px){
-  body.sidebar-expanded .sidebar{width:260px}
-  body.sidebar-expanded .brand-text{opacity:1}
-  body.sidebar-expanded .nav-section{display:block}
-  body.sidebar-expanded .nav-link span{opacity:1}
-  body.sidebar-expanded .user-info{opacity:1}
-  body.sidebar-expanded .logout-btn{opacity:1}
-  body.sidebar-expanded .sidebar-brand{padding:16px 20px}
-  body.sidebar-expanded .sidebar-footer{padding:16px 12px}
-}
-
-/* ── Desktop ≥1200px: full sidebar always shown ─────────── */
-@media(min-width:1200px){
+/* ── Desktop ≥1200px (fine pointer) or ≥1367px: sidebar always shown ─────────── */
+@media(min-width:1200px) and (pointer:fine), (min-width:1367px){
   .sidebar{width:260px}
   .sidebar-toggle{display:none}
   .sidebar-brand{padding:20px 16px}
@@ -306,6 +294,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .sidebar-footer{padding:16px 12px}
   .user-info{opacity:1}
   .logout-btn{opacity:1}
+  .item-modal{max-width:480px}
+  .item-modal-img{height:240px}
 }
 
 /* ── Item detail modal ──────────────────────────────────── */
@@ -357,8 +347,3 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .quotation-so-success-panel{padding:24px 16px;text-align:center;display:flex;flex-direction:column;gap:16px}
 .quotation-so-success-title{font-size:18px;font-weight:700;color:var(--color-text-primary)}
 .quotation-so-success-msg{font-size:14px;color:var(--color-text-secondary)}
-
-@media(min-width:768px){
-  .item-modal{max-width:480px}
-  .item-modal-img{height:240px}
-}

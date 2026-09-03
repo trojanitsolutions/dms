@@ -1,4 +1,4 @@
-const IS_DESKTOP = () => window.innerWidth >= 768;
+const IS_DESKTOP = () => (window.innerWidth >= 1200 && matchMedia('(pointer: fine)').matches) || window.innerWidth >= 1367;
 const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
 const ORDER_NAME = window.pageData?.order || '';
@@ -1250,7 +1250,7 @@ document.addEventListener('keydown',e=>{
   if(!btn)return;
   btn.addEventListener('click',function(){document.body.classList.toggle('sidebar-expanded');});
   document.querySelectorAll('.nav-link').forEach(function(a){
-    a.addEventListener('click',function(){if(window.innerWidth<1200)document.body.classList.remove('sidebar-expanded');});
+    a.addEventListener('click',function(){if(!IS_DESKTOP())document.body.classList.remove('sidebar-expanded');});
   });
 })();
 
