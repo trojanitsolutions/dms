@@ -1,4 +1,5 @@
 @import '/theme.css';
+@import '/shell.css';
 
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--color-bg-page);color:var(--color-text-primary);min-height:100vh;display:flex;flex-direction:column}
@@ -59,36 +60,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* ── Desktop ≥1200px (fine pointer) or ≥1367px ───────────── */
 @media(min-width:1200px) and (pointer:fine), (min-width:1367px){
-  body{flex-direction:row;height:100vh;overflow:hidden}
-  .bottom-nav{display:none}
-  .sidebar{width:60px;flex:none;background:var(--color-sidebar-bg);display:flex;flex-direction:column;padding:0;height:100%;overflow:hidden;transition:width .2s ease}
-  .sidebar-toggle{display:flex;align-items:center;justify-content:center;width:36px;height:36px;margin:10px auto 6px;border-radius:8px;background:none;border:1px solid rgba(32,30,29,0.16);cursor:pointer;color:var(--color-text-primary);flex-shrink:0;transition:background .15s}
-  .sidebar-toggle:hover{background:var(--color-sidebar-hover)}
-  .sidebar-toggle svg{width:15px;height:15px;flex-shrink:0}
-  .sidebar-brand{padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--color-sidebar-logo-bg);border-bottom:1px solid rgba(32,30,29,0.16);overflow:hidden}
-  .brand-logo-container{display:flex;align-items:center;justify-content:center;height:38px}
-  .brand-logo{max-height:48px;max-width:180px;object-fit:contain;width:auto;border-radius:6px}
-  .brand-badge{width:38px;height:38px;background:var(--color-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--color-bg-surface);flex-shrink:0}
-  .brand-text{opacity:0;transition:opacity .15s;overflow:hidden;text-align:center}
-  .brand-text .name{font-weight:600;font-size:14px;color:var(--color-text-primary)}
-  .brand-text .role{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
-  .nav-section{display:none;padding:16px 12px 6px;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--color-text-secondary);text-transform:uppercase;white-space:nowrap}
-  .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--color-text-secondary);text-decoration:none;font-size:14px;font-weight:500;margin:2px 8px;transition:all .15s;overflow:hidden;white-space:nowrap}
-  .nav-link:hover{background:var(--color-sidebar-hover);color:var(--color-text-primary)}
-  .nav-link.active{background:var(--color-sidebar-active-bg);color:var(--color-text-primary);border-left:4px solid var(--color-primary);padding-left:8px;margin-left:12px}
-  .nav-link svg, .nav-link img{width:17px;height:17px;flex-shrink:0;opacity:.8;color:var(--color-text-secondary)}
-  .nav-link.active svg, .nav-link.active img{opacity:1;color:var(--color-primary)}
-  .nav-link .nav-icon{width:17px;height:17px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;opacity:.8;color:var(--color-text-secondary)}
-  .nav-link.active .nav-icon{opacity:1;color:var(--color-primary)}
-  .nav-link span{opacity:0;transition:opacity .15s}
-  .sidebar-footer{margin-top:auto;padding:12px 8px;border-top:1px solid rgba(32,30,29,0.16);overflow:hidden}
-  .user-row{display:flex;align-items:center;gap:10px;overflow:hidden}
-  .user-avatar{width:34px;height:34px;background:var(--color-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--color-bg-surface);flex-shrink:0}
-  .user-info{opacity:0;transition:opacity .15s;overflow:hidden;flex:1;min-width:0}
-  .user-info .uname{font-size:13px;font-weight:500;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .logout-btn{opacity:0;transition:opacity .15s;flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:4px;border-radius:4px}
-  .logout-btn:hover{color:var(--color-text-primary)}
-  .main{flex:1;min-width:0;padding-bottom:0;overflow-y:auto}
   .topbar{padding:28px 36px 0}
   .page-greeting{font-size:26px}
   .content{padding:28px 36px}
@@ -98,17 +69,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .two-col{display:grid;grid-template-columns:1fr 360px;gap:20px}
   .quick-grid{gap:16px;padding:16px}
   .section-card{margin-bottom:0}
-}
-
-  .sidebar{width:260px}
-  .sidebar-toggle{display:none}
-  .sidebar-brand{padding:20px 16px}
-  .brand-text{opacity:1}
-  .nav-section{display:block}
-  .nav-link span{opacity:1}
-  .sidebar-footer{padding:16px 12px}
-  .user-info{opacity:1}
-  .logout-btn{opacity:1}
 }
 
 /* ── Logout Confirm Dialog ──────────────────────────────────── */
