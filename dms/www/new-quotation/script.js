@@ -1,4 +1,4 @@
-const IS_DESKTOP = () => window.innerWidth >= 768;
+const IS_DESKTOP = () => (window.innerWidth >= 1200 && matchMedia('(pointer: fine)').matches) || window.innerWidth >= 1367;
 const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
 let customerAddresses = [];

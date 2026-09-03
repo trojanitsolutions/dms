@@ -116,8 +116,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-create{flex:1;padding:14px;background:var(--color-primary);color:var(--color-bg-surface);border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;min-height:52px}
 .btn-create:disabled{background:var(--color-primary-light)}
 
-/* ── Tablet + Desktop ≥768px ────────────────────────────── */
-@media(min-width:768px){
+/* ── Desktop ≥1200px (fine pointer) or ≥1367px ───────────── */
+@media(min-width:1200px) and (pointer:fine), (min-width:1367px){
   body{flex-direction:row;height:100vh;overflow:hidden}
   .bottom-nav{display:none}
   .sidebar{width:60px;flex:none;background:var(--color-sidebar-bg);display:flex;flex-direction:column;height:100%;overflow:hidden;transition:width .2s ease}
@@ -161,7 +161,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .customer-card:hover{border-color:var(--color-primary);box-shadow:0 4px 16px var(--color-overlay-blue-light)}
 }
 
-/* ── Tablet expanded sidebar (toggle) ───────────────────── */
 /* ── Logout Confirm Dialog ──────────────────────────────────── */
 .logout-confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center}
 .logout-confirm-overlay.open{display:flex}
@@ -171,20 +170,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .logout-confirm-actions{display:flex;gap:12px}
 .btn-logout-confirm{flex:1;padding:14px;background:var(--color-primary);color:var(--color-bg-surface);border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;min-height:52px}
 .btn-logout-confirm:hover{background:var(--color-primary-dark)}
-
-@media(min-width:768px) and (max-width:1199px){
-  body.sidebar-expanded .sidebar{width:260px}
-  body.sidebar-expanded .brand-text{opacity:1}
-  body.sidebar-expanded .nav-section{display:block}
-  body.sidebar-expanded .nav-link span{opacity:1}
-  body.sidebar-expanded .user-info{opacity:1}
-  body.sidebar-expanded .logout-btn{opacity:1}
-  body.sidebar-expanded .sidebar-brand{padding:16px 20px}
-  body.sidebar-expanded .sidebar-footer{padding:16px 12px}
-}
-
-/* ── Desktop ≥1200px: full sidebar always shown ─────────── */
-@media(min-width:1200px){
   .sidebar{width:260px}
   .sidebar-toggle{display:none}
   .sidebar-brand{padding:20px 16px}
@@ -194,7 +179,4 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .sidebar-footer{padding:16px 12px}
   .user-info{opacity:1}
   .logout-btn{opacity:1}
-}
-@media(min-width:1024px){
-  .customer-grid{grid-template-columns:repeat(3,1fr)}
 }

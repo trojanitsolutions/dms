@@ -148,8 +148,8 @@ input::placeholder{color:#B4AC9D;}
 .assign-date-chevron{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:20px;color:#A59C8C;pointer-events:none;}
 .assign-date-select{width:100%;padding:14px 38px 14px 44px;border:1px solid #DCD5C8;border-radius:14px;font-size:15px;font-family:'Inter',system-ui,sans-serif;background:#fff;color:#23201C;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;}
 
-/* ── Desktop layout ───────────────────────────────── */
-@media(min-width:1024px){
+/* ── Desktop ≥1200px (fine pointer) or ≥1367px ───────────── */
+@media(min-width:1200px) and (pointer:fine), (min-width:1367px){
   body{display:flex;}
   .app-shell{flex-direction:row;flex:1;}
   .sidebar{display:flex;}

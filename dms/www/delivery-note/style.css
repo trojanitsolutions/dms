@@ -184,8 +184,8 @@ input::placeholder,textarea::placeholder{color:#B4AC9D;}
 .toast{position:fixed;left:50%;bottom:94px;transform:translateX(-50%);background:#23201C;color:#F6F3ED;padding:13px 20px;border-radius:13px;font-size:13.5px;font-weight:600;box-shadow:0 12px 30px rgba(0,0,0,.25);z-index:80;animation:luxToast .3s ease;max-width:82%;text-align:center;pointer-events:none;}
 .toast.error-toast{background:#7E2B1C;}
 
-/* ── Desktop ──────────────────────────────────────── */
-@media(min-width:1024px){
+/* ── Desktop ≥1200px (fine pointer) or ≥1367px ───────────── */
+@media(min-width:1200px) and (pointer:fine), (min-width:1367px){
   body{display:flex;}
   .app-shell{flex-direction:row;flex:1;}
   .sidebar{display:flex;}

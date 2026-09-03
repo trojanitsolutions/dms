@@ -88,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 #sentinel{height:1px}
 
-@media(min-width:768px){
+@media(min-width:1200px) and (pointer:fine), (min-width:1367px){
 	body{flex-direction:row;height:100vh;overflow:hidden}
 	.main{flex:1;min-width:0;padding-bottom:0;overflow-y:auto}
 	.bottom-nav{display:none}
@@ -129,22 +129,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 	.filter-group label{white-space:nowrap}
 	.filter-group input[type="date"],.filter-group select{width:100%}
 	.order-card{margin-bottom:0}
-}
-
-/* ── Tablet expanded sidebar (toggle) ───────────────────── */
-@media(min-width:768px) and (max-width:1199px){
-	body.sidebar-expanded .sidebar{width:260px}
-	body.sidebar-expanded .brand-text{opacity:1}
-	body.sidebar-expanded .nav-section{display:block}
-	body.sidebar-expanded .nav-link span{opacity:1}
-	body.sidebar-expanded .user-info{opacity:1}
-	body.sidebar-expanded .logout-btn{opacity:1}
-	body.sidebar-expanded .sidebar-brand{padding:16px 20px}
-	body.sidebar-expanded .sidebar-footer{padding:16px 12px}
-}
-
-/* ── Desktop ≥1200px: full sidebar always shown ─────────── */
-@media(min-width:1200px){
 	.sidebar{width:260px}
 	.sidebar-toggle{display:none}
 	.sidebar-brand{padding:20px 16px}

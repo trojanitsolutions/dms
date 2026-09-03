@@ -81,7 +81,7 @@ function prettyDate(s){
   if(!btn)return;
   btn.addEventListener('click',function(){document.body.classList.toggle('sidebar-expanded');});
   document.querySelectorAll('.nav-link').forEach(function(a){
-    a.addEventListener('click',function(){if(window.innerWidth<1200)document.body.classList.remove('sidebar-expanded');});
+    a.addEventListener('click',function(){if(!((window.innerWidth>=1200&&matchMedia('(pointer: fine)').matches)||window.innerWidth>=1367))document.body.classList.remove('sidebar-expanded');});
   });
 })();
 
