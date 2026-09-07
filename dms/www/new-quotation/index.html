@@ -226,15 +226,17 @@
       <div class="grand-row"><span class="grand-key">Grand total</span><span class="grand-val" id="sum-grand">QAR 0.00</span></div>
     </div>
     <div class="cart-footer">
-      <div class="delivery-row">
-        <label>Quotation Date</label>
-        <input type="date" id="quotation-date">
+      <div class="date-pair">
+        <div class="delivery-row">
+          <label>Quotation Date</label>
+          <input type="date" id="quotation-date">
+        </div>
+        <div class="delivery-row">
+          <label>Valid until</label>
+          <input type="date" id="valid-till">
+        </div>
       </div>
-      <div class="delivery-row">
-        <label>Valid until</label>
-        <input type="date" id="valid-till">
-      </div>
-      <div class="delivery-row">
+      <div class="delivery-row terms-row">
         <label>Terms / Notes</label>
         <textarea id="quotation-terms" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--color-input-border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
       </div>

@@ -1,4 +1,4 @@
-const IS_DESKTOP = () => window.innerWidth >= 768;
+const IS_DESKTOP = () => window.innerWidth >= 1025;
 const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
 let customerAddresses = [];
@@ -789,9 +789,10 @@ async function createQuotation(){
 			changeQty(code,delta);
 		}else if(e.target.classList.contains('cart-remove')){
 			removeFromCart(e.target.dataset.itemCode);
-		}else if(e.currentTarget.classList.contains('item-card')||e.currentTarget.classList.contains('item-row-wrap')){
-			if(e.target.classList.contains('item-name')||e.target.classList.contains('item-row-name')||e.target.classList.contains('item-modal-overlay')){
-				const code=(e.currentTarget.dataset.itemCode||e.target.closest('[data-item-code]')?.dataset.itemCode);
+		}else{
+			const cardEl=e.target.closest('.item-card,.item-row-wrap');
+			if(cardEl&&(e.target.classList.contains('item-name')||e.target.classList.contains('item-row-name'))){
+				const code=cardEl.dataset.itemCode;
 				if(code)openItemModal(code);
 			}
 		}
