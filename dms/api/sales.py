@@ -531,7 +531,7 @@ def _build_item_rows(items: list, warehouse: str) -> list:
 	return doc_items
 
 
-def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str, disable_stock_validation: bool = False):
+def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_date: str, customer_address: str, shipping_address: str, company: str, sales_person: str, order_date: str = "", disable_stock_validation: bool = False):
 	doc_items = _build_item_rows(items, warehouse)
 
 	selling_price_list = (
@@ -543,7 +543,7 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 		"doctype": "Sales Order",
 		"customer": customer,
 		"company": company,
-		"transaction_date": frappe.utils.today(),
+		"transaction_date": order_date or frappe.utils.today(),
 		"delivery_date": delivery_date or frappe.utils.today(),
 		"customer_address": customer_address or None,
 		"shipping_address_name": shipping_address or None,
@@ -565,7 +565,7 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 
 
 @frappe.whitelist(methods=["POST"])
-def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0):
+def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, order_date: str = ""):
 	_require_sales_rep()
 	items = json.loads(items_json)
 	if not items:
@@ -585,7 +585,7 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 	company = _get_default_company()
 	sales_person = _get_sales_person_for_user()
 	disable_stock_validation = _stock_validation_disabled()
-	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
+	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, order_date, disable_stock_validation)
 	so.run_method("set_missing_values")
 	for d in so.items:
 		frappe.logger().debug(
@@ -610,16 +610,20 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 
 
 @frappe.whitelist(methods=["POST"])
-def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, submit: bool = True, existing_order: str = ""):
+def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_date: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, submit: bool = True, existing_order: str = "", order_date: str = ""):
     _require_sales_rep()
     try:
         items = json.loads(items_json)
         if not items:
             frappe.throw(_("No items in order"))
+        if not order_date:
+            order_date = frappe.utils.today()
         if not delivery_date:
             delivery_date = frappe.utils.today()
         if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
             frappe.throw(_("Delivery date cannot be in the past."))
+        if frappe.utils.getdate(order_date) > frappe.utils.getdate(delivery_date):
+            frappe.throw(_("Order date cannot be after delivery date."))
 
         company = _get_default_company()
         disable_stock_validation = _stock_validation_disabled()
@@ -672,13 +676,14 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             if so.docstatus != 0:
                 frappe.throw(_("Order is not pending"))
             so.customer = customer
+            so.transaction_date = order_date
             so.delivery_date = delivery_date
             so.customer_address = customer_address or None
             so.shipping_address_name = shipping_address or None
             so.set("items", _build_item_rows(items, warehouse))
         else:
             sales_person = _get_sales_person_for_user()
-            so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, disable_stock_validation)
+            so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, order_date, disable_stock_validation)
 
         so.run_method("set_missing_values")
         for d in so.items:
@@ -818,6 +823,7 @@ def get_pending_order_detail(name: str):
         "customer": so.customer,
         "customer_name": so.customer_name,
         "warehouse": so.items[0].warehouse if so.items else "",
+        "transaction_date": str(so.transaction_date or ""),
         "delivery_date": str(so.delivery_date or ""),
         "customer_address": so.customer_address or "",
         "shipping_address": so.shipping_address_name or "",

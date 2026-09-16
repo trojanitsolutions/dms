@@ -371,6 +371,7 @@ async function refreshTotals(){
 				customer:CUSTOMER_ID,
 				warehouse:wh,
 				items_json:JSON.stringify(itemsData),
+				order_date:document.getElementById('order-date').value||'',
 				delivery_date:document.getElementById('delivery-date').value||'',
 				customer_address:document.getElementById('billing-address-select')?.value||'',
 				shipping_address:(shippingSameAsBilling?selectedBillingAddress:selectedShippingAddress)||'',
@@ -747,9 +748,9 @@ function validateOrderInputs(){
 	const wh=getWarehouse();
 	if(!wh){alert('Select a warehouse first.');return false}
 	if(!LOCKED_ITEMS){
+		const odVal=document.getElementById('order-date').value;
 		const ddVal=document.getElementById('delivery-date').value;
-		const _today=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dy=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dy}`})();
-		if(ddVal&&ddVal<_today){alert('Delivery date cannot be in the past.');return false}
+		if(odVal&&ddVal&&odVal>ddVal){alert('Order date cannot be after delivery date.');return false}
 	}
 	if(creditInfo&&creditInfo.credit_limit>0&&currentGrandTotal>creditInfo.available_credit){
 		alert(`Order total (${fmt(currentGrandTotal)}) exceeds available credit (${fmt(creditInfo.available_credit)}).`);
@@ -768,6 +769,7 @@ function buildOrderPayload(){
 		customer:CUSTOMER_ID,
 		warehouse:getWarehouse(),
 		items_json:JSON.stringify(itemsData),
+		order_date:document.getElementById('order-date').value||'',
 		delivery_date:document.getElementById('delivery-date').value||'',
 		customer_address:selectedBillingAddress||'',
 		shipping_address:(shippingSameAsBilling ? selectedBillingAddress : selectedShippingAddress)||'',
@@ -846,14 +848,27 @@ async function saveOrder(){
 
 /* ── Init ────────────────────────────────────────────────── */
 (async function(){
-  // Delivery date: default = today, min = today, prevent past dates
+  // Order date: default = today, no min (allow past dates)
   const _todayStr=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${day}`})();
+  const odInput=document.getElementById('order-date');
+  odInput.value=_todayStr;
+  odInput.addEventListener('change',function(){
+    const ddInput=document.getElementById('delivery-date');
+    ddInput.min=this.value;
+    if(ddInput.value&&ddInput.value<this.value){
+      ddInput.value=this.value;
+      refreshTotals();
+    }
+  });
+
+  // Delivery date: default = today, min = order date, prevent dates before order date
   const ddInput=document.getElementById('delivery-date');
   ddInput.min=_todayStr;
   ddInput.value=_todayStr;
   ddInput.addEventListener('change',function(){
     const errEl=document.getElementById('delivery-date-err');
-    if(this.value<_todayStr){this.value=_todayStr;if(errEl)errEl.style.display='block';setTimeout(()=>{if(errEl)errEl.style.display='none'},3000);}
+    const odVal=odInput.value||_todayStr;
+    if(this.value<odVal){this.value=odVal;if(errEl)errEl.style.display='block';setTimeout(()=>{if(errEl)errEl.style.display='none'},3000);}
     else{if(errEl)errEl.style.display='none';refreshTotals();}
   });
 
@@ -1009,6 +1024,12 @@ async function saveOrder(){
     });
   }
 
+  // Set order date from reopened order
+  if(reopenDetail?.transaction_date){
+    const odInput=document.getElementById('order-date');
+    if(odInput)odInput.value=reopenDetail.transaction_date;
+  }
+
   // Set delivery date from reopened order
   if(reopenDetail?.delivery_date){
     const ddInput=document.getElementById('delivery-date');
@@ -1059,10 +1080,12 @@ async function saveOrder(){
 
   // Apply locking for quotation-derived orders
   if(LOCKED_ITEMS){
-    // Disable warehouse, discounts, delivery date
+    // Disable warehouse, discounts, order date, delivery date
     ['warehouse-select','mob-warehouse-select','mob-warehouse-select-2'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.disabled=true;
     });
+    const odInput=document.getElementById('order-date');
+    if(odInput)odInput.disabled=true;
     const ddInput=document.getElementById('delivery-date');
     if(ddInput)ddInput.disabled=true;
     const discType=document.getElementById('order-discount-type');

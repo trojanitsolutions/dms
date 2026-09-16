@@ -244,10 +244,16 @@
       <div class="grand-row"><span class="grand-key">Grand total</span><span class="grand-val" id="sum-grand">QAR 0.00</span></div>
     </div>
     <div class="cart-footer">
-      <div class="delivery-row">
-        <label>Delivery date</label>
-        <input type="date" id="delivery-date">
-        <div id="delivery-date-err" style="display:none;font-size:11.5px;color:var(--color-error);margin-top:4px">Delivery date cannot be in the past.</div>
+      <div class="date-pair">
+        <div class="delivery-row">
+          <label>Order Date</label>
+          <input type="date" id="order-date">
+        </div>
+        <div class="delivery-row">
+          <label>Delivery date</label>
+          <input type="date" id="delivery-date">
+          <div id="delivery-date-err" style="display:none;font-size:11.5px;color:var(--color-error);margin-top:4px">Delivery date cannot be before order date.</div>
+        </div>
       </div>
       {% if customer %}
       <button class="btn-save" id="save-btn">Save</button>
