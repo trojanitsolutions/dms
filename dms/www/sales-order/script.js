@@ -3,6 +3,7 @@ const CUSTOMER_ID = window.pageData?.customer || '';
 const CUSTOMER_NAME = window.pageData?.customer_name || '';
 const ORDER_NAME = window.pageData?.order || '';
 const QUOTATION_NAME = window.pageData?.quotation || '';
+const EDITING_SUBMITTED = !!window.pageData?.editing_submitted;
 const LOCKED_ITEMS = !!QUOTATION_NAME;
 let customerAddresses = [];
 let selectedBillingAddress = '';
@@ -513,7 +514,7 @@ function updateCartUI(){
     const code=item.name;
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
-    const discInputDis=!discountType||LOCKED_ITEMS?' disabled':'';
+    const discInputDis=!discountType||LOCKED_ITEMS||EDITING_SUBMITTED?' disabled':'';
     const discInputMax=discountType==='Percentage'?' max="100"':'';
     const removeBtn=!LOCKED_ITEMS?`<button class="cart-remove" data-item-code="${item.name}" title="Remove">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
@@ -779,6 +780,15 @@ function buildOrderPayload(){
 	};
 }
 
+function buildTransItemsPayload(){
+	return Object.values(cart).map(({item,qty,docname,rate})=>{
+		const row={item_code:item.name,qty,uom:item.stock_uom};
+		row.rate=docname?rate:item.standard_rate;
+		if(docname)row.docname=docname;
+		return row;
+	});
+}
+
 function buildQuotationOrderPayload(){
 	const items=Object.values(cart).map(({item,qty})=>({item_code:item.name,qty}));
 	return {
@@ -844,6 +854,18 @@ async function saveOrder(){
 		}
 	}catch(e){alert('Error: '+e.message)}
 	finally{btn.disabled=false;btn.textContent='Save'}
+}
+
+async function saveSubmittedOrderEdits(){
+	if(!Object.keys(cart).length){alert('Order must have at least one item.');return}
+	const btn=document.getElementById('submit-btn');
+	btn.disabled=true;btn.textContent='Saving…';
+	try{
+		await post('dms.api.sales.update_submitted_order_items',{name:ORDER_NAME,items:JSON.stringify(buildTransItemsPayload())});
+		alert('Order updated.');
+		window.location.href='/order-history';
+	}catch(e){alert('Error: '+e.message)}
+	finally{btn.disabled=false;btn.textContent='Save Changes'}
 }
 
 /* ── Init ────────────────────────────────────────────────── */
@@ -943,15 +965,18 @@ async function saveOrder(){
   // Fetch reopen detail if order or quotation is set
   let reopenDetail=null;
   if(ORDER_NAME){
-    reopenDetail=await get('dms.api.sales.get_pending_order_detail',{name:ORDER_NAME});
+    const endpoint=EDITING_SUBMITTED?'dms.api.sales.get_submitted_order_detail':'dms.api.sales.get_pending_order_detail';
+    reopenDetail=await get(endpoint,{name:ORDER_NAME});
     while(!reopenDetail){
+      const backLink=EDITING_SUBMITTED?'/order-history':'/pending-orders';
+      const backText=EDITING_SUBMITTED?'Order History':'Pending Orders';
       const retry=await confirmAction(
         'Failed to Load Order',
-        'Could not load the saved items for this order. Retry loading, or go back to Pending Orders?',
+        `Could not load the items for this order. Retry loading, or go back to ${backText}?`,
         'Retry'
       );
-      if(!retry){window.location.href='/pending-orders';return}
-      reopenDetail=await get('dms.api.sales.get_pending_order_detail',{name:ORDER_NAME});
+      if(!retry){window.location.href=backLink;return}
+      reopenDetail=await get(endpoint,{name:ORDER_NAME});
     }
   }else if(QUOTATION_NAME){
     reopenDetail=await get('dms.api.quotation.get_quotation_for_sales_order',{name:QUOTATION_NAME});
@@ -1020,7 +1045,9 @@ async function saveOrder(){
     reopenDetail.items.forEach(it=>{
       const item=allItems.find(i=>i.name===it.item_code);
       if(!item)return;
-      cart[it.item_code]={item,qty:it.qty,discountType:it.discount_type||'',discountValue:it.discount_value||0};
+      const cartLine={item,qty:it.qty,discountType:it.discount_type||'',discountValue:it.discount_value||0};
+      if(EDITING_SUBMITTED){cartLine.docname=it.docname;cartLine.rate=it.rate}
+      cart[it.item_code]=cartLine;
     });
   }
 
@@ -1117,6 +1144,29 @@ async function saveOrder(){
     }
   }
 
+  // Apply locking for submitted order edits
+  if(EDITING_SUBMITTED){
+    // Disable customer select, warehouse, order date, delivery date, discounts
+    const custSel=document.getElementById('customer-select');
+    if(custSel)custSel.disabled=true;
+    ['warehouse-select','mob-warehouse-select','mob-warehouse-select-2'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.disabled=true;
+    });
+    const odInput=document.getElementById('order-date');
+    if(odInput)odInput.disabled=true;
+    const ddInput=document.getElementById('delivery-date');
+    if(ddInput)ddInput.disabled=true;
+    const discType=document.getElementById('order-discount-type');
+    const discVal=document.getElementById('order-discount-value');
+    if(discType)discType.disabled=true;
+    if(discVal)discVal.disabled=true;
+    ['billing-address-select','shipping-address-select'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.disabled=true;
+    });
+
+    if(!IS_DESKTOP())setMobTab('cart');
+  }
+
   // Update cart and totals UI
   updateCartUI();
   refreshTotals();
@@ -1143,7 +1193,7 @@ document.getElementById('vt-grid').addEventListener('click',()=>setView('grid'))
 document.getElementById('vt-list').addEventListener('click',()=>setView('list'));
 document.getElementById('instock-filter').addEventListener('change',applyFilters);
 const submitBtn=document.getElementById('submit-btn');
-if(submitBtn)submitBtn.addEventListener('click',submitOrder);
+if(submitBtn)submitBtn.addEventListener('click',EDITING_SUBMITTED?saveSubmittedOrderEdits:submitOrder);
 const saveBtn=document.getElementById('save-btn');
 if(saveBtn)saveBtn.addEventListener('click',saveOrder);
 

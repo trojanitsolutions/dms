@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, flt
 
 
 def _require_sales_rep():
@@ -38,7 +38,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 		"Sales Order",
 		filters=filters,
 		or_filters=or_filters,
-		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "status"],
+		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "status", "docstatus"],
 		order_by="transaction_date desc, creation desc, name desc",
 		limit_start=limit_start,
 		limit_page_length=limit_page_length + 1,
@@ -52,7 +52,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 		items = frappe.get_all(
 			"Sales Order Item",
 			filters={"parent": ["in", order_names]},
-			fields=["parent", "item_code", "item_name", "qty", "rate", "amount"],
+			fields=["parent", "item_code", "item_name", "qty", "rate", "amount", "delivered_qty"],
 			order_by="parent, idx",
 		)
 
@@ -62,5 +62,6 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 
 		for o in orders:
 			o["items"] = by_parent.get(o["name"], [])
+			o["can_edit"] = o["docstatus"] == 1 and not any(flt(it["delivered_qty"]) for it in o["items"])
 
 	return {"orders": orders, "has_more": has_more}

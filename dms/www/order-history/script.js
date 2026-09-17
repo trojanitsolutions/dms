@@ -104,6 +104,7 @@ function orderCard(o){
 	const itemsHtml=(o.items||[]).map(itemRow).join('');
 	const statusClass=getStatusBadgeClass(o.status);
 	const statusText=(o.status||'Draft').replace('_',' ');
+	const editLink=o.can_edit?`<a href="/sales-order?order=${encodeURIComponent(o.name)}" class="order-edit-link">Edit</a>`:'';
 	return `<div class="order-card">
 		<div class="order-card-header">
 			<div class="order-number">${esc(o.name)}</div>
@@ -119,6 +120,7 @@ function orderCard(o){
 		<div class="order-card-footer">
 			<span class="order-footer-label">Grand Total</span>
 			<span class="order-total">${fmt(o.grand_total)}</span>
+			${editLink}
 		</div>
 	</div>`;
 }

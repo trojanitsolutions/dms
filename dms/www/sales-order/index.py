@@ -9,12 +9,20 @@ def get_context(context):
     context.quotation = frappe.request.args.get("quotation", "")
     context.customer = ""
     context.customer_name = ""
+    context.editing_submitted = 0
     if context.order:
         owner, docstatus, customer = frappe.db.get_value("Sales Order", context.order, ["owner", "docstatus", "customer"]) or (None, None, None)
         if owner == frappe.session.user and docstatus == 0:
             context.customer = customer or ""
             if context.customer:
                 context.customer_name = frappe.db.get_value("Customer", context.customer, "customer_name") or ""
+        elif owner == frappe.session.user and docstatus == 1 and not frappe.db.exists("Sales Order Item", {"parent": context.order, "delivered_qty": [">", 0]}):
+            context.customer = customer or ""
+            context.editing_submitted = 1
+            if context.customer:
+                context.customer_name = frappe.db.get_value("Customer", context.customer, "customer_name") or ""
+        else:
+            context.order = ""
     else:
         context.customer = frappe.request.args.get("customer", "")
         if context.customer:

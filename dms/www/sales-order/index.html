@@ -256,8 +256,12 @@
         </div>
       </div>
       {% if customer %}
+      {% if editing_submitted %}
+      <button class="btn-submit" id="submit-btn">Save Changes</button>
+      {% else %}
       <button class="btn-save" id="save-btn">Save</button>
       <button class="btn-submit" id="submit-btn">Submit Sales Order</button>
+      {% endif %}
       {% else %}
       <div class="select-customer-msg">Select a customer first</div>
       {% endif %}
@@ -339,7 +343,8 @@ window.pageData = {
   customer: '{{ customer or "" }}',
   customer_name: '{{ customer_name or "" }}',
   order: '{{ order or "" }}',
-  quotation: '{{ quotation or "" }}'
+  quotation: '{{ quotation or "" }}',
+  editing_submitted: {{ 1 if editing_submitted else 0 }}
 };
 </script>
 <script src="/sales-order/script.js"></script>

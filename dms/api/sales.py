@@ -2,6 +2,7 @@ import json
 import re
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 
 def _require_sales_rep():
@@ -29,6 +30,20 @@ def _submit_as_admin(so):
 	frappe.local.user_perms = None
 	try:
 		so.submit()
+	finally:
+		frappe.session.user = _user
+		frappe.local.role_permissions = {}
+		frappe.local.user_perms = None
+
+
+def _update_items_as_admin(so, trans_items_json):
+	from erpnext.controllers.accounts_controller import update_child_qty_rate
+	_user = frappe.session.user
+	frappe.session.user = "Administrator"
+	frappe.local.role_permissions = {}
+	frappe.local.user_perms = None
+	try:
+		update_child_qty_rate("Sales Order", trans_items_json, so.name)
 	finally:
 		frappe.session.user = _user
 		frappe.local.role_permissions = {}
@@ -839,6 +854,59 @@ def get_pending_order_detail(name: str):
             for d in so.items
         ],
     }
+
+
+@frappe.whitelist(methods=["GET"])
+def get_submitted_order_detail(name: str):
+	_require_sales_rep()
+	so = frappe.get_doc("Sales Order", name)
+	if so.owner != frappe.session.user:
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	if so.docstatus != 1:
+		frappe.throw(_("Order is not submitted"))
+
+	can_edit = not any(flt(d.delivered_qty) for d in so.items)
+
+	return {
+		"name": so.name,
+		"customer": so.customer,
+		"customer_name": so.customer_name,
+		"warehouse": so.items[0].warehouse if so.items else "",
+		"transaction_date": str(so.transaction_date or ""),
+		"delivery_date": str(so.delivery_date or ""),
+		"can_edit": can_edit,
+		"items": [
+			{
+				"docname": d.name,
+				"item_code": d.item_code,
+				"item_name": d.item_name,
+				"qty": d.qty,
+				"rate": d.rate,
+				"uom": d.uom,
+				"conversion_factor": d.conversion_factor,
+				"delivered_qty": flt(d.delivered_qty),
+				"discount_type": "Percentage" if flt(d.discount_percentage) else ("Amount" if flt(d.discount_amount) else ""),
+				"discount_value": flt(d.discount_percentage) or flt(d.discount_amount),
+			}
+			for d in so.items
+		],
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def update_submitted_order_items(name: str, items: str):
+	_require_sales_rep()
+	so = frappe.get_doc("Sales Order", name)
+	if so.owner != frappe.session.user:
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	if so.docstatus != 1:
+		frappe.throw(_("Order is not submitted"))
+	if any(flt(d.delivered_qty) for d in so.items):
+		frappe.throw(_("Items already delivered cannot be edited"))
+
+	_update_items_as_admin(so, items)
+
+	return {"ok": True}
 
 
 @frappe.whitelist(methods=["GET"])
