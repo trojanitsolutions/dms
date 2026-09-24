@@ -221,7 +221,7 @@ doc_events = {
 
 # Request Events
 # ----------------
-# before_request = ["dms.utils.before_request"]
+before_request = ["dms.auth.set_csrf_cookie"]
 # after_request = ["dms.utils.after_request"]
 
 # Job Events
