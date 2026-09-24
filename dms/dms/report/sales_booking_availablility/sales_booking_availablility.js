@@ -22,6 +22,12 @@ frappe.query_reports["Sales Booking Availablility"] = {
 			options: "\nDraft\nOn Hold\nTo Pay\nTo Deliver and Bill\nTo Bill\nTo Deliver\nCompleted\nCancelled\nClosed",
 		},
 		{
+			fieldname: "customer",
+			label: __("Customer"),
+			fieldtype: "Link",
+			options: "Customer",
+		},
+		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",

@@ -72,6 +72,18 @@ def get_columns() -> list[dict]:
 			"width": 130,
 		},
 		{
+			"label": _("Customer Name"),
+			"fieldname": "customer_name",
+			"fieldtype": "Data",
+			"width": 150,
+		},
+		{
+			"label": _("Date"),
+			"fieldname": "transaction_date",
+			"fieldtype": "Date",
+			"width": 100,
+		},
+		{
 			"label": _("Item Code"),
 			"fieldname": "item_code",
 			"fieldtype": "Link",
@@ -155,6 +167,8 @@ def _get_so_lines() -> list[dict]:
 	return frappe.db.sql(
 		"""SELECT soi.parent AS sales_order,
 		          so.status AS so_status,
+		          so.customer,
+		          so.customer_name,
 		          so.transaction_date,
 		          so.grand_total,
 		          soi.item_code,
@@ -202,6 +216,8 @@ def _build_leaf_rows(so_rows: list[dict], filters: dict, bin_map: dict, agg_map:
 			continue
 		if filters.get("so_status") and so_status != filters["so_status"]:
 			continue
+		if filters.get("customer") and row.customer != filters["customer"]:
+			continue
 
 		if filters.get("today"):
 			if getdate(row.transaction_date) != getdate(nowdate()):
@@ -224,6 +240,8 @@ def _build_leaf_rows(so_rows: list[dict], filters: dict, bin_map: dict, agg_map:
 		leaves.append({
 			"sales_order": sales_order,
 			"so_status": so_status,
+			"customer_name": row.customer_name,
+			"transaction_date": row.transaction_date,
 			"grand_total": row.grand_total,
 			"item_code": item_code,
 			"item_name": item_names.get(item_code) or item_code,
@@ -244,6 +262,8 @@ def _build_so_groups(leaf_rows: list[dict]) -> dict:
 		if so not in groups:
 			groups[so] = {
 				"so_status": leaf["so_status"],
+				"customer_name": leaf["customer_name"],
+				"transaction_date": leaf["transaction_date"],
 				"grand_total": leaf["grand_total"],
 				"items": [],
 			}
@@ -265,6 +285,8 @@ def _build_so_tree(so_groups: dict) -> list[dict]:
 		data.append({
 			"sales_order": sales_order,
 			"so_status": so_status,
+			"customer_name": group["customer_name"],
+			"transaction_date": group["transaction_date"],
 			"item_code": None,
 			"item_name": None,
 			"warehouse": None,
@@ -279,6 +301,8 @@ def _build_so_tree(so_groups: dict) -> list[dict]:
 			item_copy = item.copy()
 			item_copy["sales_order"] = None
 			item_copy["so_status"] = None
+			item_copy["customer_name"] = None
+			item_copy["transaction_date"] = None
 			item_copy["indent"] = 1
 			data.append(item_copy)
 
@@ -327,6 +351,8 @@ def _build_item_tree(leaf_rows: list[dict]) -> list[dict]:
 			"item_name": item_name,
 			"sales_order": None,
 			"so_status": None,
+			"customer_name": None,
+			"transaction_date": None,
 			"warehouse": None,
 			"actual_stock_qty": actual_stock_qty,
 			"open_so_qty": open_so_qty,
