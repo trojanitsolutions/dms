@@ -58,3 +58,7 @@ jspm_packages/
 
 CLAUDE.md
 .claude/
+
+# Built by the frontend
+dms/public/frontend
+dms/www/dms.html

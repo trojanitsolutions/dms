@@ -11,15 +11,12 @@ app_license = "mit"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "dms",
-# 		"logo": "/assets/dms/logo.png",
-# 		"title": "DMS",
-# 		"route": "/dms",
-# 		"has_permission": "dms.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "dms",
+		"route": "/dms",
+	}
+]
 fixtures = [
     {
         "dt": "Workspace",
@@ -32,16 +29,16 @@ fixtures = [
 
 ]
 
-after_install = ["dms.customisation.warehouse.create_custom_fields"]
-after_uninstall = ["dms.customisation.warehouse.delete_custom_fields"]
-after_migrate = ["dms.customisation.warehouse.create_custom_fields"]
+after_install = ["dms.customisation.warehouse.create_custom_fields", "dms.setup.navbar.add_overview_navbar_item"]
+after_uninstall = ["dms.customisation.warehouse.delete_custom_fields", "dms.setup.navbar.remove_overview_navbar_item"]
+after_migrate = ["dms.customisation.warehouse.create_custom_fields", "dms.setup.navbar.add_overview_navbar_item"]
 
 # Includes in <head>
 # ------------------
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/dms/css/dms.css"
-# app_include_js = "/assets/dms/js/dms.js"
+app_include_js = "desk_overview.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/dms/css/dms.css"
@@ -272,3 +269,7 @@ before_request = ["dms.auth.set_csrf_cookie"]
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+# Load the frontend on every path under /dms
+website_route_rules = [
+	{"from_route": "/dms/<path:app_path>", "to_route": "dms"},
+]

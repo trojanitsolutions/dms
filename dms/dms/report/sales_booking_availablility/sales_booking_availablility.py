@@ -77,6 +77,13 @@ def get_columns() -> list[dict]:
 			"fieldtype": "Data",
 			"width": 150,
 		},
+  		{
+			"label":_("Customer Address"),
+			"fieldname":"customer_address",
+			"fieldtype":"Link",
+			"options":"Address",
+			"width":150,	
+		},
 		{
 			"label": _("Date"),
 			"fieldname": "transaction_date",
@@ -169,6 +176,7 @@ def _get_so_lines() -> list[dict]:
 		          so.status AS so_status,
 		          so.customer,
 		          so.customer_name,
+		          so.customer_address,
 		          so.transaction_date,
 		          so.grand_total,
 		          soi.item_code,
@@ -177,7 +185,7 @@ def _get_so_lines() -> list[dict]:
 		          * COALESCE(soi.conversion_factor, 1) AS open_so_qty
 		   FROM `tabSales Order Item` soi
 		   INNER JOIN `tabSales Order` so ON so.name = soi.parent
-		   WHERE so.docstatus = 1
+		   WHERE so.docstatus != 2
 		     AND soi.item_code IS NOT NULL
 		     AND soi.warehouse IS NOT NULL
 		     AND GREATEST(COALESCE(soi.qty, 0) - COALESCE(soi.delivered_qty, 0), 0)
@@ -241,6 +249,7 @@ def _build_leaf_rows(so_rows: list[dict], filters: dict, bin_map: dict, agg_map:
 			"sales_order": sales_order,
 			"so_status": so_status,
 			"customer_name": row.customer_name,
+			"customer_address": row.customer_address,
 			"transaction_date": row.transaction_date,
 			"grand_total": row.grand_total,
 			"item_code": item_code,
@@ -263,6 +272,7 @@ def _build_so_groups(leaf_rows: list[dict]) -> dict:
 			groups[so] = {
 				"so_status": leaf["so_status"],
 				"customer_name": leaf["customer_name"],
+				"customer_address": leaf["customer_address"],
 				"transaction_date": leaf["transaction_date"],
 				"grand_total": leaf["grand_total"],
 				"items": [],
@@ -286,6 +296,7 @@ def _build_so_tree(so_groups: dict) -> list[dict]:
 			"sales_order": sales_order,
 			"so_status": so_status,
 			"customer_name": group["customer_name"],
+			"customer_address": group["customer_address"],
 			"transaction_date": group["transaction_date"],
 			"item_code": None,
 			"item_name": None,
@@ -302,6 +313,7 @@ def _build_so_tree(so_groups: dict) -> list[dict]:
 			item_copy["sales_order"] = None
 			item_copy["so_status"] = None
 			item_copy["customer_name"] = None
+			item_copy["customer_address"] = None
 			item_copy["transaction_date"] = None
 			item_copy["indent"] = 1
 			data.append(item_copy)
@@ -352,6 +364,7 @@ def _build_item_tree(leaf_rows: list[dict]) -> list[dict]:
 			"sales_order": None,
 			"so_status": None,
 			"customer_name": None,
+			"customer_address": None,
 			"transaction_date": None,
 			"warehouse": None,
 			"actual_stock_qty": actual_stock_qty,

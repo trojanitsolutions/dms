@@ -28,6 +28,12 @@ frappe.query_reports["Sales Booking Availablility"] = {
 			options: "Customer",
 		},
 		{
+			fieldname:"customer_address",
+			label: __("Customer Address"),
+			fieldtype: "Link",
+			options: "Address",
+		},
+		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",

@@ -228,8 +228,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .user-avatar{width:34px;height:34px;background:var(--color-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--color-bg-surface);flex-shrink:0}
   .user-info{opacity:0;transition:opacity .15s;overflow:hidden;flex:1;min-width:0}
   .user-info .uname{font-size:13px;font-weight:500;color:var(--color-text-primary);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .logout-btn{opacity:0;transition:opacity .15s;flex-shrink:0;margin-left:auto;background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:4px;border-radius:4px;transition:color .15s}
-  .logout-btn:hover{color:var(--color-text-primary)}
+  .logout-btn,.system-btn{opacity:0;transition:opacity .15s;flex-shrink:0;margin-left:auto;background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:4px;border-radius:4px;transition:color .15s}
+  .logout-btn:hover,.system-btn:hover{color:var(--color-text-primary)}
   /* 3-col desktop layout */
   .order-wrap{flex:1;min-width:0;flex-direction:row;padding-bottom:0;overflow:hidden;min-height:0}
   .desk-cat-sidebar{width:220px;flex-shrink:0;background:var(--color-bg-surface);border-right:1px solid var(--color-card-border);overflow-y:auto;padding:16px 0;display:flex;flex-direction:column}
@@ -282,7 +282,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   body.sidebar-expanded .nav-section{display:block}
   body.sidebar-expanded .nav-link span{opacity:1}
   body.sidebar-expanded .user-info{opacity:1}
-  body.sidebar-expanded .logout-btn{opacity:1}
+  body.sidebar-expanded .logout-btn,body.sidebar-expanded .system-btn{opacity:1}
   body.sidebar-expanded .sidebar-brand{padding:16px 20px}
   body.sidebar-expanded .sidebar-footer{padding:16px 12px}
 }
@@ -297,7 +297,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .nav-link span{opacity:1}
   .sidebar-footer{padding:16px 12px}
   .user-info{opacity:1}
-  .logout-btn{opacity:1}
+  .logout-btn,.system-btn{opacity:1}
 }
 
 /* ── Item detail modal ──────────────────────────────────── */

@@ -114,7 +114,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 	.nav-link span{opacity:1}
 	.sidebar-footer{padding:16px 12px}
 	.user-info{opacity:1}
-	.logout-btn{opacity:1}
+	.logout-btn,.system-btn{opacity:1}
 	.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;overflow-y:auto}
 	.topbar{padding:28px 36px 0}
 	.topbar .search-bar{min-width:320px}

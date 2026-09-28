@@ -144,8 +144,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .user-avatar{width:34px;height:34px;background:var(--color-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--color-bg-surface);flex-shrink:0}
   .user-info{opacity:0;transition:opacity .15s;overflow:hidden;flex:1;min-width:0}
   .user-info .uname{font-size:13px;font-weight:500;color:var(--color-text-primary);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .logout-btn{opacity:0;transition:opacity .15s;flex-shrink:0;margin-left:auto;background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:4px}
-  .logout-btn:hover{color:var(--color-text-primary)}
+  .logout-btn,.system-btn{opacity:0;transition:opacity .15s;flex-shrink:0;margin-left:auto;background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:4px}
+  .logout-btn:hover,.system-btn:hover{color:var(--color-text-primary)}
   .main{flex:1;min-width:0;overflow-y:auto;padding-bottom:0}
   .topbar{padding:28px 36px 24px}
   .page-title{font-size:26px}
@@ -178,7 +178,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   body.sidebar-expanded .nav-section{display:block}
   body.sidebar-expanded .nav-link span{opacity:1}
   body.sidebar-expanded .user-info{opacity:1}
-  body.sidebar-expanded .logout-btn{opacity:1}
+  body.sidebar-expanded .logout-btn,body.sidebar-expanded .system-btn{opacity:1}
   body.sidebar-expanded .sidebar-brand{padding:16px 20px}
   body.sidebar-expanded .sidebar-footer{padding:16px 12px}
 }
@@ -193,7 +193,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .nav-link span{opacity:1}
   .sidebar-footer{padding:16px 12px}
   .user-info{opacity:1}
-  .logout-btn{opacity:1}
+  .logout-btn,.system-btn{opacity:1}
 }
 @media(min-width:1024px){
   .customer-grid{grid-template-columns:repeat(3,1fr)}
