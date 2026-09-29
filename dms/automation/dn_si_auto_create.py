@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import flt
+from frappe.utils import flt, getdate, nowdate
 
 
 def create_draft_si_from_so(so_doc, method=None):
@@ -28,6 +28,16 @@ def create_draft_si_from_so(so_doc, method=None):
 		frappe.logger().info(f"DMS: Draft SI {si.name} created for SO {so_doc.name}")
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), f"DMS: Draft SI creation failed for SO {so_doc.name}")
+
+
+def bump_stale_due_date(si):
+	"""Draft SI saved on a later day gets posting_date=today; keep due dates from falling behind it."""
+	today = nowdate()
+	if si.due_date and getdate(si.due_date) < getdate(today):
+		si.due_date = today
+	for row in si.get("payment_schedule") or []:
+		if row.due_date and getdate(row.due_date) < getdate(today):
+			row.due_date = today
 
 
 def sync_si_on_dn_submit(dn_doc, method=None):
@@ -97,6 +107,7 @@ def _sync_si_for_so(so_name):
 			fully_delivered = False
 
 	si.run_method("calculate_taxes_and_totals")
+	bump_stale_due_date(si)
 	si.flags.ignore_permissions = True
 	si.save()
 

@@ -2,6 +2,8 @@ import json
 import frappe
 from frappe import _
 
+from dms.automation.dn_si_auto_create import bump_stale_due_date
+
 
 def _require_delivery_partner():
 	if frappe.session.user == "Guest":
@@ -314,5 +316,6 @@ def _sync_invoice_qty(dn_doc):
 					changed = True
 		if changed:
 			si.run_method("calculate_taxes_and_totals")
+			bump_stale_due_date(si)
 			si.save(ignore_permissions=True)
 		si.submit()
