@@ -73,6 +73,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .item-card{background:var(--color-bg-surface);border-radius:var(--color-card-radius);border:1px solid var(--color-card-border);overflow:hidden;position:relative;box-shadow:var(--color-card-shadow);transition:all .15s}
 .item-card:not(.oos):hover{border-color:var(--color-primary);box-shadow:0 4px 12px rgba(45,43,43,.12)}
 .item-card.oos{opacity:.55}
+/* Hover overlay (mouse devices only): full image idle, details fade in over it.
+   Card height is unchanged: body keeps its flow height via padding-top = old image height. */
+@media(hover:hover) and (pointer:fine){
+  .item-card{--img-h:90px;--pad:10px;display:grid}
+  .item-img,.item-body{grid-area:1/1}
+  .item-card .item-img{height:auto;border-bottom:0}
+  .item-img img{object-fit:contain}
+  .item-card .item-body{padding:calc(var(--img-h) + var(--pad)) var(--pad) var(--pad);position:relative;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;background:rgba(0,0,0,.72);opacity:0;pointer-events:none;transition:opacity .2s ease}
+  .item-card:hover .item-body,.item-card:focus-within .item-body{opacity:1;pointer-events:auto}
+  .item-body .item-group-label,.item-body .item-code,.item-body .item-stock,.item-body .wh-peek-btn{color:#e5e7eb}
+  .item-body .item-stock.low{color:#fbbf24}
+  .item-body .item-name,.item-body .item-price,.item-body .qty-num{color:#fff}
+  .item-body .add-btn{border-color:#fff;color:#fff}
+  .item-body .add-btn:hover,.item-body .add-btn:active{background:var(--color-primary);border-color:var(--color-primary)}
+  .item-body .add-btn:disabled{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.5)}
+  .item-body .qty-num:focus{color:var(--color-text-primary)}
+}
+@media(hover:hover) and (pointer:fine) and (min-width:1024px){.item-card{--pad:7px}}
+@media(hover:hover) and (pointer:fine) and (min-width:1200px),(hover:hover) and (min-width:1367px){.item-card{--img-h:110px}}
 .item-img{height:90px;background:var(--color-bg-page);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-bottom:1px solid var(--color-card-border)}
 .item-img svg{width:30px;height:30px;color:var(--color-gray-300)}
 .item-img img{width:100%;height:100%;object-fit:cover}
