@@ -29,7 +29,7 @@ function escJS(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
 let allItems=[],filteredItems=[],cart={},activeGroup='All',groups=[];
 let creditInfo=null,currentGrandTotal=0;
 let customerStatus={disabled:false,is_frozen:false};
-let currentView=sessionStorage.getItem('itemView')||'grid';
+let currentView=['grid','list','image'].includes(sessionStorage.getItem('itemView'))?sessionStorage.getItem('itemView'):'grid';
 let activeWhPopup=null;
 const RENDER_BATCH=100;
 let renderedCount=0;
@@ -72,6 +72,7 @@ function setView(v){
   sessionStorage.setItem('itemView',v);
   document.getElementById('vt-grid').classList.toggle('active',v==='grid');
   document.getElementById('vt-list').classList.toggle('active',v==='list');
+  document.getElementById('vt-image').classList.toggle('active',v==='image');
   renderedCount=0;
   renderItems(filteredItems);
 }
@@ -188,7 +189,7 @@ function renderItems(items){
   if(renderedCount===0){
     // fresh render — clear container and paint first batch
     const el=document.getElementById('items-grid');
-    el.className=currentView==='list'?'items-list':'items-grid';
+    el.className=currentView==='list'?'items-list':currentView==='image'?'items-image-grid':'items-grid';
     el.innerHTML='';
     if(!items.length){
       el.innerHTML=currentView==='list'
@@ -211,7 +212,7 @@ function appendBatch(batch,view){
   const frag=document.createDocumentFragment();
   batch.forEach(item=>{
     const wrapper=document.createElement(view==='list'?'div':'div');
-    wrapper.innerHTML=view==='list'?makeListRow(item):makeGridCard(item);
+    wrapper.innerHTML=(view==='list'?makeListRow:view==='image'?makeImageCard:makeGridCard)(item);
     while(wrapper.firstChild)frag.appendChild(wrapper.firstChild);
   });
   el.appendChild(frag);
@@ -250,6 +251,25 @@ function makeGridCard(item){
         <div><div class="item-price">${fmt(item.standard_rate)} <span style="font-size:10px;font-weight:400;color:#9CA3AF">/${item.stock_uom||'ea'}</span></div><span id="stock-${CSS.escape(item.name)}"></span>${peekBtn}</div>
         <div id="action-${CSS.escape(item.name)}"></div>
       </div>
+    </div>
+  </div>`;
+}
+
+/* ── Render image card ───────────────────────────────────── */
+function makeImageCard(item){
+  const oos=isCardOos(item.name);
+  const whCount=Object.keys(item.warehouse_stocks||{}).length;
+  const peekBtn=whCount>0?`<button class="wh-peek-btn" data-item-code="${item.name}">${EYE_ICON}${whCount}</button>`:'';
+  const imgContent=item.image?`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">` :'';
+  return`<div class="item-card img-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}" data-item-code="${item.name}">
+    <div class="item-img">${imgContent}${oos?'<div class="oos-badge">OOS</div>':''}</div>
+    <div class="img-overlay">
+      <div class="item-group-label">${esc(item.item_group)}</div>
+      <div class="item-name" title="${esc(item.item_name)}">${esc(item.item_name)}</div>
+      <div class="item-code">${esc(item.name)}</div>
+      <div class="item-price">${fmt(item.standard_rate)} <span style="font-size:10px;font-weight:400">/${item.stock_uom||'ea'}</span></div>
+      <div class="img-wh"><span id="wh-${CSS.escape(item.name)}"></span>${peekBtn}</div>
+      <div class="item-footer"><span id="stock-${CSS.escape(item.name)}"></span><div id="action-${CSS.escape(item.name)}"></div></div>
     </div>
   </div>`;
 }
@@ -450,6 +470,8 @@ function refreshCard(code){
 
   // Update action buttons
   actionEl.innerHTML=actionMarkup(code);
+  const whEl=document.getElementById('wh-'+CSS.escape(code));
+  if(whEl)whEl.textContent=getWarehouse()||'All warehouses';
 
   // Update stock label
   if(stockEl){
@@ -483,7 +505,7 @@ function refreshCard(code){
   if(cardEl){
     cardEl.classList.toggle('oos',cardOos);
     const imgEl=cardEl.querySelector('.item-img')||cardEl.querySelector('.item-row');
-    if(imgEl&&currentView==='grid'){
+    if(imgEl&&(currentView==='grid'||currentView==='image')){
       let badge=imgEl.querySelector('.oos-badge');
       if(cardOos&&!badge){badge=document.createElement('div');badge.className='oos-badge';badge.textContent='OOS';imgEl.appendChild(badge);}
       else if(!cardOos&&badge)badge.remove();
@@ -1191,6 +1213,7 @@ document.getElementById('mob-warehouse-select-2').addEventListener('change',onMo
 document.getElementById('mob-cat-select').addEventListener('change',()=>filterGroup(document.getElementById('mob-cat-select').value));
 document.getElementById('vt-grid').addEventListener('click',()=>setView('grid'));
 document.getElementById('vt-list').addEventListener('click',()=>setView('list'));
+document.getElementById('vt-image').addEventListener('click',()=>setView('image'));
 document.getElementById('instock-filter').addEventListener('change',applyFilters);
 const submitBtn=document.getElementById('submit-btn');
 if(submitBtn)submitBtn.addEventListener('click',EDITING_SUBMITTED?saveSubmittedOrderEdits:submitOrder);
