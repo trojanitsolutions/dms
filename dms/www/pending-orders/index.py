@@ -12,9 +12,6 @@ def _require_sales_rep():
 	if frappe.session.user == "Guest":
 		frappe.local.flags.redirect_location = "/sales-login"
 		raise frappe.Redirect
-	if not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Sales Rep"}):
-		frappe.local.flags.redirect_location = "/desk?route=List/Sales Order&error=access-denied"
-		raise frappe.Redirect
 
 
 def _get_company_logo():

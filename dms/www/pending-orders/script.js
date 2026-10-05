@@ -63,7 +63,7 @@ function render(){
 	const searchTerm=document.getElementById('search-input').value.toLowerCase();
 	filtered=orders.filter(o=>o.name.toLowerCase().includes(searchTerm)||o.customer_name.toLowerCase().includes(searchTerm));
 	const toShow=filtered.slice(0,shown);
-	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(o.grand_total)}</td><td><select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select></td></tr>`).join('');
+	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(o.grand_total)}</td><td>${o.can_act?`<select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select>`:''}</td></tr>`).join('');
 	document.getElementById('order-list').innerHTML=rows;
 	const total=filtered.length;
 	const displaying=Math.min(shown,total);

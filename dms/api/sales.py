@@ -766,17 +766,20 @@ def get_my_orders(customer: str = ""):
 
 @frappe.whitelist(methods=["GET"])
 def get_pending_orders(customer: str = ""):
-    _require_sales_rep()
-    filters = {"owner": frappe.session.user, "docstatus": 0}
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+    filters = {"docstatus": 0}
     if customer:
         filters["customer"] = customer
     orders = frappe.get_all(
         "Sales Order",
         filters=filters,
-        fields=["name", "customer", "customer_name", "grand_total", "status", "transaction_date"],
+        fields=["name", "customer", "customer_name", "grand_total", "status", "transaction_date", "owner"],
         order_by="creation desc",
-        limit=2500,  # ponytail: sales rep's unsubmitted drafts never approach this
+        limit=2500,  # ponytail: unsubmitted drafts never approach this
     )
+    for o in orders:
+        o["can_act"] = o.pop("owner") == frappe.session.user
     names = [o["name"] for o in orders]
     if names:
         items = frappe.get_all("Sales Order Item", filters={"parent": ["in", names]}, fields=["parent"])
