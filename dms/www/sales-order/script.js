@@ -303,12 +303,15 @@ function makeListRow(item){
 function applyFilters(){
   const instockOnly=document.getElementById('instock-filter').checked;
   sessionStorage.setItem('instockFilter',instockOnly?'1':'0');
+  const attachOnly=document.getElementById('attach-filter').checked;
+  sessionStorage.setItem('attachFilter',attachOnly?'1':'0');
   const q=document.getElementById('item-search').value.toLowerCase().trim();
   const wh=getWarehouse();
   // DEBUG: Log filter state
   console.log(`DEBUG applyFilters: instockOnly=${instockOnly}, wh="${wh}", activeGroup="${activeGroup}", total_items=${allItems.length}, items_with_stock=${allItems.filter(i=>i.any_stock).length}`);
   filteredItems=allItems.filter(i=>{
     if(activeGroup!=='All'&&i.item_group!==activeGroup)return false;
+    if(attachOnly&&!i.image)return false;
     if(instockOnly){
       if(wh){if(((i.warehouse_available||{})[wh]||0)<=0)return false;}
       else{if(!i.any_stock)return false;}
@@ -977,6 +980,7 @@ async function saveSubmittedOrderEdits(){
   const _savedInstock=sessionStorage.getItem('instockFilter')==='1';
   const _instockEl=document.getElementById('instock-filter');
   if(_instockEl)_instockEl.checked=_savedInstock;
+  document.getElementById('attach-filter').checked=sessionStorage.getItem('attachFilter')==='1';
 
   // Load sales settings
   const sSettings=await get('dms.api.sales.get_sales_settings');
@@ -1217,6 +1221,7 @@ document.getElementById('vt-grid').addEventListener('click',()=>setView('grid'))
 document.getElementById('vt-list').addEventListener('click',()=>setView('list'));
 document.getElementById('vt-image').addEventListener('click',()=>setView('image'));
 document.getElementById('instock-filter').addEventListener('change',applyFilters);
+document.getElementById('attach-filter').addEventListener('change',applyFilters);
 const submitBtn=document.getElementById('submit-btn');
 if(submitBtn)submitBtn.addEventListener('click',EDITING_SUBMITTED?saveSubmittedOrderEdits:submitOrder);
 const saveBtn=document.getElementById('save-btn');
