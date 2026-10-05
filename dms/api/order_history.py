@@ -15,7 +15,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 	limit_start = cint(limit_start)
 	limit_page_length = cint(limit_page_length) or 20
 
-	filters = {"owner": frappe.session.user, "docstatus": ["!=", 2]}
+	filters = {"docstatus": ["!=", 2]}
 
 	if posting_date:
 		filters["transaction_date"] = posting_date
@@ -36,7 +36,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 		"Sales Order",
 		filters=filters,
 		or_filters=or_filters,
-		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "status", "docstatus"],
+		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "status", "docstatus", "owner"],
 		order_by="transaction_date desc, creation desc, name desc",
 		limit_start=limit_start,
 		limit_page_length=limit_page_length + 1,
@@ -60,6 +60,6 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 
 		for o in orders:
 			o["items"] = by_parent.get(o["name"], [])
-			o["can_edit"] = o["docstatus"] == 1 and not any(flt(it["delivered_qty"]) for it in o["items"])
+			o["can_edit"] = o["owner"] == frappe.session.user and o["docstatus"] == 1 and not any(flt(it["delivered_qty"]) for it in o["items"])
 
 	return {"orders": orders, "has_more": has_more}
