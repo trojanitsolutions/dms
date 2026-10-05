@@ -782,15 +782,27 @@ def get_pending_orders(customer: str = ""):
         o["can_act"] = o.pop("owner") == frappe.session.user
     names = [o["name"] for o in orders]
     if names:
-        items = frappe.get_all("Sales Order Item", filters={"parent": ["in", names]}, fields=["parent"])
-        count_map = {}
+        items = frappe.get_all(
+            "Sales Order Item",
+            filters={"parent": ["in", names]},
+            fields=["parent", "item_group", "item_code", "item_name"],
+        )
+        count_map, cat_map, text_map = {}, {}, {}
         for item in items:
-            count_map[item["parent"]] = count_map.get(item["parent"], 0) + 1
+            p = item["parent"]
+            count_map[p] = count_map.get(p, 0) + 1
+            if item["item_group"]:
+                cat_map.setdefault(p, set()).add(item["item_group"])
+            text_map.setdefault(p, []).append(f"{item['item_code'] or ''} {item['item_name'] or ''}")
         for o in orders:
             o["item_count"] = count_map.get(o["name"], 0)
+            o["categories"] = sorted(cat_map.get(o["name"], ()))
+            o["search_text"] = " ".join(text_map.get(o["name"], ())).lower()
     else:
         for o in orders:
             o["item_count"] = 0
+            o["categories"] = []
+            o["search_text"] = ""
     return orders
 
 

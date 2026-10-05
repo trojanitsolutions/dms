@@ -59,9 +59,17 @@ function fmtTime(dateStr){
 	return d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',meridiem:'short'});
 }
 
+function fillCategories(){
+	const sel=document.getElementById('category-filter'),cur=sel.value;
+	const cats=[...new Set(orders.flatMap(o=>o.categories||[]))].sort();
+	sel.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+	sel.value=cats.includes(cur)?cur:'';
+}
+
 function render(){
 	const searchTerm=document.getElementById('search-input').value.toLowerCase();
-	filtered=orders.filter(o=>o.name.toLowerCase().includes(searchTerm)||o.customer_name.toLowerCase().includes(searchTerm));
+	const compact=matchMedia('(max-width:1199px)').matches,cat=compact?document.getElementById('category-filter').value:'';
+	filtered=orders.filter(o=>(o.name.toLowerCase().includes(searchTerm)||o.customer_name.toLowerCase().includes(searchTerm)||(compact&&(o.search_text||'').includes(searchTerm)))&&(!cat||(o.categories||[]).includes(cat)));
 	const toShow=filtered.slice(0,shown);
 	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(o.grand_total)}</td><td>${o.can_act?`<select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select>`:''}</td></tr>`).join('');
 	document.getElementById('order-list').innerHTML=rows;
@@ -84,6 +92,7 @@ async function loadPendingOrders(){
 		return;
 	}
 	orders=result;
+	fillCategories();
 	render();
 }
 
@@ -102,6 +111,7 @@ document.getElementById('order-list').addEventListener('change',async e=>{
 			try{
 				await post('dms.api.sales.submit_pending_order',{name});
 				orders=orders.filter(o=>o.name!==name);
+				fillCategories();
 				render();
 			}catch(err){
 				alert('Error: '+err.message);
@@ -114,6 +124,7 @@ document.getElementById('order-list').addEventListener('change',async e=>{
 			try{
 				await post('dms.api.sales.discard_pending_order',{name});
 				orders=orders.filter(o=>o.name!==name);
+				fillCategories();
 				render();
 			}catch(err){
 				alert('Error: '+err.message);
@@ -124,6 +135,7 @@ document.getElementById('order-list').addEventListener('change',async e=>{
 });
 
 document.getElementById('search-input').addEventListener('input',e=>{shown=pageSize;render()});
+document.getElementById('category-filter').addEventListener('change',()=>{shown=pageSize;render()});
 document.querySelectorAll('.page-size-btn').forEach(btn=>{
 	btn.addEventListener('click',e=>{
 		document.querySelectorAll('.page-size-btn').forEach(b=>b.classList.remove('active'));
