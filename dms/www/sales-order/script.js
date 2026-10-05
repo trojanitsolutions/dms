@@ -736,6 +736,8 @@ function renderItemModal(){
   // Name
   const nameEl=document.getElementById('item-modal-name');
   if(nameEl)nameEl.textContent=item.item_name;
+  const codeEl=document.getElementById('item-modal-code');
+  if(codeEl)codeEl.textContent=item.name;
 
   // Price
   const priceEl=document.getElementById('item-modal-price');

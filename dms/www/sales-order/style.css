@@ -395,6 +395,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .quotation-so-success-msg{font-size:14px;color:var(--color-text-secondary)}
 
 /* Keep item search visible while scrolling (mobile/tablet only) */
+.catalog-sticky{display:contents}
 @media(max-width:1199px),(max-width:1366px) and (pointer:coarse){
-  .catalog-top{position:sticky;top:100px;z-index:4}
+  .catalog-sticky{display:block;position:sticky;top:44px;z-index:5}
 }
+.item-modal-code{font-size:13px;color:var(--color-gray-500,#6b7280);margin-top:2px}
