@@ -393,3 +393,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .quotation-so-success-panel{padding:24px 16px;text-align:center;display:flex;flex-direction:column;gap:16px}
 .quotation-so-success-title{font-size:18px;font-weight:700;color:var(--color-text-primary)}
 .quotation-so-success-msg{font-size:14px;color:var(--color-text-secondary)}
+
+/* Keep item search visible while scrolling (mobile/tablet only) */
+@media(max-width:1199px),(max-width:1366px) and (pointer:coarse){
+  .catalog-top{position:sticky;top:100px;z-index:4}
+}
