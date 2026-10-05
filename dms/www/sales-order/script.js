@@ -1282,6 +1282,12 @@ document.addEventListener('click',e=>{
   const cardEl=e.target.closest('.item-card')||e.target.closest('.item-row-wrap');
   if(cardEl&&!e.target.closest('.add-btn')&&!e.target.closest('.qty-ctrl')&&!e.target.closest('.wh-peek-btn')){
     const code=cardEl.dataset.itemCode;
+    // touch: first tap on an image card shows its details (hover substitute), second tap opens full view
+    if(cardEl.classList.contains('img-card')&&!IS_DESKTOP()&&!cardEl.classList.contains('touched')){
+      document.querySelectorAll('.img-card.touched').forEach(c=>c.classList.remove('touched'));
+      cardEl.classList.add('touched');
+      return;
+    }
     if(code)openItemModal(code);
   }
   // Close modal: click overlay (but not the modal card itself)

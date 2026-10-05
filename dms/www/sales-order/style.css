@@ -211,10 +211,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .img-overlay .add-btn:hover,.img-overlay .add-btn:active{background:var(--color-primary);border-color:var(--color-primary)}
 .img-overlay .add-btn:disabled{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.5)}
 .img-overlay .qty-num:focus{color:var(--color-text-primary)}
-/* touch: no hover, so keep a compact strip visible so Add stays reachable */
-@media(hover:none){
-  .img-overlay{opacity:1;pointer-events:auto;align-self:end;background:linear-gradient(transparent,rgba(0,0,0,.8) 35%);padding-top:28px}
-  .img-overlay .item-group-label,.img-overlay .item-code,.img-wh{display:none}
+/* touch: tap reveals the overlay (hover substitute); image stays fully visible until then */
+@media(max-width:1199px),(max-width:1366px) and (pointer:coarse){
+  .img-card .item-img{cursor:pointer}
+  .img-card.touched .img-overlay{opacity:1;pointer-events:auto}
 }
 
 /* ── List view ───────────────────────────────────────────── */
