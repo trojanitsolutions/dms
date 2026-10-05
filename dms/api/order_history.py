@@ -3,16 +3,14 @@ from frappe import _
 from frappe.utils import cint, flt
 
 
-def _require_sales_rep():
+def _require_login():
 	if frappe.session.user == "Guest":
 		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
-	if not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Sales Rep"}):
-		frappe.throw(_("Access Denied"), frappe.PermissionError)
 
 
 @frappe.whitelist(methods=["GET"])
 def get_order_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20, posting_date: str = "", delivery_date: str = "", status: str = ""):
-	_require_sales_rep()
+	_require_login()
 
 	limit_start = cint(limit_start)
 	limit_page_length = cint(limit_page_length) or 20
