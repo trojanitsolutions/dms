@@ -8,7 +8,7 @@ async function apiGet(method, args) {
 		headers: { 'X-Frappe-CSRF-Token': csrf(), 'Accept': 'application/json' },
 	});
 	const d = await r.json();
-	if (!r.ok) throw new Error(d.message || d.exc_type || 'Error');
+	if (!r.ok) throw new Error((d._server_messages&&JSON.parse(JSON.parse(d._server_messages)[0]).message.replace(/<[^>]+>/g,""))||d.message||d.exc_type || 'Error');
 	return d.message;
 }
 async function apiPost(method, args) {
@@ -18,7 +18,7 @@ async function apiPost(method, args) {
 		body: JSON.stringify(args),
 	});
 	const d = await r.json();
-	if (!r.ok) throw new Error(d.message || d.exc_type || 'Error');
+	if (!r.ok) throw new Error((d._server_messages&&JSON.parse(JSON.parse(d._server_messages)[0]).message.replace(/<[^>]+>/g,""))||d.message||d.exc_type || 'Error');
 	return d.message;
 }
 

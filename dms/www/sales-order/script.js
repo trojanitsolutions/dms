@@ -18,7 +18,7 @@ async function get(method,args={}){
 }
 async function post(method,args={}){
   const r=await fetch(`/api/method/${method}`,{method:'POST',headers:{'X-Frappe-CSRF-Token':csrf(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(args)});
-  const d=await r.json();if(!r.ok)throw new Error(d.message||d.exc_type||'Error');return d.message;
+  const d=await r.json();if(!r.ok)throw new Error((d._server_messages&&JSON.parse(JSON.parse(d._server_messages)[0]).message.replace(/<[^>]+>/g,""))||d.message||d.exc_type||'Error');return d.message;
 }
 
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}

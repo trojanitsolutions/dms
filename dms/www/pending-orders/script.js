@@ -7,7 +7,7 @@ async function get(method,args={}){
 }
 async function post(method,args={}){
 	const r=await fetch(`/api/method/${method}`,{method:'POST',headers:{'X-Frappe-CSRF-Token':csrf(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(args)});
-	if(!r.ok){const d=await r.json();throw new Error(d.message||d.exc_type||'Error')}
+	if(!r.ok){const d=await r.json();throw new Error((d._server_messages&&JSON.parse(JSON.parse(d._server_messages)[0]).message.replace(/<[^>]+>/g,""))||d.message||d.exc_type||'Error')}
 	try{return(await r.json()).message}catch(e){throw new Error('Invalid response')}
 }
 

@@ -36,6 +36,13 @@ def _submit_as_admin(so):
 		frappe.local.user_perms = None
 
 
+def _bump_stale_payment_dates(so):
+	today = frappe.utils.today()
+	for row in so.get("payment_schedule") or []:
+		if row.due_date and str(row.due_date) < today:
+			row.due_date = today
+
+
 def _update_items_as_admin(so, trans_items_json):
 	from erpnext.controllers.accounts_controller import update_child_qty_rate
 	_user = frappe.session.user
@@ -635,6 +642,10 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             order_date = frappe.utils.today()
         if not delivery_date:
             delivery_date = frappe.utils.today()
+        if existing_order:
+            # stale draft: roll dates forward instead of blocking submit
+            order_date = max(str(order_date), frappe.utils.today())
+            delivery_date = max(str(delivery_date), frappe.utils.today())
         if frappe.utils.getdate(delivery_date) < frappe.utils.getdate(frappe.utils.today()):
             frappe.throw(_("Delivery date cannot be in the past."))
         if frappe.utils.getdate(order_date) > frappe.utils.getdate(delivery_date):
@@ -696,6 +707,7 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             so.customer_address = customer_address or None
             so.shipping_address_name = shipping_address or None
             so.set("items", _build_item_rows(items, warehouse))
+            _bump_stale_payment_dates(so)
         else:
             sales_person = _get_sales_person_for_user()
             so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, order_date, disable_stock_validation)
@@ -814,7 +826,19 @@ def submit_pending_order(name: str):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
     if so.docstatus != 0:
         frappe.throw(_("Order is not pending"))
-    _submit_as_admin(so)
+    today = frappe.utils.today()
+    if str(so.transaction_date) < today or str(so.delivery_date) < today:
+        so.transaction_date = max(str(so.transaction_date), today)
+        so.delivery_date = max(str(so.delivery_date), today)
+        for d in so.items:
+            d.delivery_date = max(str(d.delivery_date or today), today)
+        _bump_stale_payment_dates(so)
+        so.save(ignore_permissions=True)
+    try:
+        _submit_as_admin(so)
+    except Exception:
+        frappe.log_error(title=f"DMS pending order submit failed: {name}", message=frappe.get_traceback())
+        raise
     return {"name": so.name, "grand_total": so.grand_total, "rounded_total": so.rounded_total,
             "disable_rounded_total": so.disable_rounded_total}
 
