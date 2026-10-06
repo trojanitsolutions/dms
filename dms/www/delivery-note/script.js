@@ -71,13 +71,15 @@ let submitted = false;
 function renderItems() {
 	const list = document.getElementById('items-list');
 	const isReadonly = (noteData.docstatus === 1) || submitted;
-	let totalOrdered = 0, totalDelivered = 0;
+	let totalOrdered = 0, totalDelivered = 0, totalAmount = 0;
 
 	list.innerHTML = noteData.items.map(item => {
 		const ordered = item.ordered_qty;
 		const delivered = itemState[item.name];
 		totalOrdered += ordered;
 		totalDelivered += delivered;
+		const amount = item.rate * delivered;
+		totalAmount += amount;
 		const isOver = delivered > ordered;
 		const isNeg = delivered < 0;
 		const invalid = isOver || isNeg;
@@ -117,6 +119,8 @@ function renderItems() {
 			</div>
 			<div class="item-right">
 				${deliveredField}
+				<div class="item-col"><span class="item-col-label">Rate</span>${item.rate.toFixed(2)}</div>
+				<div class="item-col item-amount"><span class="item-col-label">Amount</span>${amount.toFixed(2)}</div>
 			</div>
 		</div>`;
 	}).join('');
@@ -132,6 +136,7 @@ function renderItems() {
 	set('sum-ordered', totalOrdered);
 	set('sum-delivered', totalDelivered);
 	set('sum-remaining', remaining);
+	set('sum-total', totalAmount.toFixed(2));
 
 	updateActionState();
 }
