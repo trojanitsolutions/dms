@@ -547,6 +547,8 @@ def _build_item_rows(items: list, warehouse: str) -> list:
 			"discount_percentage": discount_percentage,
 			"discount_amount": discount_amount,
 		}
+		if it.get("description"):
+			item_row["description"] = it["description"]
 
 		doc_items.append(item_row)
 
@@ -871,6 +873,11 @@ def get_pending_order_detail(name: str):
             return "Amount", d.discount_amount
         return "", 0
 
+    def _custom_description(d):
+        # only a rep-entered note differs from the item master text
+        master = frappe.db.get_value("Item", d.item_code, "description") or ""
+        return d.description if (d.description or "") != master else ""
+
     order_disc_type, order_disc_value = _discount(so, "additional_discount_percentage")
     return {
         "name": so.name,
@@ -889,6 +896,7 @@ def get_pending_order_detail(name: str):
                 "qty": d.qty,
                 "rate": d.price_list_rate,
                 **dict(zip(("discount_type", "discount_value"), _discount(d))),
+                "description": _custom_description(d),
             }
             for d in so.items
         ],
