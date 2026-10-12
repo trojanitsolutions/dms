@@ -309,6 +309,13 @@ function filterChip(el,group){filterGroup(group)}
 
 let searchTimer;
 function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(applyFilters,250)}
+function clearItemSearch(){
+  const el=document.getElementById('item-search');
+  if(!el||!el.value)return;
+  clearTimeout(searchTimer);
+  el.value='';
+  applyFilters();
+}
 
 /* ── Cart ─────────────────────────────────────────────────── */
 function addToCart(code,qty){
@@ -320,6 +327,7 @@ function addToCart(code,qty){
   qty=Math.min(Math.max(1,parseInt(qty,10)||1),avail);
   cart[code]={item,qty,discountType:'',discountValue:0};
   updateCartUI();refreshCard(code);
+  clearItemSearch();
   return true;
 }
 function setQty(code,rawValue){

@@ -340,6 +340,13 @@ function filterChip(el,group){filterGroup(group)}
 
 let searchTimer;
 function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(applyFilters,250)}
+function clearItemSearch(){
+  const el=document.getElementById('item-search');
+  if(!el||!el.value)return;
+  clearTimeout(searchTimer);
+  el.value='';
+  applyFilters();
+}
 
 /* ── Cart ─────────────────────────────────────────────────── */
 function addToCart(code,qty,description){
@@ -351,6 +358,7 @@ function addToCart(code,qty,description){
   qty=Math.min(Math.max(1,parseInt(qty,10)||1),avail);
   cart[code]={item,qty,discountType:'',discountValue:0,description:(description||'').trim()};
   updateCartUI();refreshCard(code);
+  clearItemSearch();
   return true;
 }
 function setQty(code,rawValue){
@@ -1259,15 +1267,8 @@ document.addEventListener('click',e=>{
     const pendingEl=e.target.closest('.pending-add');
     const descCb=pendingEl?.querySelector('.desc-cb');
     const descInput=pendingEl?.querySelector('.desc-input');
-    const added=addToCart(code,input?input.value:1,descCb?.checked&&descInput?descInput.value:'');
+    addToCart(code,input?input.value:1,descCb?.checked&&descInput?descInput.value:'');
     pendingAdd.delete(code);
-    if(added){
-      const searchInput=document.getElementById('item-search');
-      if(searchInput.value){
-        searchInput.value='';
-        applyFilters();
-      }
-    }
   }
   if(e.target.dataset.delta){
     const code=e.target.dataset.itemCode;
