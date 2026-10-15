@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Sum
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import cint, flt, getdate
 
 
 def execute(filters: dict | None = None):
@@ -14,10 +14,12 @@ def execute(filters: dict | None = None):
 	dictionary and should return columns and data. It is called by the framework
 	every time the report is refreshed or a filter is updated.
 	"""
+	filters = filters or {}
 	columns = get_columns()
-	data = get_data(filters or {})
+	data = get_data(filters)
+	report_summary = get_report_summary(data, filters)
 
-	return columns, data
+	return columns, paginate(data, filters), None, None, report_summary
 
 def execute_snapshot_report(filters: dict | None = None):
 	"""Return columns and data for the report.
@@ -31,10 +33,12 @@ def execute_snapshot_report(filters: dict | None = None):
 	"""
 	from frappe.database.duckdb.database import get_latest_sync
 
+	filters = filters or {}
 	columns = get_columns()
-	data = get_data(filters or {})
+	data = get_data(filters)
+	report_summary = get_report_summary(data, filters)
 
-	return columns, data
+	return columns, paginate(data, filters), None, None, report_summary
 
 def get_columns() -> list[dict]:
 	"""Return columns for the report.
@@ -91,11 +95,12 @@ def get_data(filters: dict) -> list[dict]:
 		.select(gle.party.as_("customer"), customer.customer_name, balance.as_("outstanding_balance"))
 		.where(gle.party_type == "Customer")
 		.where(gle.is_cancelled == 0)
-		.where(gle.posting_date <= getdate(filters.get("as_on_date") or nowdate()))
 		.groupby(gle.party, customer.customer_name)
 		.orderby(customer.customer_name)
 	)
 
+	if filters.get("as_on_date"):
+		query = query.where(gle.posting_date <= getdate(filters.get("as_on_date")))
 	if filters.get("company"):
 		query = query.where(gle.company == filters.get("company"))
 	if filters.get("customer"):
@@ -113,6 +118,32 @@ def get_data(filters: dict) -> list[dict]:
 		row.currency = currency
 
 	return data
+
+
+def paginate(data: list[dict], filters: dict) -> list[dict]:
+	"""Return the first `page_length` rows. No page length means all rows."""
+	page_length = cint(filters.get("page_length"))
+	return data[:page_length] if page_length else data
+
+
+def get_report_summary(data: list[dict], filters: dict) -> list[dict]:
+	"""Build the summary cards. They cover all matching rows, not only the current page."""
+	return [
+		{
+			"label": _("Total Pending Balance"),
+			"value": sum(row.outstanding_balance for row in data),
+			"datatype": "Currency",
+			"currency": get_currency(filters.get("company")),
+			"indicator": "Red",
+		},
+		{
+			"key": "total_customers",
+			"label": _("Total Customers"),
+			"value": len(data),
+			"datatype": "Int",
+			"indicator": "Blue",
+		},
+	]
 
 
 def get_currency(company: str | None) -> str | None:
