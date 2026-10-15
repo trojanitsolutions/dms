@@ -20,6 +20,8 @@ const STATUS_COLORS = {
 	"Not Invoiced": "red",
 };
 
+const PAGE_SIZES = [20, 500, 2500];
+
 const DOCUMENT_STATE_COLORS = { Draft: "orange", Submitted: "green", Cancelled: "gray" };
 
 // Filters that the summary cards set. Clicking a card clears these, then applies its own.
@@ -163,6 +165,14 @@ frappe.query_reports["Sales Order Status"] = {
 			label: __("Show All Invoices"),
 			fieldtype: "Check",
 		},
+		{
+			// Set by the paging buttons below the table. Empty means all rows.
+			fieldname: "page_length",
+			label: __("Page Length"),
+			fieldtype: "Int",
+			default: PAGE_SIZES[0],
+			hidden: 1,
+		},
 	],
 
 	onload(report) {
@@ -175,6 +185,7 @@ frappe.query_reports["Sales Order Status"] = {
 
 	after_refresh(report) {
 		bind_summary_drilldown(report);
+		render_paging(report);
 	},
 
 	formatter(value, row, column, data, default_formatter) {
@@ -322,4 +333,48 @@ async function apply_drilldown(report, drilldown) {
 		report._no_refresh = false;
 	}
 	report.refresh();
+}
+
+function render_paging(report) {
+	report.page.main.find(".sales-order-status-paging").remove();
+
+	const page_length = cint(report.get_filter_value("page_length"));
+	const step = report.page_step || PAGE_SIZES[0];
+	const shown = (report.data || []).length;
+	const total = get_total_sales_orders(report);
+	if (!total) return;
+
+	const size_buttons = PAGE_SIZES.map(
+		(size) => `<button class="btn btn-xs btn-default ${page_length && size === step ? "btn-info" : ""}"
+			data-size="${size}">${size}</button>`
+	).join("");
+
+	const $paging = $(`
+		<div class="sales-order-status-paging flex justify-between align-center" style="padding: var(--padding-md) 0;">
+			<div class="btn-group">
+				${size_buttons}
+				<button class="btn btn-xs btn-default ${page_length ? "" : "btn-info"}" data-size="0">${__("All")}</button>
+			</div>
+			<div class="flex align-center" style="gap: var(--margin-sm);">
+				<span class="text-muted small">${__("Showing {0} of {1}", [shown, total])}</span>
+				${shown < total ? `<button class="btn btn-xs btn-default" data-action="load-more">${__("Load More")}</button>` : ""}
+			</div>
+		</div>
+	`).insertAfter(report.$report);
+
+	$paging.find("[data-size]").on("click", (e) => {
+		const size = cint($(e.currentTarget).attr("data-size"));
+		if (size) report.page_step = size;
+		report.set_filter_value("page_length", size || null);
+	});
+
+	// Load More adds one more step of the selected size, for example 20 more rows.
+	$paging.find("[data-action=load-more]").on("click", () => {
+		report.set_filter_value("page_length", shown + step);
+	});
+}
+
+function get_total_sales_orders(report) {
+	const card = (report.raw_data?.report_summary || []).find((c) => c.key === "total_sales_orders");
+	return card ? cint(card.value) : (report.data || []).length;
 }

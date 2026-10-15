@@ -58,7 +58,7 @@ def execute(filters: dict | None = None):
 	data = apply_status_filters(get_data(filters), filters)
 	report_summary = get_report_summary(data)
 
-	return columns, data, None, None, report_summary
+	return columns, paginate(data, filters), None, None, report_summary
 
 
 def execute_snapshot_report(filters: dict | None = None):
@@ -436,8 +436,15 @@ def apply_status_filters(data: list[dict], filters: dict) -> list[dict]:
 	return data
 
 
+def paginate(data: list[dict], filters: dict) -> list[dict]:
+	"""Return the first `page_length` rows. No page length means all rows."""
+	page_length = cint(filters.page_length)
+	return data[:page_length] if page_length else data
+
+
 def get_report_summary(data: list[dict]) -> list[dict]:
 	"""Summary cards. Each count is of Sales Order rows, so linked documents can not inflate it.
+	The cards cover all matching rows, not only the current page.
 
 	The JS uses `drilldown` to apply the matching filters when a card is clicked.
 	"""
@@ -449,6 +456,7 @@ def get_report_summary(data: list[dict]) -> list[dict]:
 
 	return [
 		{
+			"key": "total_sales_orders",
 			"label": _("Total Sales Orders"),
 			"value": len(data),
 			"datatype": "Int",
