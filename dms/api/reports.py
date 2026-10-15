@@ -66,6 +66,7 @@ def export_customer_balance(filters=None):
 	filters = _parse_filters(filters)
 	# Export all matching rows, not only the current page.
 	filters.pop("page_length", None)
+	selected = set(filters.pop("selected", None) or [])
 
 	from frappe.desk.utils import provide_binary_file
 	from frappe.utils.xlsxutils import make_xlsx
@@ -74,6 +75,8 @@ def export_customer_balance(filters=None):
 
 	columns, data, _msg, _chart, _summary = execute(filters)
 	columns = [col for col in columns if not col.get("hidden")]
+	if selected:
+		data = [row for row in data if row.get("customer") in selected]
 
 	header = [col["label"] for col in columns]
 	rows = [[row.get(col["fieldname"], "") for col in columns] for row in data]

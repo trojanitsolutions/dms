@@ -50,6 +50,8 @@ const filters = reactive({
   page_length: PAGE_SIZES[0] as number | null,
 })
 const step = ref(PAGE_SIZES[0])
+// Selected customer IDs. Export downloads only these when any are selected.
+const selected = ref<string[]>([])
 
 const report = useCall<BalanceResponse, { filters: string }>({
   url: '/api/v2/method/dms.api.reports.get_customer_balance',
@@ -64,6 +66,26 @@ const summary = computed(() => report.data?.report_summary ?? [])
 const total = computed(
   () => summary.value.find((card) => card.key === 'total_customers')?.value ?? rows.value.length,
 )
+
+const allSelected = computed(
+  () => rows.value.length > 0 && rows.value.every((row) => isSelected(row)),
+)
+const someSelected = computed(() => !allSelected.value && rows.value.some((row) => isSelected(row)))
+
+function isSelected(row: Row) {
+  return selected.value.includes(String(row.customer))
+}
+
+function toggleRow(row: Row, checked: boolean | 1 | 0 | undefined) {
+  const customer = String(row.customer)
+  selected.value = checked
+    ? [...selected.value, customer]
+    : selected.value.filter((name) => name !== customer)
+}
+
+function toggleAll(checked: boolean | 1 | 0 | undefined) {
+  selected.value = checked ? rows.value.map((row) => String(row.customer)) : []
+}
 
 const formatCurrency = (value: unknown) =>
   Number(value ?? 0).toLocaleString(undefined, {
@@ -83,7 +105,7 @@ function loadMore() {
 const exportUrl = computed(
   () =>
     `/api/method/dms.api.reports.export_customer_balance?filters=${encodeURIComponent(
-      JSON.stringify(filters),
+      JSON.stringify({ ...filters, selected: selected.value }),
     )}`,
 )
 </script>
@@ -100,7 +122,12 @@ const exportUrl = computed(
       <TextInput v-model="filters.customer" label="Customer" class="w-40" />
       <TextInput v-model="filters.customer_group" label="Customer Group" class="w-40" />
       <Checkbox v-model="filters.show_zero_balance" label="Show Zero Balance" />
-      <Button label="Export" icon-left="lucide-download" :href="exportUrl" />
+      <Button
+        :label="selected.length ? `Export Selected (${selected.length})` : 'Export'"
+        icon-left="lucide-download"
+        :href="exportUrl"
+      />
+      <Button v-if="selected.length" label="Clear Selection" @click="selected = []" />
     </div>
 
     <div v-if="summary.length" class="flex flex-wrap gap-3">
@@ -130,6 +157,14 @@ const exportUrl = computed(
         <table class="w-full text-left text-sm">
           <thead>
             <tr class="border-b border-outline-gray-1 text-ink-gray-6">
+              <th class="w-10 px-4 py-2">
+                <Checkbox
+                  :model-value="allSelected"
+                  :indeterminate="someSelected"
+                  aria-label="Select all rows"
+                  @update:model-value="toggleAll"
+                />
+              </th>
               <th
                 v-for="col in columns"
                 :key="col.fieldname"
@@ -141,7 +176,18 @@ const exportUrl = computed(
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-gray-1">
-            <tr v-for="(row, i) in rows" :key="i">
+            <tr
+              v-for="(row, i) in rows"
+              :key="i"
+              :class="isSelected(row) ? 'bg-surface-gray-2' : ''"
+            >
+              <td class="w-10 px-4 py-2">
+                <Checkbox
+                  :model-value="isSelected(row)"
+                  :aria-label="`Select ${row.customer}`"
+                  @update:model-value="(checked) => toggleRow(row, checked)"
+                />
+              </td>
               <td
                 v-for="col in columns"
                 :key="col.fieldname"
