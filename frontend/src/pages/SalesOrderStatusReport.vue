@@ -29,6 +29,7 @@ interface Row {
 }
 
 interface SummaryCard {
+  key?: string
   label: string
   value: number
   datatype: string
@@ -92,6 +93,8 @@ const INVOICE_STATUSES = [
   'Cancelled',
 ]
 
+const PAGE_SIZES = [20, 100, 500, 2500]
+
 const STATUS_THEMES: Record<string, Theme> = {
   // Overall Fulfilment Status
   'Fully Completed': 'green',
@@ -148,7 +151,10 @@ const filters = reactive({
   draft_invoice_only: false,
   // Visibility only: adds cancelled invoices to the references.
   show_all_invoices: false,
+  // Empty means all rows.
+  page_length: PAGE_SIZES[0] as number | null,
 })
+const step = ref(PAGE_SIZES[0])
 // Selected Sales Order IDs. Export downloads only these when any are selected.
 const selected = ref<string[]>([])
 const detailsRow = ref<Row | null>(null)
@@ -163,6 +169,19 @@ const numericTypes = new Set(['Float', 'Currency', 'Int'])
 const columns = computed(() => (report.data?.columns ?? []).filter((col) => !col.hidden))
 const rows = computed(() => report.data?.data ?? [])
 const summary = computed(() => report.data?.report_summary ?? [])
+const total = computed(
+  () =>
+    summary.value.find((card) => card.key === 'total_sales_orders')?.value ?? rows.value.length,
+)
+
+function setPageSize(size: number) {
+  if (size) step.value = size
+  filters.page_length = size || null
+}
+
+function loadMore() {
+  filters.page_length = rows.value.length + step.value
+}
 
 // Clicking a card clears the drilldown filters, then applies its own.
 function applyDrilldown(drilldown: Record<string, string | number>) {
@@ -400,6 +419,32 @@ const exportUrl = computed(
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div
+      v-if="!report.error"
+      class="flex flex-wrap items-center justify-between gap-3"
+    >
+      <div class="flex gap-1">
+        <Button
+          v-for="size in PAGE_SIZES"
+          :key="size"
+          :label="String(size)"
+          size="sm"
+          :variant="filters.page_length && size === step ? 'solid' : 'subtle'"
+          @click="setPageSize(size)"
+        />
+        <Button
+          label="All"
+          size="sm"
+          :variant="filters.page_length ? 'subtle' : 'solid'"
+          @click="setPageSize(0)"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-ink-gray-5">Showing {{ rows.length }} of {{ total }}</span>
+        <Button v-if="rows.length < total" label="Load More" size="sm" @click="loadMore" />
+      </div>
     </div>
   </div>
 

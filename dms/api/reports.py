@@ -100,6 +100,8 @@ def get_sales_order_status(filters=None):
 def export_sales_order_status(filters=None):
 	_require_accounts_manager()
 	filters = _parse_filters(filters)
+	# Export all matching rows, not only the current page.
+	filters.pop("page_length", None)
 	selected = set(filters.pop("selected", None) or [])
 
 	from frappe.desk.utils import provide_binary_file
