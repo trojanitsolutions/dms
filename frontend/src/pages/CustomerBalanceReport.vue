@@ -30,6 +30,7 @@ interface SummaryCard {
   label: string
   value: number
   datatype: string
+  currency?: string
 }
 
 interface BalanceResponse {
@@ -87,11 +88,14 @@ function toggleAll(checked: boolean | 1 | 0 | undefined) {
   selected.value = checked ? rows.value.map((row) => String(row.customer)) : []
 }
 
-const formatCurrency = (value: unknown) =>
-  Number(value ?? 0).toLocaleString(undefined, {
+// Shows the currency code before the amount, e.g. "QAR 1,250.00".
+const formatCurrency = (value: unknown, currency?: unknown) => {
+  const amount = Number(value ?? 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
+  return currency ? `${currency} ${amount}` : amount
+}
 
 function setPageSize(size: number) {
   if (size) step.value = size
@@ -138,7 +142,7 @@ const exportUrl = computed(
       >
         <p class="text-sm text-ink-gray-5">{{ card.label }}</p>
         <p class="mt-1 text-lg font-semibold text-ink-gray-8">
-          {{ card.datatype === 'Currency' ? formatCurrency(card.value) : card.value }}
+          {{ card.datatype === 'Currency' ? formatCurrency(card.value, card.currency) : card.value }}
         </p>
       </div>
     </div>
@@ -205,7 +209,7 @@ const exportUrl = computed(
                   {{ row[col.fieldname] }}
                 </a>
                 <template v-else-if="col.fieldtype === 'Currency'">
-                  {{ formatCurrency(row[col.fieldname]) }}
+                  {{ formatCurrency(row[col.fieldname], row.currency) }}
                 </template>
                 <template v-else>{{ row[col.fieldname] ?? '' }}</template>
               </td>
