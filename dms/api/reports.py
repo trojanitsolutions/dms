@@ -49,6 +49,39 @@ def export_sales_availability(filters=None):
 	provide_binary_file("Sales Availability Report", "xlsx", content)
 
 
+@frappe.whitelist()
+def get_customer_balance(filters=None):
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+
+	from dms.dms.report.customer_balance.customer_balance import execute
+
+	columns, data, _msg, _chart, report_summary = execute(filters)
+	return {"columns": columns, "data": data, "report_summary": report_summary}
+
+
+@frappe.whitelist()
+def export_customer_balance(filters=None):
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+	# Export all matching rows, not only the current page.
+	filters.pop("page_length", None)
+
+	from frappe.desk.utils import provide_binary_file
+	from frappe.utils.xlsxutils import make_xlsx
+
+	from dms.dms.report.customer_balance.customer_balance import execute
+
+	columns, data, _msg, _chart, _summary = execute(filters)
+	columns = [col for col in columns if not col.get("hidden")]
+
+	header = [col["label"] for col in columns]
+	rows = [[row.get(col["fieldname"], "") for col in columns] for row in data]
+
+	content = make_xlsx([header, *rows], "Customer Balance").getvalue()
+	provide_binary_file("Customer Balance Report", "xlsx", content)
+
+
 def _get_employee_checkin_rows(filters):
 	conditions = {}
 	if filters.get("employee"):

@@ -13,6 +13,10 @@ export const router = createRouter({
       path: '/sales-availability',
       component: () => import('./pages/SalesAvailabilityReport.vue'),
     },
+    {
+      path: '/customer-balance',
+      component: () => import('./pages/CustomerBalanceReport.vue'),
+    },
     { path: '/:path(.*)*', component: () => import('./pages/NotFound.vue') },
   ],
 })
