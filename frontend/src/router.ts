@@ -17,6 +17,10 @@ export const router = createRouter({
       path: '/customer-balance',
       component: () => import('./pages/CustomerBalanceReport.vue'),
     },
+    {
+      path: '/sales-order-status',
+      component: () => import('./pages/SalesOrderStatusReport.vue'),
+    },
     { path: '/:path(.*)*', component: () => import('./pages/NotFound.vue') },
   ],
 })

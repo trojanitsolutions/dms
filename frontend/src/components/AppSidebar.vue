@@ -28,6 +28,11 @@ const { resolvedColorScheme, toggleColorScheme } = useColorScheme()
         icon="lucide-wallet"
         route="/customer-balance"
       />
+      <SidebarItem
+        label="Sales Order Status"
+        icon="lucide-clipboard-list"
+        route="/sales-order-status"
+      />
     </div>
     <button
       class="mx-2 mb-2 flex items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-6 hover:bg-surface-gray-2"

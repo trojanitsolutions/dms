@@ -85,6 +85,42 @@ def export_customer_balance(filters=None):
 	provide_binary_file("Customer Balance Report", "xlsx", content)
 
 
+@frappe.whitelist()
+def get_sales_order_status(filters=None):
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+
+	from dms.dms.report.sales_order_status.sales_order_status import execute
+
+	columns, data, _msg, _chart, report_summary = execute(filters)
+	return {"columns": columns, "data": data, "report_summary": report_summary}
+
+
+@frappe.whitelist()
+def export_sales_order_status(filters=None):
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+	selected = set(filters.pop("selected", None) or [])
+
+	from frappe.desk.utils import provide_binary_file
+	from frappe.utils.xlsxutils import make_xlsx
+
+	from dms.dms.report.sales_order_status.sales_order_status import execute
+
+	columns, data, _msg, _chart, _summary = execute(filters)
+	columns = [col for col in columns if not col.get("hidden")]
+	if selected:
+		data = [row for row in data if row.get("sales_order") in selected]
+
+	header = [_("#"), *(col["label"] for col in columns)]
+	rows = [
+		[i + 1, *(row.get(col["fieldname"], "") for col in columns)] for i, row in enumerate(data)
+	]
+
+	content = make_xlsx([header, *rows], "Sales Order Status").getvalue()
+	provide_binary_file("Sales Order Status Report", "xlsx", content)
+
+
 def _get_employee_checkin_rows(filters):
 	conditions = {}
 	if filters.get("employee"):
