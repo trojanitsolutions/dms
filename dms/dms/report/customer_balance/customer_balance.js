@@ -50,7 +50,8 @@ frappe.query_reports["Customer Balance"] = {
 	},
 
 	get_datatable_options(options) {
-		return Object.assign(options, { checkboxColumn: true });
+		// Hide the built-in row number column. The report has its own Sl No column.
+		return Object.assign(options, { checkboxColumn: true, serialNoColumn: false });
 	},
 
 	after_refresh(report) {
