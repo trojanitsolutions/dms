@@ -50,6 +50,24 @@ def export_sales_availability(filters=None):
 
 
 @frappe.whitelist()
+def search_customers(txt: str = ""):
+	"""Return up to 20 enabled customers whose ID or name contains `txt`, for the Customer picker."""
+	_require_accounts_manager()
+	search = f"%{txt.strip()}%"
+	customers = frappe.get_list(
+		"Customer",
+		filters={"disabled": 0},
+		or_filters={"name": ["like", search], "customer_name": ["like", search]},
+		fields=["name", "customer_name"],
+		order_by="customer_name",
+		limit_page_length=20,
+	)
+	return [
+		{"value": c.name, "label": c.customer_name or c.name, "description": c.name} for c in customers
+	]
+
+
+@frappe.whitelist()
 def get_customer_balance(filters=None):
 	_require_accounts_manager()
 	filters = _parse_filters(filters)
