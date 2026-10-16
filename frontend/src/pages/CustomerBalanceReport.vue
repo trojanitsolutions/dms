@@ -121,10 +121,21 @@ const exportUrl = computed(
 
   <div class="w-full space-y-4 px-3 pb-10 pt-6 sm:px-5">
     <div class="flex flex-wrap items-end gap-3">
-      <TextInput v-model="filters.company" label="Company" class="w-40" />
+      <TextInput v-model="filters.company" label="Company" :debounce="300" class="w-40" />
       <DatePicker v-model="filters.as_on_date" label="As On Date" class="w-36" />
-      <TextInput v-model="filters.customer" label="Customer" class="w-40" />
-      <TextInput v-model="filters.customer_group" label="Customer Group" class="w-40" />
+      <TextInput
+        v-model="filters.customer"
+        label="Customer"
+        placeholder="Search ID or name"
+        :debounce="300"
+        class="w-48"
+      />
+      <TextInput
+        v-model="filters.customer_group"
+        label="Customer Group"
+        :debounce="300"
+        class="w-40"
+      />
       <Checkbox v-model="filters.show_zero_balance" label="Show Zero Balance" />
       <Button
         :label="selected.length ? `Export Selected (${selected.length})` : 'Export'"

@@ -104,7 +104,9 @@ def get_data(filters: dict) -> list[dict]:
 	if filters.get("company"):
 		query = query.where(gle.company == filters.get("company"))
 	if filters.get("customer"):
-		query = query.where(gle.party == filters.get("customer"))
+		# Partial match on the ID or the name, so the user can type part of either.
+		search = f"%{filters.get('customer').strip()}%"
+		query = query.where(gle.party.like(search) | customer.customer_name.like(search))
 	if filters.get("customer_group"):
 		query = query.where(customer.customer_group == filters.get("customer_group"))
 	if not filters.get("show_zero_balance"):
