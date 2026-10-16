@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from dms.utils import get_owner_filter
+
 
 def _require_login():
 	if frappe.session.user == "Guest":
@@ -16,6 +18,9 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 	limit_page_length = cint(limit_page_length) or 20
 
 	filters = {"docstatus": ["!=", 2]}
+	owner = get_owner_filter()
+	if owner:
+		filters["owner"] = owner
 
 	if posting_date:
 		filters["transaction_date"] = posting_date

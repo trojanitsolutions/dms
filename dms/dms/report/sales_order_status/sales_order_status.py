@@ -42,6 +42,8 @@ from frappe.query_builder.functions import Sum
 from frappe.utils import cint, date_diff, flt, getdate, today
 from frappe.utils.nestedset import get_descendants_of
 
+from dms.utils import get_owner_filter
+
 CHUNK_SIZE = 1000
 
 DELIVERY_DONE = ("Fully Delivered", "Not Applicable")
@@ -126,7 +128,7 @@ def get_data(filters: dict) -> list[dict]:
 
 
 def get_sales_orders(filters: dict) -> list[dict]:
-	"""Return submitted and cancelled Sales Orders the user can read, one row per order."""
+	"""Return submitted and cancelled Sales Orders the user created (System Manager: all), one row per order."""
 	conditions = [["docstatus", "in", [1, 2]]]
 	if filters.company:
 		conditions.append(["company", "=", filters.company])
@@ -143,6 +145,9 @@ def get_sales_orders(filters: dict) -> list[dict]:
 	if filters.sales_person:
 		sales_persons = [filters.sales_person, *get_descendants_of("Sales Person", filters.sales_person)]
 		conditions.append(["Sales Team", "sales_person", "in", sales_persons])
+	owner = get_owner_filter()
+	if owner:
+		conditions.append(["owner", "=", owner])
 
 	return frappe.get_list(
 		"Sales Order",

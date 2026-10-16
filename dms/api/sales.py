@@ -4,6 +4,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from dms.utils import get_owner_filter
+
 
 def _require_sales_rep():
     if frappe.session.user == "Guest":
@@ -783,6 +785,9 @@ def get_pending_orders(customer: str = ""):
     if frappe.session.user == "Guest":
         frappe.throw(_("Not logged in"), frappe.AuthenticationError)
     filters = {"docstatus": 0}
+    owner = get_owner_filter()
+    if owner:
+        filters["owner"] = owner
     if customer:
         filters["customer"] = customer
     orders = frappe.get_all(
