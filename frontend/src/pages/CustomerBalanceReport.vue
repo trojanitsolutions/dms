@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   Button,
   Checkbox,
-  Combobox,
   DatePicker,
   ErrorMessage,
   LoadingIndicator,
   PageHeader,
   PageHeaderTitle,
   TextInput,
-  debounce,
   useCall,
 } from 'frappe-ui'
+import SearchPicker from '../components/SearchPicker.vue'
 import { deskLink } from '../utils'
 
 interface Column {
@@ -33,12 +32,6 @@ interface SummaryCard {
   value: number
   datatype: string
   currency?: string
-}
-
-interface CustomerOption {
-  value: string
-  label: string
-  description: string
 }
 
 interface BalanceResponse {
@@ -67,38 +60,6 @@ const report = useCall<BalanceResponse, { filters: string }>({
   params: () => ({ filters: JSON.stringify(filters) }),
   refetch: true,
 })
-
-// Customer picker: the typed text searches customers, the picked customer ID filters the report.
-const customerQuery = ref('')
-const customerSearch = ref('')
-const selectedCustomer = ref<CustomerOption | null>(null)
-watch(
-  customerQuery,
-  debounce((txt: string) => (customerSearch.value = txt), 300),
-)
-
-const customers = useCall<CustomerOption[], { txt: string }>({
-  url: '/api/v2/method/dms.api.reports.search_customers',
-  params: () => ({ txt: customerSearch.value }),
-  refetch: true,
-})
-
-// Keep the picked customer in the list so the box still shows its name after the results change.
-const customerOptions = computed(() => {
-  const results = customers.data ?? []
-  const picked = selectedCustomer.value
-  return picked && !results.some((c) => c.value === picked.value) ? [picked, ...results] : results
-})
-
-function onCustomerPickerOpen(open: boolean) {
-  if (open) customerQuery.value = ''
-}
-
-function clearCustomer() {
-  filters.customer = ''
-  selectedCustomer.value = null
-  customerQuery.value = ''
-}
 
 const numericTypes = new Set(['Float', 'Currency', 'Int'])
 const columns = computed(() => (report.data?.columns ?? []).filter((col) => !col.hidden))
@@ -163,28 +124,12 @@ const exportUrl = computed(
     <div class="flex flex-wrap items-end gap-3">
       <TextInput v-model="filters.company" label="Company" :debounce="300" class="w-40" />
       <DatePicker v-model="filters.as_on_date" label="As On Date" class="w-36" />
-      <div class="flex items-end gap-1">
-        <Combobox
-          v-model="filters.customer"
-          v-model:query="customerQuery"
-          label="Customer"
-          placeholder="Search customer name or ID"
-          :options="customerOptions"
-          :loading="customers.loading"
-          :filterable="false"
-          open-on-focus
-          class="w-56"
-          @update:open="onCustomerPickerOpen"
-          @update:selected-option="(option) => (selectedCustomer = option as CustomerOption | null)"
-        />
-        <Button
-          v-if="filters.customer"
-          icon="lucide-x"
-          variant="ghost"
-          aria-label="Clear customer"
-          @click="clearCustomer"
-        />
-      </div>
+      <SearchPicker
+        v-model="filters.customer"
+        label="Customer"
+        placeholder="Search customer name or ID"
+        url="/api/v2/method/dms.api.reports.search_customers"
+      />
       <TextInput
         v-model="filters.customer_group"
         label="Customer Group"

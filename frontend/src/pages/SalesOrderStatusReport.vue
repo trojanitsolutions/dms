@@ -14,6 +14,7 @@ import {
   TextInput,
   useCall,
 } from 'frappe-ui'
+import SearchPicker from '../components/SearchPicker.vue'
 import { deskLink } from '../utils'
 
 interface Column {
@@ -246,12 +247,28 @@ const exportUrl = computed(
 
   <div class="w-full space-y-4 px-3 pb-10 pt-6 sm:px-5">
     <div class="flex flex-wrap items-end gap-3">
-      <TextInput v-model="filters.company" label="Company" class="w-40" />
+      <TextInput v-model="filters.company" label="Company" :debounce="300" class="w-40" />
       <DatePicker v-model="filters.from_date" label="From Date" class="w-36" />
       <DatePicker v-model="filters.to_date" label="To Date" class="w-36" />
-      <TextInput v-model="filters.customer" label="Customer" class="w-40" />
-      <TextInput v-model="filters.sales_order" label="Sales Order" class="w-40" />
-      <TextInput v-model="filters.sales_person" label="Sales Person" class="w-40" />
+      <SearchPicker
+        v-model="filters.customer"
+        label="Customer"
+        placeholder="Search customer name or ID"
+        url="/api/v2/method/dms.api.reports.search_customers"
+      />
+      <SearchPicker
+        v-model="filters.sales_order"
+        label="Sales Order"
+        placeholder="Search order or customer"
+        url="/api/v2/method/dms.api.reports.search_sales_orders"
+        :params="{ company: filters.company, customer: filters.customer }"
+      />
+      <SearchPicker
+        v-model="filters.sales_person"
+        label="Sales Person"
+        placeholder="Search sales person"
+        url="/api/v2/method/dms.api.reports.search_sales_persons"
+      />
       <Select
         v-model="filters.sales_order_status"
         label="Sales Order Status"

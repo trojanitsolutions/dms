@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import nowdate
 
+from dms.utils import get_owner_filter
+
 
 def _require_accounts_manager():
 	if frappe.session.user == "Guest":
@@ -64,6 +66,48 @@ def search_customers(txt: str = ""):
 	)
 	return [
 		{"value": c.name, "label": c.customer_name or c.name, "description": c.name} for c in customers
+	]
+
+
+@frappe.whitelist()
+def search_sales_orders(txt: str = "", company: str = "", customer: str = ""):
+	"""Return up to 20 submitted or cancelled Sales Orders whose ID or customer name contains `txt`."""
+	_require_accounts_manager()
+	search = f"%{txt.strip()}%"
+	filters = {"docstatus": ["in", [1, 2]]}
+	if company:
+		filters["company"] = company
+	if customer:
+		filters["customer"] = customer
+	owner = get_owner_filter()
+	if owner:
+		filters["owner"] = owner
+	orders = frappe.get_list(
+		"Sales Order",
+		filters=filters,
+		or_filters={"name": ["like", search], "customer_name": ["like", search]},
+		fields=["name", "customer_name"],
+		order_by="transaction_date desc, name desc",
+		limit_page_length=20,
+	)
+	return [{"value": o.name, "label": o.name, "description": o.customer_name} for o in orders]
+
+
+@frappe.whitelist()
+def search_sales_persons(txt: str = ""):
+	"""Return up to 20 enabled Sales Persons (groups included) whose ID or name contains `txt`."""
+	_require_accounts_manager()
+	search = f"%{txt.strip()}%"
+	persons = frappe.get_list(
+		"Sales Person",
+		filters={"enabled": 1},
+		or_filters={"name": ["like", search], "sales_person_name": ["like", search]},
+		fields=["name", "sales_person_name"],
+		order_by="name",
+		limit_page_length=20,
+	)
+	return [
+		{"value": p.name, "label": p.sales_person_name or p.name, "description": p.name} for p in persons
 	]
 
 
