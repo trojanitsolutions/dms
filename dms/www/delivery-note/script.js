@@ -107,7 +107,7 @@ function renderItems() {
 		const errorHtml = isOver ? `<div class="item-error"><span class="msr">error</span>Delivered quantity cannot exceed the ordered quantity.</div>` :
 		                  isNeg  ? `<div class="item-error"><span class="msr">error</span>Delivered quantity cannot be negative.</div>` : '';
 
-		return `<div class="item-row">
+		return `<div class="item-row" data-row="${esc(item.name)}">
 			${placeholder}
 			<div class="item-body">
 				<div class="item-name-row">
@@ -156,12 +156,26 @@ function setQty(itemName, val) {
 	updateActionState();
 }
 
-function hasInvalidQtys() {
-	if (!noteData) return false;
-	return noteData.items.some(item => {
+function getInvalidItems() {
+	if (!noteData) return [];
+	return noteData.items.filter(item => {
 		const v = itemState[item.name];
 		return v < 0 || v > item.ordered_qty;
 	});
+}
+
+function hasInvalidQtys() {
+	return getInvalidItems().length > 0;
+}
+
+function showInvalidQtys(action) {
+	const invalid = getInvalidItems();
+	const first = invalid[0];
+	const detail = `${first.item_name}: delivered ${itemState[first.name]}, ordered ${first.ordered_qty} ${first.uom}`;
+	const more = invalid.length > 1 ? ` (+${invalid.length - 1} more)` : '';
+	showToast(`Cannot ${action}. ${detail}${more}`, true);
+	const row = document.querySelector(`[data-row="${CSS.escape(first.name)}"]`);
+	if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 
@@ -177,11 +191,6 @@ function updateActionState() {
 		// Show remarks always (read-only when submitted)
 		const textarea = remarksCard.querySelector('textarea');
 		if (textarea) textarea.readOnly = isReadonly;
-	}
-	if (!isReadonly) {
-		const inv = hasInvalidQtys();
-		const submitBtn = document.getElementById('submit-btn');
-		if (submitBtn) submitBtn.disabled = inv;
 	}
 }
 
@@ -255,7 +264,7 @@ async function handleFileUpload(files) {
 // ── Save draft ────────────────────────────────────────
 async function saveDraft() {
 	if (!noteData || noteData.docstatus !== 0) return;
-	if (hasInvalidQtys()) { showToast('Please correct invalid quantities before saving.', true); return; }
+	if (hasInvalidQtys()) { showInvalidQtys('save'); return; }
 	const saveBtn = document.getElementById('save-btn');
 	if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
 	try {
@@ -280,7 +289,7 @@ async function saveDraft() {
 // ── Submit ────────────────────────────────────────────
 async function submitNote() {
 	if (!noteData || noteData.docstatus !== 0) return;
-	if (hasInvalidQtys()) { showToast('Please correct invalid quantities before submitting.', true); return; }
+	if (hasInvalidQtys()) { showInvalidQtys('submit'); return; }
 	if (attachments.length === 0) { showToast('Please upload at least one proof of delivery.', true); return; }
 	if (!confirm('Submit this delivery? This cannot be undone.')) return;
 
