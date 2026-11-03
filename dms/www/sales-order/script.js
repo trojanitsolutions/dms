@@ -54,7 +54,39 @@ function displayedAvailable(code){
     avail=Object.values(availMap).reduce((s,v)=>s+v,0);
     if(!avail)avail=Object.values(stockMap).reduce((s,v)=>s+v,0);
   }
-  return Math.max(0,avail-(cart[code]?.qty||0));
+  return Math.max(0,avail-stockQty(cart[code]));
+}
+/* ── UOM helpers ─────────────────────────────────────────── */
+function itemUoms(item){
+  return item.uoms&&item.uoms.length?item.uoms:[{uom:item.stock_uom||'ea',conversion_factor:1,rate:item.standard_rate}];
+}
+function findUom(item,uom){
+  const list=itemUoms(item);
+  return list.find(u=>u.uom===uom)||list[0];
+}
+function lineCf(line){return line?(line.cf||1):1}
+function stockQty(line){return line?line.qty*lineCf(line):0}
+function lineRate(line){
+  const u=findUom(line.item,line.uom);
+  return u&&u.rate!==undefined?u.rate:line.item.standard_rate*lineCf(line);
+}
+// whole units of the line's UOM that still fit into available stock
+function maxQtyFor(code){
+  const line=cart[code];
+  const free=displayedAvailable(code)+stockQty(line);
+  return free===Infinity?Infinity:Math.floor(free/lineCf(line));
+}
+function canAddMore(code){return displayedAvailable(code)>=lineCf(cart[code])}
+function newCartLine(item,qty,extra={}){
+  const u=findUom(item,extra.uom||item.stock_uom);
+  return {item,qty,discountType:'',discountValue:0,description:'',...extra,uom:u.uom,cf:u.conversion_factor||1};
+}
+function uomMarkup(line){
+  const code=line.item.name;
+  const list=itemUoms(line.item);
+  if(list.length<=1)return esc(line.uom||line.item.stock_uom||'ea');
+  const dis=LOCKED_ITEMS?' disabled':'';
+  return `<select class="cart-uom-select" data-item-code="${esc(code)}" aria-label="Unit of measure"${dis}>${list.map(u=>`<option value="${esc(u.uom)}"${u.uom===line.uom?' selected':''}>${esc(u.uom)}${u.conversion_factor!==1?` (×${u.conversion_factor})`:''}</option>`).join('')}</select>`;
 }
 function isCardOos(code){
   if(STOCK_VALIDATION_DISABLED)return false;
@@ -356,7 +388,7 @@ function addToCart(code,qty,description){
   const avail=displayedAvailable(code);
   if(avail<=0)return false;
   qty=Math.min(Math.max(1,parseInt(qty,10)||1),avail);
-  cart[code]={item,qty,discountType:'',discountValue:0,description:(description||'').trim()};
+  cart[code]=newCartLine(item,qty,{description:(description||'').trim()});
   updateCartUI();refreshCard(code);
   clearItemSearch();
   return true;
@@ -365,15 +397,14 @@ function setQty(code,rawValue){
   if(!cart[code])return;
   let n=parseInt(rawValue,10);
   if(isNaN(n)||n<0)n=0;
-  const maxAvail=displayedAvailable(code)+cart[code].qty;
-  n=Math.min(n,maxAvail);
+  n=Math.min(n,maxQtyFor(code));
   cart[code].qty=n;
   if(n===0)delete cart[code];
   updateCartUI();refreshCard(code);
 }
 function changeQty(code,delta){
   if(!cart[code])return;
-  if(delta>0&&displayedAvailable(code)<=0)return;
+  if(delta>0&&!canAddMore(code))return;
   setQty(code,cart[code].qty+delta);
 }
 function removeFromCart(code){delete cart[code];updateCartUI();refreshCard(code)}
@@ -394,8 +425,9 @@ async function refreshTotals(){
 	totalsTimer=setTimeout(async()=>{
 		try{
 			const wh=getWarehouse();
-			const itemsData=items.map(({item,qty,discountType,discountValue})=>{
-				const row={item_code:item.name,qty,rate:item.standard_rate};
+			const itemsData=items.map(line=>{
+				const {item,qty,discountType,discountValue}=line;
+				const row={item_code:item.name,qty,uom:line.uom,rate:lineRate(line)};
 				if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
 				return row;
 			});
@@ -457,7 +489,7 @@ function descMarkup(code,description){
 function actionMarkup(code,forModal){
   const inCart=cart[code];
   const cardOos=isCardOos(code);
-  const canMore=displayedAvailable(code)>0;
+  const canMore=canAddMore(code);
   const listStyle=currentView==='list'?' style="font-size:11px;padding:5px 8px"':'';
   const avail=displayedAvailable(code);
 
@@ -482,7 +514,7 @@ function refreshCard(code){
   const item=allItems.find(i=>i.name===code);if(!item)return;
   const inCart=cart[code];
   const cardOos=isCardOos(code);
-  const canMore=displayedAvailable(code)>0;
+  const canMore=canAddMore(code);
 
   // Update action buttons
   actionEl.innerHTML=actionMarkup(code);
@@ -548,10 +580,11 @@ function updateCartUI(){
     return;
   }
 
-  cartEl.innerHTML=items.map(({item,qty,discountType,discountValue,description})=>{
+  cartEl.innerHTML=items.map(line=>{
+    const {item,qty,discountType,discountValue,description}=line;
     const code=item.name;
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
-    const plusDis=displayedAvailable(code)<=0?' disabled style="opacity:.45;cursor:not-allowed"':'';
+    const plusDis=!canAddMore(code)?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const discInputDis=!discountType||LOCKED_ITEMS||EDITING_SUBMITTED?' disabled':'';
     const discInputMax=discountType==='Percentage'?' max="100"':'';
     const removeBtn=!LOCKED_ITEMS?`<button class="cart-remove" data-item-code="${item.name}" title="Remove">
@@ -559,7 +592,7 @@ function updateCartUI(){
       </button>`:'';
     const descCtrl=!LOCKED_ITEMS&&!EDITING_SUBMITTED?`<div class="cart-desc-ctrl">${descMarkup(code,description)}</div>`:'';
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-code">${item.name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(item.standard_rate)}</span> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-code">${item.name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(lineRate(line))}</span> / ${uomMarkup(line)}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
       <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"${LOCKED_ITEMS?' disabled':''}><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
       ${descCtrl}
       <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
@@ -803,8 +836,9 @@ function validateOrderInputs(){
 }
 function buildOrderPayload(){
 	const items=Object.values(cart);
-	const itemsData=items.map(({item,qty,discountType,discountValue,description})=>{
-		const row={item_code:item.name,qty,rate:item.standard_rate};
+	const itemsData=items.map(line=>{
+		const {item,qty,discountType,discountValue,description}=line;
+		const row={item_code:item.name,qty,uom:line.uom,rate:lineRate(line)};
 		if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
 		if(description)row.description=description;
 		return row;
@@ -824,9 +858,10 @@ function buildOrderPayload(){
 }
 
 function buildTransItemsPayload(){
-	return Object.values(cart).map(({item,qty,docname,rate})=>{
-		const row={item_code:item.name,qty,uom:item.stock_uom};
-		row.rate=docname?rate:item.standard_rate;
+	return Object.values(cart).map(line=>{
+		const {item,qty,docname,rate}=line;
+		const row={item_code:item.name,qty,uom:line.uom,conversion_factor:lineCf(line)};
+		row.rate=docname&&rate!==undefined?rate:lineRate(line);
 		if(docname)row.docname=docname;
 		return row;
 	});
@@ -1089,7 +1124,7 @@ async function saveSubmittedOrderEdits(){
     reopenDetail.items.forEach(it=>{
       const item=allItems.find(i=>i.name===it.item_code);
       if(!item)return;
-      const cartLine={item,qty:it.qty,discountType:it.discount_type||'',discountValue:it.discount_value||0,description:it.description||''};
+      const cartLine=newCartLine(item,it.qty,{discountType:it.discount_type||'',discountValue:it.discount_value||0,description:it.description||'',uom:it.uom||item.stock_uom});
       if(EDITING_SUBMITTED){cartLine.docname=it.docname;cartLine.rate=it.rate}
       cart[it.item_code]=cartLine;
     });
@@ -1324,6 +1359,17 @@ document.addEventListener('change',e=>{
     if(e.target.closest('.cart-desc-ctrl')&&cart[code]){
       if(!e.target.checked){cart[code].description='';if(descInput)descInput.value=''}
       else cart[code].description=(descInput?.value||'').trim();
+    }
+  }
+  if(e.target.classList.contains('cart-uom-select')){
+    const code=e.target.dataset.itemCode;
+    const line=cart[code];
+    if(line){
+      const u=findUom(line.item,e.target.value);
+      line.uom=u.uom;line.cf=u.conversion_factor||1;
+      delete line.rate; // submitted-order line: price the new UOM
+      line.qty=Math.max(1,Math.min(line.qty,maxQtyFor(code)));
+      updateCartUI();refreshCard(code);
     }
   }
   if(e.target.classList.contains('item-disc-type')){

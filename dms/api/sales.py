@@ -532,8 +532,51 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
             if items_with_stock <= 5:
                 frappe.logger().info(f"DEBUG item with stock: {item['name']}, any_stock={item['any_stock']}, warehouse_available={avail_map}")
 
+    _attach_item_uoms(items, selling_pl)
+
     frappe.logger().info(f"DEBUG final: returning {len(items)} items, {items_with_stock} with any_stock=True")
     return items
+
+
+def _get_conversion_factor(item_code: str, uom: str = "") -> float:
+	"""Conversion factor of uom to the item's stock UOM; 1 when uom is empty or the stock UOM."""
+	if not uom:
+		return 1.0
+	from erpnext.stock.get_item_details import get_conversion_factor
+
+	return flt(get_conversion_factor(item_code, uom).get("conversion_factor")) or 1.0
+
+
+def _attach_item_uoms(items: list, price_list: str) -> None:
+	"""Set item["uoms"] = [{uom, conversion_factor, rate}], stock UOM first."""
+	from erpnext.stock.get_item_details import get_item_price
+
+	rows = frappe.get_all(
+		"UOM Conversion Detail",
+		filters={"parenttype": "Item", "parent": ["in", [i["name"] for i in items]]},
+		fields=["parent", "uom", "conversion_factor"],
+		order_by="parent, idx",
+	)
+	extra_uoms = {}
+	for r in rows:
+		extra_uoms.setdefault(r.parent, []).append(r)
+
+	for item in items:
+		stock_uom = item.get("stock_uom") or ""
+		uoms = [{"uom": stock_uom, "conversion_factor": 1, "rate": flt(item.get("standard_rate"))}]
+		for r in extra_uoms.get(item["name"], []):
+			if r.uom == stock_uom or not flt(r.conversion_factor):
+				continue
+			prices = get_item_price(
+				{"price_list": price_list, "uom": r.uom, "transaction_date": frappe.utils.today()},
+				item["name"],
+				ignore_party=True,
+			)
+			# get_item_price may fall back to stock-UOM rows; only trust a row priced in this UOM
+			uom_price = next((p for p in prices or [] if p.get("uom") == r.uom), None)
+			rate = flt(uom_price.get("price_list_rate")) if uom_price else flt(item.get("standard_rate")) * flt(r.conversion_factor)
+			uoms.append({"uom": r.uom, "conversion_factor": flt(r.conversion_factor), "rate": rate})
+		item["uoms"] = uoms
 
 
 def _build_item_rows(items: list, warehouse: str) -> list:
@@ -551,6 +594,9 @@ def _build_item_rows(items: list, warehouse: str) -> list:
 		}
 		if it.get("description"):
 			item_row["description"] = it["description"]
+		if it.get("uom"):
+			item_row["uom"] = it["uom"]
+			item_row["conversion_factor"] = _get_conversion_factor(it["item_code"], it["uom"])
 
 		doc_items.append(item_row)
 
@@ -692,11 +738,12 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             avail_map = _get_available_qty_map(item_codes=item_codes, warehouse=warehouse)
             for it in items:
                 avail = avail_map.get((it["item_code"], warehouse), 0.0)
-                if float(it["qty"]) > avail:
+                stock_qty = flt(it["qty"]) * _get_conversion_factor(it["item_code"], it.get("uom"))
+                if stock_qty > avail:
                     frappe.throw(
                         _(
                             "Insufficient stock for {0}: requested {1}, available {2} in {3}."
-                        ).format(it["item_code"], float(it["qty"]), avail, warehouse)
+                        ).format(it["item_code"], stock_qty, avail, warehouse)
                     )
 
         if existing_order:
@@ -899,6 +946,7 @@ def get_pending_order_detail(name: str):
             {
                 "item_code": d.item_code,
                 "qty": d.qty,
+                "uom": d.uom,
                 "rate": d.price_list_rate,
                 **dict(zip(("discount_type", "discount_value"), _discount(d))),
                 "description": _custom_description(d),
