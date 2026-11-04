@@ -151,6 +151,9 @@ app_include_js = "desk_overview.bundle.js"
 # Hook on document methods and events
 
 doc_events = {
+	"Item": {
+		"on_update": "dms.api.item_image_cache.queue_on_item_update",
+	},
 	"Sales Order": {
 		"on_submit": "dms.automation.dn_si_auto_create.create_draft_si_from_so",
 	},

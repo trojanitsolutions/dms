@@ -11,10 +11,11 @@ let selectedShippingAddress = '';
 let shippingSameAsBilling = true;
 
 function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
-async function get(method,args={}){
+async function get(method,args={},{signal}={}){
   const p=new URLSearchParams(args);
-  const r=await fetch(`/api/method/${method}?${p}`,{headers:{'X-Frappe-CSRF-Token':csrf(),'Accept':'application/json'}});
-  if(!r.ok)return null;return(await r.json()).message;
+  const r=await fetch(`/api/method/${method}?${p}`,{headers:{'X-Frappe-CSRF-Token':csrf(),'Accept':'application/json'},signal});
+  if(!r.ok){console.error(`${method} failed: HTTP ${r.status}`);return null}
+  return(await r.json()).message;
 }
 async function post(method,args={}){
   const r=await fetch(`/api/method/${method}`,{method:'POST',headers:{'X-Frappe-CSRF-Token':csrf(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(args)});
@@ -176,34 +177,54 @@ function setWarehouseSelects(val){
 async function onWarehouseChange(){
   const wh=document.getElementById('warehouse-select').value;
   setWarehouseSelects(wh);
-  await reloadItems(wh);
+  await loadItems(wh);
   refreshTotals();
 }
 async function onMobWarehouseChange(){
   const wh=document.getElementById('mob-warehouse-select').value;
   setWarehouseSelects(wh);
-  await reloadItems(wh);
+  await loadItems(wh);
   refreshTotals();
 }
 async function onMobWarehouseChange2(){
   const wh=document.getElementById('mob-warehouse-select-2').value;
   setWarehouseSelects(wh);
-  await reloadItems(wh);
+  await loadItems(wh);
   refreshTotals();
 }
-async function reloadItems(wh){
-  const data=await get('dms.api.sales.get_items',{warehouse:wh});
-  if(data){
-    allItems=data;
-    renderedCount=0;
-    applyFilters();
-    groups.forEach(g=>{
-      const cnt=allItems.filter(i=>i.item_group===g.name).length;
-      const el=document.getElementById('cat-count-'+CSS.escape(g.name));
-      if(el)el.textContent=cnt;
-    });
-    document.getElementById('cat-count-all').textContent=allItems.length;
-  }
+let itemsRequest=null,itemsLoad=null;
+// Loads the catalog for a warehouse. Only the latest call may update state, so a slow
+// response for an earlier warehouse can never overwrite a newer one. Resolves true when the
+// latest load succeeded; a superseded call resolves with the latest call's result.
+function loadItems(wh){
+  itemsLoad=fetchItems(wh);
+  return itemsLoad;
+}
+async function fetchItems(wh){
+  if(itemsRequest)itemsRequest.abort();
+  const ctrl=new AbortController();
+  itemsRequest=ctrl;
+  let data=null;
+  try{data=await get('dms.api.sales.get_items',{warehouse:wh},{signal:ctrl.signal})}
+  catch(e){if(e.name!=='AbortError')console.error('get_items failed',e)}
+  if(itemsRequest!==ctrl)return itemsLoad;
+  itemsRequest=null;
+  if(!Array.isArray(data)){showItemsLoadError(wh);return false}
+  allItems=data;
+  applyFilters();
+  document.getElementById('cat-count-all').textContent=allItems.length;
+  groups.forEach(g=>{
+    const el=document.getElementById('cat-count-'+CSS.escape(g.name));
+    if(el)el.textContent=allItems.filter(i=>i.item_group===g.name).length;
+  });
+  return true;
+}
+function showItemsLoadError(wh){
+  detachSentinel();
+  const el=document.getElementById('items-grid');
+  el.innerHTML='<div class="items-load-error" style="grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF">Could not load items. <button type="button" class="items-retry-btn">Retry</button></div>';
+  el.querySelector('.items-retry-btn').addEventListener('click',()=>loadItems(wh));
+  document.getElementById('item-count').textContent='';
 }
 
 /* ── Item icons ─────────────────────────────────────────── */
@@ -212,6 +233,18 @@ function itemIcon(group){
   if(g.includes('pen')||g.includes('fountain'))return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>`;
   if(g.includes('note')||g.includes('journal'))return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>`;
   return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>`;
+}
+
+function itemImg(item,wrapCls=''){
+  if(!item.image)return wrapCls?`<div class="${wrapCls}"></div>`:'';
+  const img=`<img src="${esc(item.image)}" alt="" loading="lazy" decoding="async" data-group="${esc(item.item_group)}" onerror="onItemImgError(this)">`;
+  return wrapCls?`<div class="${wrapCls}">${img}</div>`:img;
+}
+// broken image -> group icon instead of an empty box
+function onItemImgError(img){
+  img.onerror=null;
+  img.insertAdjacentHTML('afterend',itemIcon(img.dataset.group));
+  img.remove();
 }
 
 const EYE_ICON=`<svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>`;
@@ -272,7 +305,7 @@ function makeGridCard(item){
   const oos=isCardOos(item.name);
   const whCount=Object.keys(item.warehouse_stocks||{}).length;
   const peekBtn=whCount>0?`<button class="wh-peek-btn" data-item-code="${item.name}">${EYE_ICON}${whCount}</button>`:'';
-  const imgContent=item.image?`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">` :'';
+  const imgContent=itemImg(item);
   return`<div class="item-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}" data-item-code="${item.name}">
     <div class="item-img">${imgContent}${oos?'<div class="oos-badge">OOS</div>':''}</div>
     <div class="item-body">
@@ -292,7 +325,7 @@ function makeImageCard(item){
   const oos=isCardOos(item.name);
   const whCount=Object.keys(item.warehouse_stocks||{}).length;
   const peekBtn=whCount>0?`<button class="wh-peek-btn" data-item-code="${item.name}">${EYE_ICON}${whCount}</button>`:'';
-  const imgContent=item.image?`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">` :'';
+  const imgContent=itemImg(item);
   return`<div class="item-card img-card${oos?' oos':''}" id="card-${CSS.escape(item.name)}" data-item-code="${item.name}">
     <div class="item-img">${imgContent}${oos?'<div class="oos-badge">OOS</div>':''}</div>
     <div class="img-overlay">
@@ -311,9 +344,7 @@ function makeListRow(item){
   const oos=isCardOos(item.name);
   const whCount=Object.keys(item.warehouse_stocks||{}).length;
   const peekBtn=whCount>0?`<button class="wh-peek-btn" data-item-code="${item.name}">${EYE_ICON}${whCount} wh</button>`:'';
-  const thumb=item.image
-    ?`<div class="item-row-thumb"><img src="${esc(item.image)}" alt="" onerror="this.style.display='none'"></div>`
-    :`<div class="item-row-thumb"></div>`;
+  const thumb=itemImg(item,'item-row-thumb');
   return`<div class="item-row-wrap" id="card-${CSS.escape(item.name)}" data-item-code="${item.name}">
     <div class="item-row${oos?' oos':''}">
       ${thumb}
@@ -339,8 +370,6 @@ function applyFilters(){
   sessionStorage.setItem('attachFilter',attachOnly?'1':'0');
   const q=document.getElementById('item-search').value.toLowerCase().trim();
   const wh=getWarehouse();
-  // DEBUG: Log filter state
-  console.log(`DEBUG applyFilters: instockOnly=${instockOnly}, wh="${wh}", activeGroup="${activeGroup}", total_items=${allItems.length}, items_with_stock=${allItems.filter(i=>i.any_stock).length}`);
   filteredItems=allItems.filter(i=>{
     if(activeGroup!=='All'&&i.item_group!==activeGroup)return false;
     if(attachOnly&&!i.image)return false;
@@ -354,7 +383,6 @@ function applyFilters(){
     }
     return true;
   });
-  console.log(`DEBUG applyFilters result: filtered_count=${filteredItems.length}`);
   renderedCount=0;
   renderItems(filteredItems);
 }
@@ -778,7 +806,7 @@ function renderItemModal(){
   const imgEl=document.getElementById('item-modal-img');
   if(imgEl){
     if(item.image){
-      imgEl.innerHTML=`<img src="${esc(item.image)}" alt="" onerror="this.style.display='none'">`;
+      imgEl.innerHTML=itemImg(item);
     }else{
       imgEl.innerHTML=itemIcon(item.item_group);
     }
@@ -1075,9 +1103,10 @@ async function saveSubmittedOrderEdits(){
 
   // Load warehouses
   const warehouses=await get('dms.api.sales.get_warehouses');
+  let defaultWh='';
   if(warehouses&&warehouses.length){
     const opts=warehouses.map(w=>{const o=document.createElement('option');o.value=w.name;o.textContent=w.warehouse_name||w.name;return o});
-    const defaultWh=reopenDetail?.warehouse||sSettings?.default_warehouse||warehouses[0].name;
+    defaultWh=reopenDetail?.warehouse||sSettings?.default_warehouse||warehouses[0].name;
     ['warehouse-select','mob-warehouse-select','mob-warehouse-select-2'].forEach(id=>{
       const sel=document.getElementById(id);if(!sel)return;
       opts.forEach(o=>sel.appendChild(o.cloneNode(true)));
@@ -1106,18 +1135,15 @@ async function saveSubmittedOrderEdits(){
     if(mobCatSel){const opt=document.createElement('option');opt.value=g.name;opt.textContent=g.name;mobCatSel.appendChild(opt);}
   });
 
-  // Load items
-  const wh=reopenDetail?.warehouse||(warehouses&&warehouses.length?warehouses[0].name:'');
-  const data=await get('dms.api.sales.get_items',{warehouse:wh});
-  allItems=data||[];filteredItems=allItems;
-  renderedCount=0;
-  renderItems(filteredItems);
-  document.getElementById('cat-count-all').textContent=allItems.length;
-  groups.forEach(g=>{
-    const cnt=allItems.filter(i=>i.item_group===g.name).length;
-    const el=document.getElementById('cat-count-'+CSS.escape(g.name));
-    if(el)el.textContent=cnt;
-  });
+  // Load items for the warehouse the selects show. A reopened order needs the catalog to
+  // rebuild its cart lines, so it must not continue on a failed load.
+  let itemsLoaded=await loadItems(getWarehouse()||defaultWh);
+  while(!itemsLoaded&&reopenDetail){
+    const backLink=QUOTATION_NAME?'/quotation-history':EDITING_SUBMITTED?'/order-history':'/pending-orders';
+    const retry=await confirmAction('Failed to Load Items','Could not load the item catalog for this order. Retry loading?','Retry');
+    if(!retry){window.location.href=backLink;return}
+    itemsLoaded=await loadItems(getWarehouse()||defaultWh);
+  }
 
   // Populate cart from reopened order's items
   if(reopenDetail&&reopenDetail.items){

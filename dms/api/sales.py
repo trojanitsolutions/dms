@@ -69,21 +69,61 @@ def _is_probable_image(file_url):
     return any(url.endswith(ext) for ext in _IMAGE_EXTS)
 
 
-def _convert_drive_url_to_embed(file_url):
-
+def _drive_file_id(file_url):
+    """Google Drive file id from a /file/d/<id> or ?id=<id> link; None for other URLs."""
     if not file_url or "drive.google.com" not in file_url:
-        return file_url
-    file_id = None
-    match = re.search(r'/file/d/([^/?]+)', file_url)
-    if match:
-        file_id = match.group(1)
-    else:
-        match = re.search(r'[?&]id=([^&]+)', file_url)
-        if match:
-            file_id = match.group(1)
+        return None
+    match = re.search(r'/file/d/([^/?]+)', file_url) or re.search(r'[?&]id=([^&]+)', file_url)
+    return match.group(1) if match else None
+
+
+def _convert_drive_url_to_embed(file_url):
+    file_id = _drive_file_id(file_url)
     if file_id:
         return f"https://drive.google.com/thumbnail?id={file_id}&sz=w1000"
     return file_url
+
+
+def _resolve_item_images(items):
+    """{item_code: image url or None}.
+
+    Item.image wins; else the newest image attachment. Drive links resolve to the locally
+    cached copy when present, otherwise to the Drive thumbnail while a cache job is queued.
+    """
+    from dms.api.item_image_cache import cached_drive_urls, enqueue_drive_cache
+
+    codes = [i["name"] for i in items]
+    attach_rows = frappe.db.sql(
+        """SELECT attached_to_name AS item_code, file_url
+           FROM `tabFile`
+           WHERE attached_to_doctype = 'Item'
+             AND attached_to_name IN %(codes)s
+             AND is_folder = 0
+             AND file_name NOT LIKE 'dms-drive-%%'
+           ORDER BY creation DESC""",
+        {"codes": codes},
+        as_dict=True,
+    )
+    newest_attachment = {}
+    for r in attach_rows:
+        if r.item_code not in newest_attachment and _is_probable_image(r.file_url):
+            newest_attachment[r.item_code] = r.file_url
+
+    source = {i["name"]: i.get("image") or newest_attachment.get(i["name"]) for i in items}
+    drive_ids = {code: _drive_file_id(url) for code, url in source.items()}
+    cached = cached_drive_urls([fid for fid in drive_ids.values() if fid])
+
+    resolved = {}
+    for code, url in source.items():
+        file_id = drive_ids[code]
+        if not file_id:
+            resolved[code] = url or None
+        elif file_id in cached:
+            resolved[code] = cached[file_id]
+        else:
+            enqueue_drive_cache(code, file_id)
+            resolved[code] = _convert_drive_url_to_embed(url)
+    return resolved
 
 def _get_sales_person_for_user():
     user = frappe.session.user
@@ -461,26 +501,8 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         )
         if price_list_rates:
             price_map[item["name"]] = float(price_list_rates[0].get("price_list_rate") or 0)
-        frappe.logger().debug(
-            f"DEBUG get_items resolved price: item={item['name']}, price_list={selling_pl}, "
-            f"uom={item.get('stock_uom')}, resolved_rate={price_map.get(item['name'], 'N/A')}"
-        )
 
-    # Load attachment images — prioritize attachments, fall back to Item.image field
-    item_codes = [i["name"] for i in items]
-    img_map = {}
-    attach_rows = frappe.db.sql(
-        """SELECT attached_to_name AS item_code, file_url
-           FROM `tabFile`
-           WHERE attached_to_doctype = 'Item'
-             AND attached_to_name IN %(codes)s
-           ORDER BY attached_to_name, creation ASC""",
-        {"codes": item_codes},
-        as_dict=True,
-    )
-    for r in attach_rows:
-        if r.item_code not in img_map and _is_probable_image(r.file_url):
-            img_map[r.item_code] = _convert_drive_url_to_embed(r.file_url)
+    img_map = _resolve_item_images(items)
 
     bins = frappe.db.sql(
         """SELECT item_code, warehouse, actual_qty, COALESCE(reserved_stock, 0) AS reserved_stock
@@ -490,9 +512,6 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         as_dict=True,
     )
 
-    # DEBUG: Log bin query results
-    frappe.logger().info(f"DEBUG get_items: items_count={len(items)}, bins_count={len(bins)}, warehouse_param={warehouse}")
-
     wh_stock = {}
     for b in bins:
         wh_stock.setdefault(b.item_code, {})[b.warehouse] = float(b.actual_qty or 0)
@@ -501,19 +520,11 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     for (item_code, wh_name), avail in _get_available_qty_map(item_codes=item_codes).items():
         wh_available.setdefault(item_code, {})[wh_name] = avail
 
-    items_with_stock = 0
     for item in items:
         pl_rate = price_map.get(item["name"])
         if pl_rate:
             item["standard_rate"] = pl_rate
-        # Prioritize attachment image (local file), fall back to Item.image field
-        if item["name"] in img_map:
-            item["image"] = img_map[item["name"]]
-        elif item.get("image"):
-            # Only convert Google Drive URLs; other URLs used as-is
-            item["image"] = _convert_drive_url_to_embed(item["image"]) if "drive.google.com" in item.get("image", "") else item["image"]
-        else:
-            item["image"] = None
+        item["image"] = img_map.get(item["name"])
         stock_map = wh_stock.get(item["name"], {})
         avail_map = wh_available.get(item["name"], {})
         item["warehouse_stocks"] = stock_map
@@ -527,14 +538,8 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
         else:
             item["stock_qty"] = None
         item["in_stock"] = item["any_stock"]
-        if item["any_stock"]:
-            items_with_stock += 1
-            if items_with_stock <= 5:
-                frappe.logger().info(f"DEBUG item with stock: {item['name']}, any_stock={item['any_stock']}, warehouse_available={avail_map}")
 
     _attach_item_uoms(items, selling_pl)
-
-    frappe.logger().info(f"DEBUG final: returning {len(items)} items, {items_with_stock} with any_stock=True")
     return items
 
 
