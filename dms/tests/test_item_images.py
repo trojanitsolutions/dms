@@ -6,6 +6,7 @@ from frappe.tests import IntegrationTestCase
 from dms.api import item_image_cache
 from dms.api.sales import _drive_file_id, _resolve_item_images
 
+REAL_ENQUEUE = item_image_cache.enqueue_drive_cache
 DRIVE_ID = "1AbC-dEf_123"
 DRIVE_URL = f"https://drive.google.com/file/d/{DRIVE_ID}/view?usp=sharing"
 
@@ -78,7 +79,7 @@ class TestItemImages(IntegrationTestCase):
 		self.enqueue.reset_mock()
 		url = self.resolve("_T-IMG-D")["_T-IMG-D"]
 		self.assertEqual(url, f"https://drive.google.com/thumbnail?id={DRIVE_ID}&sz=w1000")
-		self.enqueue.assert_called_once_with("_T-IMG-D", DRIVE_ID)
+		self.enqueue.assert_called_once_with({"_T-IMG-D": DRIVE_ID})
 
 	def test_cached_drive_image_served_locally(self):
 		_make_item("_T-IMG-E", image=DRIVE_URL)
@@ -87,11 +88,11 @@ class TestItemImages(IntegrationTestCase):
 			item_image_cache.cache_drive_image("_T-IMG-E", DRIVE_ID)
 		url = self.resolve("_T-IMG-E")["_T-IMG-E"]
 		self.assertTrue(url.startswith(f"/files/{item_image_cache.CACHE_PREFIX}{DRIVE_ID}"), url)
-		self.enqueue.assert_not_called()
+		self.enqueue.assert_called_once_with({})
 
 	def test_item_save_queues_drive_cache(self):
 		_make_item("_T-IMG-G", image=DRIVE_URL)
-		self.enqueue.assert_called_once_with("_T-IMG-G", DRIVE_ID, after_commit=True)
+		self.enqueue.assert_called_once_with({"_T-IMG-G": DRIVE_ID}, after_commit=True)
 
 	def test_failed_download_creates_no_file_and_backs_off(self):
 		_make_item("_T-IMG-F", image=DRIVE_URL)
@@ -99,3 +100,8 @@ class TestItemImages(IntegrationTestCase):
 			item_image_cache.cache_drive_image("_T-IMG-F", DRIVE_ID)
 		self.assertEqual(item_image_cache.cached_drive_urls([DRIVE_ID]), {})
 		self.assertTrue(frappe.cache.get_value(item_image_cache._failed_key(DRIVE_ID)))
+
+	def test_queue_error_never_breaks_catalog(self):
+		with patch("frappe.enqueue", side_effect=frappe.QueueOverloaded("full")) as enqueue:
+			REAL_ENQUEUE({"_T-IMG-H": DRIVE_ID})  # must not raise
+		enqueue.assert_called_once()

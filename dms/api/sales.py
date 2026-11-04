@@ -113,7 +113,7 @@ def _resolve_item_images(items):
     drive_ids = {code: _drive_file_id(url) for code, url in source.items()}
     cached = cached_drive_urls([fid for fid in drive_ids.values() if fid])
 
-    resolved = {}
+    resolved, pending = {}, {}
     for code, url in source.items():
         file_id = drive_ids[code]
         if not file_id:
@@ -121,8 +121,9 @@ def _resolve_item_images(items):
         elif file_id in cached:
             resolved[code] = cached[file_id]
         else:
-            enqueue_drive_cache(code, file_id)
+            pending[code] = file_id
             resolved[code] = _convert_drive_url_to_embed(url)
+    enqueue_drive_cache(pending)
     return resolved
 
 def _get_sales_person_for_user():

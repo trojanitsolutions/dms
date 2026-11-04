@@ -38,20 +38,38 @@ def cached_drive_urls(file_ids):
 	return cached
 
 
-def enqueue_drive_cache(item_code, file_id, after_commit=False):
-	"""Queue one download per Drive file. after_commit only inside a write transaction;
-	GET requests never commit, so an after-commit job would never run."""
-	if frappe.cache.get_value(_failed_key(file_id)):
+def enqueue_drive_cache(pending, after_commit=False):
+	"""Queue ONE job that downloads all pending Drive images ({item_code: file_id}).
+
+	One deduplicated job per call, never one job per item: a catalog with many Drive images
+	must not flood the queue. Caching is best effort, so a queue error is logged, not raised;
+	it must never break the catalog or an Item save. after_commit only inside a write
+	transaction; GET requests never commit, so an after-commit job would never run.
+	"""
+	pending = {code: fid for code, fid in pending.items() if not frappe.cache.get_value(_failed_key(fid))}
+	if not pending:
 		return
-	frappe.enqueue(
-		"dms.api.item_image_cache.cache_drive_image",
-		queue="short",
-		job_id=f"{CACHE_PREFIX}{file_id}",
-		deduplicate=True,
-		enqueue_after_commit=after_commit,
-		item_code=item_code,
-		file_id=file_id,
-	)
+	try:
+		frappe.enqueue(
+			"dms.api.item_image_cache.cache_drive_images",
+			queue="long",
+			job_id=f"{CACHE_PREFIX}batch",
+			deduplicate=True,
+			enqueue_after_commit=after_commit,
+			pending=pending,
+		)
+	except Exception:
+		frappe.log_error(title="DMS Drive image cache: could not queue job", message=frappe.get_traceback())
+
+
+def cache_drive_images(pending):
+	cached = cached_drive_urls(list(pending.values()))
+	for item_code, file_id in pending.items():
+		if file_id in cached or frappe.cache.get_value(_failed_key(file_id)):
+			continue
+		cache_drive_image(item_code, file_id)
+		cached[file_id] = True
+		frappe.db.commit()
 
 
 def cache_drive_image(item_code, file_id):
@@ -81,7 +99,7 @@ def queue_on_item_update(doc, method=None):
 
 	file_id = _drive_file_id(doc.image)
 	if file_id and not cached_drive_urls([file_id]):
-		enqueue_drive_cache(doc.name, file_id, after_commit=True)
+		enqueue_drive_cache({doc.name: file_id}, after_commit=True)
 
 
 def _download(file_id):
