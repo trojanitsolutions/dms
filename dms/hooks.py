@@ -55,7 +55,10 @@ app_include_js = "desk_overview.bundle.js"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Sales Invoice": "public/js/sales_invoice.js"}
+doctype_js = {
+	"Sales Invoice": "public/js/sales_invoice.js",
+	"Delivery Note": "public/js/delivery_note.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -158,6 +161,7 @@ doc_events = {
 		"on_submit": "dms.automation.dn_si_auto_create.create_draft_si_from_so",
 	},
 	"Delivery Note": {
+		"before_insert": "dms.automation.dn_duplicate_guard.validate_dn",
 		"on_submit": "dms.automation.dn_si_auto_create.sync_si_on_dn_submit",
 	},
 	"Sales Invoice": {
