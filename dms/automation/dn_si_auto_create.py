@@ -24,6 +24,7 @@ def create_draft_si_from_so(so_doc, method=None):
 			item.base_amount = 0
 		si.run_method("calculate_taxes_and_totals")
 		si.flags.ignore_permissions = True
+		si.flags.dms_allow_duplicate_so = True
 		si.insert()
 		frappe.logger().info(f"DMS: Draft SI {si.name} created for SO {so_doc.name}")
 	except Exception:
