@@ -62,3 +62,6 @@ CLAUDE.md
 # Built by the frontend
 dms/public/frontend
 dms/www/dms.html
+
+# Raw photo zips; only the shrunk dms/item_images/item_images.zip is committed
+dms/photos*.zip

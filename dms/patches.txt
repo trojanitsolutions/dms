@@ -4,4 +4,6 @@
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
-
+# Item images from dms/item_images/item_images.zip. After replacing the zip, add a NEW line
+# with a new comment, e.g. "dms.patches.v1_0.sync_item_images #2026-12-01" (a patch line runs once).
+dms.patches.v1_0.sync_item_images #2026-11-10
