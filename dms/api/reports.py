@@ -12,6 +12,14 @@ def _require_accounts_manager():
 		frappe.throw(_("Access Denied"), frappe.PermissionError)
 
 
+def _require_report_role(allowed=("Accounts Manager", "Sales Rep", "System Manager", "Administrator")):
+	if frappe.session.user == "Guest":
+		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+	roles = set(frappe.get_roles(frappe.session.user))
+	if not (set(allowed) & roles):
+		frappe.throw(_("Access Denied"), frappe.PermissionError)
+
+
 def _parse_filters(filters):
 	return frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
 
@@ -54,7 +62,7 @@ def export_sales_availability(filters=None):
 @frappe.whitelist()
 def search_customers(txt: str = ""):
 	"""Return up to 20 enabled customers whose ID or name contains `txt`, for the Customer picker."""
-	_require_accounts_manager()
+	_require_report_role()
 	search = f"%{txt.strip()}%"
 	customers = frappe.get_list(
 		"Customer",
@@ -72,7 +80,7 @@ def search_customers(txt: str = ""):
 @frappe.whitelist()
 def search_sales_orders(txt: str = "", company: str = "", customer: str = ""):
 	"""Return up to 20 submitted or cancelled Sales Orders whose ID or customer name contains `txt`."""
-	_require_accounts_manager()
+	_require_report_role()
 	search = f"%{txt.strip()}%"
 	filters = {"docstatus": ["in", [1, 2]]}
 	if company:
@@ -96,7 +104,7 @@ def search_sales_orders(txt: str = "", company: str = "", customer: str = ""):
 @frappe.whitelist()
 def search_sales_persons(txt: str = ""):
 	"""Return up to 20 enabled Sales Persons (groups included) whose ID or name contains `txt`."""
-	_require_accounts_manager()
+	_require_report_role()
 	search = f"%{txt.strip()}%"
 	persons = frappe.get_list(
 		"Sales Person",
@@ -149,7 +157,7 @@ def export_customer_balance(filters=None):
 
 @frappe.whitelist()
 def get_sales_order_status(filters=None):
-	_require_accounts_manager()
+	_require_report_role()
 	filters = _parse_filters(filters)
 
 	from dms.dms.report.sales_order_status.sales_order_status import execute
@@ -160,7 +168,7 @@ def get_sales_order_status(filters=None):
 
 @frappe.whitelist()
 def export_sales_order_status(filters=None):
-	_require_accounts_manager()
+	_require_report_role()
 	filters = _parse_filters(filters)
 	# Export all matching rows, not only the current page.
 	filters.pop("page_length", None)

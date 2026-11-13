@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sales Analysis — Luxury Stationery Field Sales</title>
+<link rel="stylesheet" href="/sales-analysis/style.css">
+</head>
+<body>
+
+<!-- Sidebar (desktop) -->
+<aside class="sidebar">
+  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+  </button>
+  <div class="sidebar-brand">
+    <div class="brand-logo-container">
+      {% if company_logo %}
+      <img src="{{ company_logo }}" alt="Company Logo" class="brand-logo">
+      {% else %}
+      <div class="brand-badge">LS</div>
+      {% endif %}
+    </div>
+    <div class="brand-text">
+      <div class="name">Luxury Stationery</div>
+      <div class="role">Field Sales</div>
+    </div>
+  </div>
+  <div class="nav-section">Workspace</div>
+  <a class="nav-link" href="/sales-home">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    <span>Customers</span>
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    <span>New Order</span>
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 100-2H6a1 1 0 00-1 1v1H3a1 1 0 000 2h3V7a1 1 0 100 2H5a1 1 0 000 2h1v1H4a2 2 0 01-2-2V5zm12-2a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+    <span>Quotation</span>
+  </a>
+  <a class="nav-link" href="/order-history">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+    <span>Order History</span>
+  </a>
+  <a class="nav-link" href="/quotation-history">
+    <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
+    <span>Quotation History</span>
+  </a>
+  <a class="nav-link" href="/pending-orders">
+    <span class="nav-icon">◴</span>
+    <span>Pending Orders</span>
+  </a>
+  <a class="nav-link active" href="/sales-analysis">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+    <span>Sales Analysis</span>
+  </a>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">{{ full_name[:2].upper() }}</div>
+      <div class="user-info"><div class="uname">{{ full_name }}</div></div>
+      <a href="/desk" class="system-btn" title="Switch to System">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h5a1 1 0 010 2H5v10h10v-4a1 1 0 112 0v5a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm9-1a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 001.414 1.414L15 6.414V9a1 1 0 102 0V3h-6z" clip-rule="evenodd"/></svg>
+      </a>
+      <a href="/sales-logout" class="logout-btn" title="Sign out">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Sales Analysis</div>
+      <div class="page-sub">Sales Order Status, Fulfilment & Delivery Analysis</div>
+    </div>
+    <div class="topbar-actions">
+      <button id="refresh-btn" class="btn-outline" title="Refresh report">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+        Refresh
+      </button>
+      <button id="export-btn" class="btn-primary" title="Export as Excel spreadsheet">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Export Excel
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Interactive KPI Summary Cards -->
+    <div class="kpi-grid" id="kpi-summary">
+      <div class="kpi-card loading" data-key="total">
+        <div class="kpi-label">Total Sales Orders</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+      </div>
+      <div class="kpi-card loading" data-key="value">
+        <div class="kpi-label">Total Order Value</div>
+        <div class="kpi-value" id="kpi-value">—</div>
+      </div>
+      <div class="kpi-card loading" data-key="completed">
+        <div class="kpi-label">Fully Completed</div>
+        <div class="kpi-value" id="kpi-completed">—</div>
+      </div>
+      <div class="kpi-card loading" data-key="pending_delivery">
+        <div class="kpi-label">Pending Delivery</div>
+        <div class="kpi-value" id="kpi-pending-delivery">—</div>
+      </div>
+      <div class="kpi-card loading" data-key="pending_invoice">
+        <div class="kpi-label">Pending Invoice</div>
+        <div class="kpi-value" id="kpi-pending-invoice">—</div>
+      </div>
+      <div class="kpi-card loading" data-key="overdue">
+        <div class="kpi-label">Overdue Deliveries</div>
+        <div class="kpi-value" id="kpi-overdue">—</div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-card">
+      <div class="filter-top-row">
+        <div class="search-box">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input type="text" id="search-input" placeholder="Search order #, customer name…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <label for="from-date-filter">From Date</label>
+          <input type="date" id="from-date-filter">
+        </div>
+        <div class="filter-group">
+          <label for="to-date-filter">To Date</label>
+          <input type="date" id="to-date-filter">
+        </div>
+      </div>
+
+      <div class="filter-bottom-row">
+        <div class="filter-group">
+          <label for="fulfilment-filter">Fulfilment Status</label>
+          <select id="fulfilment-filter">
+            <option value="">All Fulfilment</option>
+            <option value="Fully Completed">Fully Completed</option>
+            <option value="Delivered – Invoice Pending">Delivered – Invoice Pending</option>
+            <option value="Partially Delivered">Partially Delivered</option>
+            <option value="Not Delivered">Not Delivered</option>
+            <option value="Closed">Closed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="delivery-filter">Delivery Status</label>
+          <select id="delivery-filter">
+            <option value="">All Delivery</option>
+            <option value="Fully Delivered">Fully Delivered</option>
+            <option value="Partly Delivered">Partly Delivered</option>
+            <option value="Not Delivered">Not Delivered</option>
+            <option value="Not Applicable">Not Applicable</option>
+            <option value="Closed">Closed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="invoice-filter">Invoice Status</label>
+          <select id="invoice-filter">
+            <option value="">All Invoicing</option>
+            <option value="Fully Invoiced">Fully Invoiced</option>
+            <option value="Partly Invoiced">Partly Invoiced</option>
+            <option value="Draft Invoice">Draft Invoice</option>
+            <option value="Not Invoiced">Not Invoiced</option>
+            <option value="Closed">Closed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="so-status-filter">SO Status</label>
+          <select id="so-status-filter">
+            <option value="">All SO Status</option>
+            <option value="To Deliver and Bill">To Deliver and Bill</option>
+            <option value="To Deliver">To Deliver</option>
+            <option value="To Bill">To Bill</option>
+            <option value="To Pay">To Pay</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Completed">Completed</option>
+            <option value="Closed">Closed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <button id="reset-filters-btn" class="btn-text" title="Clear all filters">Clear Filters</button>
+      </div>
+
+      <div class="filter-toggles">
+        <label class="toggle-pill">
+          <input type="checkbox" id="overdue-only-check">
+          <span>Overdue Deliveries Only</span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="pending-delivery-check">
+          <span>Pending Delivery Only</span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="pending-invoice-check">
+          <span>Pending Invoice Only</span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="draft-invoice-check">
+          <span>Draft Invoices Only</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="table-container">
+      <div class="table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th>Sales Order</th>
+              <th>Customer</th>
+              <th>Order Date</th>
+              <th>Exp. Delivery</th>
+              <th class="text-right">Order Value</th>
+              <th class="text-right">Ordered</th>
+              <th class="text-right">Delivered</th>
+              <th class="text-right">Invoiced</th>
+              <th>Fulfilment</th>
+              <th>Delivery</th>
+              <th>Invoice</th>
+              <th>Overdue</th>
+              <th>Linked Docs</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td colspan="14" class="text-center py-8 text-muted">Loading sales analysis data…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <div class="page-size-group">
+          <button class="page-size-btn active" data-size="20">20</button>
+          <button class="page-size-btn" data-size="50">50</button>
+          <button class="page-size-btn" data-size="100">100</button>
+          <button class="page-size-btn" data-size="0">All</button>
+          <button class="btn-load-more" id="load-more-btn">Load More</button>
+        </div>
+        <div class="showing-text" id="showing-text">Showing 0 orders</div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="state-card" hidden>
+      <div class="state-icon">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+      </div>
+      <div class="state-title">No orders found</div>
+      <div class="state-desc" id="empty-state-msg">No sales orders match your selected filters.</div>
+      <button class="btn-outline mt-3" id="empty-reset-btn">Reset All Filters</button>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="state-card" hidden>
+      <div class="state-icon error-icon">⚠️</div>
+      <div class="state-title">Failed to load sales analysis</div>
+      <div class="state-desc">Something went wrong while fetching the sales order status report.</div>
+      <button class="btn-primary mt-3" id="retry-btn">Retry</button>
+    </div>
+  </div>
+</main>
+
+<!-- Linked Documents Detail Modal -->
+<div class="modal-overlay" id="doc-modal-overlay">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">Linked Documents</div>
+        <div class="modal-subtitle" id="modal-subtitle">Sales Order References</div>
+      </div>
+      <button class="modal-close-btn" id="modal-close-btn" aria-label="Close dialog">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body">
+      <!-- Dynamic Delivery Notes & Sales Invoices Tables -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" id="modal-ok-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom nav (mobile) -->
+<nav class="bottom-nav">
+  <a href="/sales-home" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    Home
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    Customers
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    New Order
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 100-2H6a1 1 0 00-1 1v1H3a1 1 0 000 2h3V7a1 1 0 100 2H5a1 1 0 000 2h1v1H4a2 2 0 01-2-2V5zm12-2a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+    Quotation
+  </a>
+  <a href="/pending-orders" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+    Pending
+  </a>
+  <a href="/sales-analysis" class="bnav-item active">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+    Analysis
+  </a>
+  <a href="/sales-logout" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+    Sign Out
+  </a>
+</nav>
+
+<!-- Logout Confirm Modal -->
+<div class="logout-confirm-overlay" id="logout-confirm-overlay">
+  <div class="logout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-title">
+    <div class="logout-confirm-title" id="logout-confirm-title">Confirm Logout</div>
+    <div class="logout-confirm-msg">Are you sure you want to log out?</div>
+    <div class="logout-confirm-actions">
+      <button class="btn-cancel" id="logout-cancel-btn">Cancel</button>
+      <button class="btn-logout-confirm" id="logout-confirm-btn">Logout</button>
+    </div>
+  </div>
+</div>
+
+<script src="/sales-analysis/script.js"></script>
+</body>
+</html>
