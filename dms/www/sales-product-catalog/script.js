@@ -30,6 +30,8 @@ function $(id) { return document.getElementById(id); }
 let items = [];
 let shownCount = PAGE_STEP;
 let loadSeq = 0;
+// Selected item codes. Kept across filter changes, so a rep can search and pick items one by one.
+const selected = new Set();
 
 function getFilters() {
   return {
@@ -72,7 +74,8 @@ function renderGrid() {
   }
   const slice = items.slice(0, shownCount);
   grid.innerHTML = slice.map(it => `
-    <div class="product-card">
+    <div class="product-card${selected.has(it.item_code) ? ' selected' : ''}" data-code="${esc(it.item_code)}">
+      <input type="checkbox" class="card-check" tabindex="-1" aria-label="Select ${esc(it.item_name)}"${selected.has(it.item_code) ? ' checked' : ''}>
       <div class="product-img">
         ${it.image
           ? `<img src="${esc(it.image)}" alt="${esc(it.item_name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'no-img',textContent:'No image'}))">`
@@ -86,8 +89,52 @@ function renderGrid() {
       </div>
     </div>
   `).join('');
-  $('showing-text').textContent = `Showing ${slice.length} of ${items.length} products`;
+  updateShowingText();
   $('load-more-btn').style.display = shownCount < items.length ? 'inline-flex' : 'none';
+}
+
+function updateShowingText() {
+  const shown = Math.min(shownCount, items.length);
+  const suffix = selected.size ? ` · ${selected.size} selected` : '';
+  $('showing-text').textContent = items.length
+    ? `Showing ${shown} of ${items.length} products${suffix}`
+    : `Showing 0 products${suffix}`;
+}
+
+// ---- Selection ----
+function defaultExportLabel() {
+  return selected.size ? `Export Selected (${selected.size})` : 'Export PDF';
+}
+
+function updateSelectionUI() {
+  $('clear-selection-btn').hidden = !selected.size;
+  updateShowingText();
+  if (readyFile) clearReadyExport();
+  else if (!$('export-btn').disabled) setExportButton(defaultExportLabel(), false);
+}
+
+function onGridClick(e) {
+  const card = e.target.closest('.product-card');
+  if (!card) return;
+  const code = card.dataset.code;
+  const on = !selected.has(code);
+  if (on) selected.add(code);
+  else selected.delete(code);
+  card.classList.toggle('selected', on);
+  card.querySelector('.card-check').checked = on;
+  updateSelectionUI();
+}
+
+function selectAll() {
+  items.forEach(it => selected.add(it.item_code));
+  renderGrid();
+  updateSelectionUI();
+}
+
+function clearSelection() {
+  selected.clear();
+  renderGrid();
+  updateSelectionUI();
 }
 
 async function loadItemGroups() {
@@ -141,7 +188,9 @@ async function onExportClick() {
     return;
   }
   setExportButton('Preparing PDF…', true);
-  const status = await post(`${API}.start_catalog_export`, getFilters()).catch(() => null);
+  const args = getFilters();
+  if (selected.size) args.item_codes = JSON.stringify([...selected]);
+  const status = await post(`${API}.start_catalog_export`, args).catch(() => null);
   if (!status) {
     exportFailed();
     return;
@@ -178,7 +227,7 @@ async function fetchExport() {
       setExportButton('Share PDF', false);
     } else {
       downloadFile(file);
-      setExportButton('Export PDF', false);
+      setExportButton(defaultExportLabel(), false);
     }
   } catch (err) {
     console.error(err);
@@ -194,7 +243,7 @@ async function shareFile(file) {
     downloadFile(file);
   }
   readyFile = null;
-  setExportButton('Export PDF', false);
+  setExportButton(defaultExportLabel(), false);
 }
 
 function downloadFile(file) {
@@ -207,7 +256,7 @@ function downloadFile(file) {
 }
 
 function exportFailed() {
-  setExportButton('Export PDF', false);
+  setExportButton(defaultExportLabel(), false);
   alert('Could not create the catalog PDF. Please try again.');
 }
 
@@ -215,7 +264,7 @@ function exportFailed() {
 function clearReadyExport() {
   if (!readyFile) return;
   readyFile = null;
-  setExportButton('Export PDF', false);
+  setExportButton(defaultExportLabel(), false);
 }
 
 // Resume an export that was still running when the page was left or reloaded.
@@ -256,6 +305,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('refresh-btn').addEventListener('click', loadData);
   $('retry-btn').addEventListener('click', loadData);
   $('export-btn').addEventListener('click', onExportClick);
+  $('catalog-grid').addEventListener('click', onGridClick);
+  $('select-all-btn').addEventListener('click', selectAll);
+  $('clear-selection-btn').addEventListener('click', clearSelection);
   $('load-more-btn').addEventListener('click', () => {
     shownCount += PAGE_STEP;
     renderGrid();

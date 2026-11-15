@@ -59,9 +59,14 @@ def get_item_groups():
 
 
 @frappe.whitelist(methods=["POST"])
-def start_catalog_export(item_group: str = "", search: str = "", include_price=0):
-	"""Queue the PDF build for the current user. One export per user runs at a time."""
+def start_catalog_export(item_group: str = "", search: str = "", include_price=0, item_codes=None):
+	"""Queue the PDF build for the current user. One export per user runs at a time.
+
+	When `item_codes` (a JSON list) is given, only those items are exported and the group and
+	search filters are ignored.
+	"""
 	_require_report_role()
+	item_codes = _parse_item_codes(item_codes)
 	user = frappe.session.user
 	status = _get_status(user)
 	if status and status.get("status") in ("queued", "running") and not _is_stale(status):
@@ -79,6 +84,7 @@ def start_catalog_export(item_group: str = "", search: str = "", include_price=0
 		item_group=item_group,
 		search=search,
 		include_price=cint(include_price),
+		item_codes=item_codes,
 	)
 	return status
 
@@ -102,12 +108,12 @@ def download_catalog_export():
 	frappe.local.response.type = "pdf"
 
 
-def build_catalog_export(user, item_group="", search="", include_price=0):
+def build_catalog_export(user, item_group="", search="", include_price=0, item_codes=None):
 	"""Background job: build the PDF and store it for `user` to download."""
 	frappe.set_user(user)
 	_set_status(user, {"status": "running", "started": str(now_datetime())})
 	try:
-		content = _build_pdf(item_group, search, include_price)
+		content = _build_pdf(item_group, search, include_price, item_codes)
 		path = _export_path(user)
 		os.makedirs(os.path.dirname(path), exist_ok=True)
 		with open(path, "wb") as f:
@@ -118,12 +124,14 @@ def build_catalog_export(user, item_group="", search="", include_price=0):
 		_set_status(user, {"status": "failed"})
 
 
-def _build_pdf(item_group, search, include_price):
+def _build_pdf(item_group, search, include_price, item_codes=None):
 	from frappe.utils.pdf import get_pdf
 
 	include_price = cint(include_price)
 	price_list, currency = _get_price_list()
-	items = _get_catalog_items(item_group, search, include_price, price_list, currency)
+	items = _get_catalog_items(item_group, search, include_price, price_list, currency, item_codes)
+	if item_codes:
+		item_group = ""  # a hand-picked selection, not one group
 
 	company = _get_default_company()
 	company_logo = frappe.db.get_value("Company", company, "company_logos") if company else None
@@ -184,16 +192,29 @@ def _chunk(rows, size):
 	return [rows[i : i + size] for i in range(0, len(rows), size)]
 
 
+def _parse_item_codes(item_codes):
+	codes = frappe.parse_json(item_codes) if item_codes else []
+	if not isinstance(codes, list):
+		frappe.throw("item_codes must be a list.")
+	return [str(c) for c in codes if c]
+
+
 def _get_price_list():
 	price_list = frappe.db.get_single_value("Selling Settings", "selling_price_list") or "Standard Selling"
 	currency = frappe.db.get_value("Price List", price_list, "currency") or frappe.db.get_default("currency")
 	return price_list, currency
 
 
-def _get_catalog_items(item_group, search, include_price, price_list, currency):
-	"""Enabled sales items with their image, and their selling price when include_price is set."""
+def _get_catalog_items(item_group, search, include_price, price_list, currency, item_codes=None):
+	"""Enabled sales items with their image, and their selling price when include_price is set.
+
+	With `item_codes`, only those items (still enabled sales items); group and search are ignored.
+	"""
 	filters = {"disabled": 0, "is_sales_item": 1}
-	if item_group and item_group != "All":
+	if item_codes:
+		filters["name"] = ["in", item_codes]
+		item_group = search = ""
+	elif item_group and item_group != "All":
 		filters["item_group"] = item_group
 
 	kwargs = {
