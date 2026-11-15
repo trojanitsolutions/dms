@@ -103,43 +103,125 @@ function resetFilters() {
   loadData();
 }
 
-// Build the PDF on the server. On phones, open the share sheet; elsewhere, download it.
-async function exportPdf() {
-  const btn = $('export-btn');
-  const label = $('export-label');
-  btn.disabled = true;
-  label.textContent = 'Preparing PDF…';
+// ---- PDF export ----
+// The server builds the PDF in a background job (a full catalog is ~180 pages), so we
+// start it, poll its status, then download it. On phones the share sheet needs a fresh tap,
+// so a finished PDF turns the button into "Share PDF".
+const POLL_MS = 3000;
+let pollTimer = null;
+let readyFile = null;
+
+function setExportButton(text, busy) {
+  $('export-btn').disabled = !!busy;
+  $('export-label').textContent = text;
+}
+
+function canShareFiles() {
   try {
-    const p = new URLSearchParams(getFilters());
-    const r = await fetch(`/api/method/${API}.export_catalog_pdf?${p}`, {
+    const probe = new File([new Blob(['x'])], 'x.pdf', { type: 'application/pdf' });
+    return !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+  } catch (e) {
+    return false;
+  }
+}
+
+async function post(method, args = {}) {
+  const r = await fetch(`/api/method/${method}`, {
+    method: 'POST',
+    headers: { 'X-Frappe-CSRF-Token': csrf(), 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(args),
+  });
+  if (!r.ok) return null;
+  return (await r.json()).message;
+}
+
+async function onExportClick() {
+  if (readyFile) {
+    await shareFile(readyFile);
+    return;
+  }
+  setExportButton('Preparing PDF…', true);
+  const status = await post(`${API}.start_catalog_export`, getFilters()).catch(() => null);
+  if (!status) {
+    exportFailed();
+    return;
+  }
+  pollExport();
+}
+
+function pollExport() {
+  clearTimeout(pollTimer);
+  setExportButton('Preparing PDF…', true);
+  pollTimer = setTimeout(async () => {
+    const status = await get(`${API}.get_catalog_export_status`).catch(() => null);
+    const state = status && status.status;
+    if (state === 'queued' || state === 'running') {
+      pollExport();
+    } else if (state === 'done') {
+      await fetchExport();
+    } else {
+      exportFailed();
+    }
+  }, POLL_MS);
+}
+
+async function fetchExport() {
+  setExportButton('Downloading…', true);
+  try {
+    const r = await fetch(`/api/method/${API}.download_catalog_export`, {
       headers: { 'X-Frappe-CSRF-Token': csrf() }
     });
     if (!r.ok || !(r.headers.get('Content-Type') || '').includes('pdf')) throw new Error(`HTTP ${r.status}`);
-    const blob = await r.blob();
-    const fileName = 'Product Catalog.pdf';
-    const file = new File([blob], fileName, { type: 'application/pdf' });
-
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'Product Catalog' });
-        return;
-      } catch (err) {
-        if (err.name === 'AbortError') return; // user closed the share sheet
-      }
+    const file = new File([await r.blob()], 'Product Catalog.pdf', { type: 'application/pdf' });
+    if (canShareFiles()) {
+      readyFile = file;
+      setExportButton('Share PDF', false);
+    } else {
+      downloadFile(file);
+      setExportButton('Export PDF', false);
     }
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch (err) {
     console.error(err);
-    alert('Could not create the catalog PDF. Please try again.');
-  } finally {
-    btn.disabled = false;
-    label.textContent = 'Export PDF';
+    exportFailed();
   }
+}
+
+async function shareFile(file) {
+  try {
+    await navigator.share({ files: [file], title: 'Product Catalog' });
+  } catch (err) {
+    if (err.name === 'AbortError') return; // closed the share sheet: keep "Share PDF"
+    downloadFile(file);
+  }
+  readyFile = null;
+  setExportButton('Export PDF', false);
+}
+
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const a = Object.assign(document.createElement('a'), { href: url, download: file.name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function exportFailed() {
+  setExportButton('Export PDF', false);
+  alert('Could not create the catalog PDF. Please try again.');
+}
+
+// Filters changed after a PDF was made: the next tap builds a new one.
+function clearReadyExport() {
+  if (!readyFile) return;
+  readyFile = null;
+  setExportButton('Export PDF', false);
+}
+
+// Resume an export that was still running when the page was left or reloaded.
+async function resumeExport() {
+  const status = await get(`${API}.get_catalog_export_status`).catch(() => null);
+  if (status && (status.status === 'queued' || status.status === 'running')) pollExport();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -173,12 +255,16 @@ document.addEventListener('DOMContentLoaded', () => {
   $('empty-reset-btn').addEventListener('click', resetFilters);
   $('refresh-btn').addEventListener('click', loadData);
   $('retry-btn').addEventListener('click', loadData);
-  $('export-btn').addEventListener('click', exportPdf);
+  $('export-btn').addEventListener('click', onExportClick);
   $('load-more-btn').addEventListener('click', () => {
     shownCount += PAGE_STEP;
     renderGrid();
   });
 
+  ['search-input', 'item-group-filter', 'include-price-check'].forEach(id =>
+    $(id).addEventListener(id === 'search-input' ? 'input' : 'change', clearReadyExport));
+
   loadItemGroups();
   loadData();
+  resumeExport();
 });

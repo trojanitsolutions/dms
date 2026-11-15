@@ -1,20 +1,32 @@
-"""Product Catalog endpoints for the field sales portal (/sales-product-catalog)."""
+"""Product Catalog endpoints for the field sales portal (/sales-product-catalog).
+
+The PDF export is built in a background job: a full catalog (over 1,500 items, about 180
+pages) takes longer than a web request may run. The page starts the job, polls its status,
+and then downloads the finished PDF.
+"""
 
 import base64
-import mimetypes
+import hashlib
+import io
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import frappe
 import requests
-from frappe.utils import cint, fmt_money, formatdate, today
+from frappe.utils import cint, fmt_money, formatdate, now_datetime, today
 
 from dms.api.reports import _require_report_role
 from dms.api.sales import _get_default_company, _resolve_item_images
 
-MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_IMAGE_BYTES = 15 * 1024 * 1024
 IMAGE_TIMEOUT = 10
+IMAGE_WORKERS = 8
+THUMB_PX = 400  # about 170 dpi for a 58 mm card: sharp in print, small in the PDF
+THUMB_QUALITY = 75
 CARDS_PER_ROW = 3
 CARDS_PER_PAGE = 9
+EXPORT_JOB_TIMEOUT = 30 * 60
+STATUS_TTL = 2 * 60 * 60
 # Fixed page size and margins: the template's mm layout is sized for A4 with these margins.
 PDF_OPTIONS = {
 	"page-size": "A4",
@@ -24,6 +36,7 @@ PDF_OPTIONS = {
 	"margin-right": "12mm",
 	"footer-right": "Page [page] of [topage]",
 	"footer-font-size": "8",
+	"image-quality": "80",
 }
 
 
@@ -37,18 +50,90 @@ def get_catalog(item_group: str = "", search: str = "", include_price=0):
 
 
 @frappe.whitelist(methods=["GET"])
-def export_catalog_pdf(item_group: str = "", search: str = "", include_price=0):
+def get_item_groups():
 	_require_report_role()
+	return frappe.get_all("Item Group", filters={"is_group": 0}, pluck="name", order_by="name")
+
+
+# ---------------------------------------------------------------- PDF export (background job)
+
+
+@frappe.whitelist(methods=["POST"])
+def start_catalog_export(item_group: str = "", search: str = "", include_price=0):
+	"""Queue the PDF build for the current user. One export per user runs at a time."""
+	_require_report_role()
+	user = frappe.session.user
+	status = _get_status(user)
+	if status and status.get("status") in ("queued", "running") and not _is_stale(status):
+		return status
+
+	status = {"status": "queued", "started": str(now_datetime())}
+	_set_status(user, status)
+	frappe.enqueue(
+		"dms.api.product_catalog.build_catalog_export",
+		queue="long",
+		timeout=EXPORT_JOB_TIMEOUT,
+		job_id=f"dms-product-catalog-{user}",
+		deduplicate=True,
+		user=user,
+		item_group=item_group,
+		search=search,
+		include_price=cint(include_price),
+	)
+	return status
+
+
+@frappe.whitelist(methods=["GET"])
+def get_catalog_export_status():
+	_require_report_role()
+	return _get_status(frappe.session.user) or {"status": "none"}
+
+
+@frappe.whitelist(methods=["GET"])
+def download_catalog_export():
+	"""Return the current user's last finished export."""
+	_require_report_role()
+	path = _export_path(frappe.session.user)
+	if not os.path.isfile(path):
+		frappe.throw("No catalog export is ready. Please export again.", frappe.DoesNotExistError)
+	with open(path, "rb") as f:
+		frappe.local.response.filecontent = f.read()
+	frappe.local.response.filename = "Product Catalog.pdf"
+	frappe.local.response.type = "pdf"
+
+
+def build_catalog_export(user, item_group="", search="", include_price=0):
+	"""Background job: build the PDF and store it for `user` to download."""
+	frappe.set_user(user)
+	_set_status(user, {"status": "running", "started": str(now_datetime())})
+	try:
+		content = _build_pdf(item_group, search, include_price)
+		path = _export_path(user)
+		os.makedirs(os.path.dirname(path), exist_ok=True)
+		with open(path, "wb") as f:
+			f.write(content)
+		_set_status(user, {"status": "done", "finished": str(now_datetime()), "size": len(content)})
+	except Exception:
+		frappe.log_error(title="DMS Product Catalog: export failed")
+		_set_status(user, {"status": "failed"})
+
+
+def _build_pdf(item_group, search, include_price):
+	from frappe.utils.pdf import get_pdf
+
 	include_price = cint(include_price)
 	price_list, currency = _get_price_list()
 	items = _get_catalog_items(item_group, search, include_price, price_list, currency)
-	for item in items:
-		item["image_data"] = _image_data_uri(item.get("image"))
-		if include_price:
-			item["price_display"] = f"{item.get('currency') or ''} {fmt_money(item.get('price') or 0)}".strip()
 
 	company = _get_default_company()
 	company_logo = frappe.db.get_value("Company", company, "company_logos") if company else None
+	thumbs = _get_thumbnails([i.get("image") for i in items] + [company_logo])
+
+	for item in items:
+		item["image_data"] = thumbs.get(item.get("image"))
+		if include_price:
+			item["price_display"] = f"{item.get('currency') or ''} {fmt_money(item.get('price') or 0)}".strip()
+
 	html = frappe.render_template(
 		"dms/templates/product_catalog_pdf.html",
 		{
@@ -59,22 +144,40 @@ def export_catalog_pdf(item_group: str = "", search: str = "", include_price=0):
 			"price_list": price_list,
 			"item_group": item_group if item_group and item_group != "All" else "",
 			"company": company,
-			"company_logo": _image_data_uri(company_logo),
+			"company_logo": thumbs.get(company_logo),
 			"date": formatdate(today()),
 		},
 	)
-
-	from frappe.utils.pdf import get_pdf
-
-	frappe.local.response.filename = "Product Catalog.pdf"
-	frappe.local.response.filecontent = get_pdf(html, PDF_OPTIONS.copy())
-	frappe.local.response.type = "pdf"
+	return get_pdf(html, PDF_OPTIONS.copy())
 
 
-@frappe.whitelist(methods=["GET"])
-def get_item_groups():
-	_require_report_role()
-	return frappe.get_all("Item Group", filters={"is_group": 0}, pluck="name", order_by="name")
+def _status_key(user):
+	return f"dms_product_catalog_export:{user}"
+
+
+def _get_status(user):
+	return frappe.cache.get_value(_status_key(user))
+
+
+def _set_status(user, status):
+	frappe.cache.set_value(_status_key(user), status, expires_in_sec=STATUS_TTL)
+
+
+def _is_stale(status):
+	"""True when a queued/running export is older than the job timeout (the worker died)."""
+	from frappe.utils import get_datetime, time_diff_in_seconds
+
+	started = status.get("started")
+	return not started or time_diff_in_seconds(now_datetime(), get_datetime(started)) > EXPORT_JOB_TIMEOUT + 60
+
+
+def _export_path(user):
+	# Outside public/ and private/files/, so it is only reachable through download_catalog_export.
+	name = hashlib.sha1(user.encode()).hexdigest()
+	return frappe.get_site_path("private", "dms_catalog_exports", f"{name}.pdf")
+
+
+# ---------------------------------------------------------------- items and prices
 
 
 def _chunk(rows, size):
@@ -113,6 +216,7 @@ def _get_catalog_items(item_group, search, include_price, price_list, currency):
 		return []
 
 	images = _resolve_item_images(items)
+	prices = _get_selling_rates(items, price_list) if include_price else {}
 	rows = []
 	for item in items:
 		row = {
@@ -123,62 +227,145 @@ def _get_catalog_items(item_group, search, include_price, price_list, currency):
 			"image": images.get(item.name),
 		}
 		if include_price:
-			row["price"] = _get_selling_rate(item, price_list)
+			row["price"] = prices.get(item.name) or float(item.standard_rate or 0)
 			row["currency"] = currency
 		rows.append(row)
 	return rows
 
 
-def _get_selling_rate(item, price_list):
-	"""Same price resolution as the order flow (dms.api.sales.get_items)."""
+def _get_selling_rates(items, price_list):
+	"""{item_code: rate} in the stock UOM, from the generic (no customer) Item Price rows.
+
+	Same rules as the order flow (dms.api.sales.get_items). Uses ERPNext's bulk query when this
+	version has it, else one query per item.
+	"""
+	ctx = {"price_list": price_list, "transaction_date": today()}
+	try:
+		from erpnext.stock.get_item_details import get_item_prices_for_stock_uom
+	except ImportError:
+		get_item_prices_for_stock_uom = None
+
+	if get_item_prices_for_stock_uom:
+		prices = get_item_prices_for_stock_uom(ctx, [i.name for i in items])
+		return {code: float(p.price_list_rate or 0) for code, p in prices.items()}
+
 	from erpnext.stock.get_item_details import get_item_price
 
-	rates = get_item_price(
-		{"price_list": price_list, "uom": item.stock_uom or "", "transaction_date": today()},
-		item.name,
-		ignore_party=True,
-	)
-	if rates and rates[0].get("price_list_rate"):
-		return float(rates[0].get("price_list_rate"))
-	return float(item.standard_rate or 0)
+	rates = {}
+	for item in items:
+		found = get_item_price({**ctx, "uom": item.stock_uom or ""}, item.name, ignore_party=True)
+		if found:
+			rates[item.name] = float(found[0].get("price_list_rate") or 0)
+	return rates
 
 
-def _image_data_uri(url):
-	"""Embed an image as a data: URI so wkhtmltopdf does not fetch URLs. None if it cannot be read."""
-	if not url:
-		return None
+# ---------------------------------------------------------------- images
+
+
+def _get_thumbnails(urls):
+	"""{url: JPEG data URI} for the given image URLs; unreadable images are left out.
+
+	Images are shrunk to THUMB_PX and cached on disk, so later exports skip the download and
+	resize. Work runs in threads; the threads do not touch frappe.local, so all site paths
+	are resolved here first.
+	"""
+	site_path = os.path.realpath(frappe.get_site_path())
+	cache_dir = os.path.join(site_path, "private", "dms_catalog_thumbs")
+	os.makedirs(cache_dir, exist_ok=True)
+
+	unique = list({u for u in urls if u})
+	with ThreadPoolExecutor(max_workers=IMAGE_WORKERS) as pool:
+		results = list(pool.map(lambda u: _thumbnail(u, site_path, cache_dir), unique))
+
+	thumbs, errors = {}, []
+	for url, (data, error) in zip(unique, results):
+		if data:
+			thumbs[url] = "data:image/jpeg;base64," + base64.b64encode(data).decode()
+		elif error:
+			errors.append(f"{url}: {error}")
+	if errors:
+		frappe.log_error(
+			title=f"DMS Product Catalog: {len(errors)} image(s) not embedded",
+			message="\n".join(errors[:200]),
+		)
+	return thumbs
+
+
+def _thumbnail(url, site_path, cache_dir):
+	"""(jpeg bytes, None) or (None, error). Runs in a worker thread: no frappe calls."""
 	try:
-		content, content_type = _read_image(url)
-	except Exception:
-		frappe.log_error(title="DMS Product Catalog: image not embedded", message=f"{url}\n{frappe.get_traceback()}")
-		return None
-	if not content or not (content_type or "").startswith("image/"):
-		return None
-	return f"data:{content_type};base64,{base64.b64encode(content).decode()}"
-
-
-def _read_image(url):
-	if url.startswith(("http://", "https://")):
-		resp = requests.get(url, timeout=IMAGE_TIMEOUT, stream=True)
-		resp.raise_for_status()
-		content_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
-		content = resp.raw.read(MAX_IMAGE_BYTES + 1, decode_content=True)
-		if len(content) > MAX_IMAGE_BYTES:
+		local_path = _local_image_path(url, site_path)
+		if local_path:
+			stat = os.stat(local_path)
+			key = f"{local_path}|{stat.st_mtime_ns}|{stat.st_size}"
+		elif url.startswith(("http://", "https://")):
+			key = url
+		else:
 			return None, None
-		return content, content_type
 
+		cache_file = os.path.join(cache_dir, hashlib.sha1(key.encode()).hexdigest() + ".jpg")
+		if os.path.isfile(cache_file):
+			with open(cache_file, "rb") as f:
+				return f.read(), None
+
+		content = _read_local(local_path) if local_path else _download(url)
+		data = _shrink(content)
+		tmp = f"{cache_file}.{os.getpid()}.tmp"
+		with open(tmp, "wb") as f:
+			f.write(data)
+		os.replace(tmp, cache_file)
+		return data, None
+	except Exception as e:
+		return None, f"{type(e).__name__}: {e}"
+
+
+def _local_image_path(url, site_path):
+	"""Disk path for a /files/ or /private/files/ URL inside this site; None for other URLs."""
 	path = url.split("?")[0]
 	if path.startswith("/private/files/"):
-		full_path = frappe.get_site_path("private", "files", path[len("/private/files/") :])
+		full = os.path.join(site_path, "private", "files", path[len("/private/files/") :])
 	elif path.startswith("/files/"):
-		full_path = frappe.get_site_path("public", "files", path[len("/files/") :])
+		full = os.path.join(site_path, "public", "files", path[len("/files/") :])
 	else:
-		return None, None
-	files_root = os.path.realpath(frappe.get_site_path())
-	full_path = os.path.realpath(full_path)
-	if not full_path.startswith(files_root) or not os.path.isfile(full_path):
-		return None, None
-	if os.path.getsize(full_path) > MAX_IMAGE_BYTES:
-		return None, None
-	with open(full_path, "rb") as f:
-		return f.read(), mimetypes.guess_type(full_path)[0]
+		return None
+	full = os.path.realpath(full)
+	if not full.startswith(site_path + os.sep) or not os.path.isfile(full):
+		raise ValueError("file not found")
+	return full
+
+
+def _read_local(path):
+	if os.path.getsize(path) > MAX_IMAGE_BYTES:
+		raise ValueError("file too large")
+	with open(path, "rb") as f:
+		return f.read()
+
+
+def _download(url):
+	resp = requests.get(url, timeout=IMAGE_TIMEOUT, stream=True)
+	resp.raise_for_status()
+	content_type = resp.headers.get("Content-Type", "").split(";")[0].strip()
+	if not content_type.startswith("image/"):
+		raise ValueError(f"not an image ({content_type or 'no content type'})")
+	content = resp.raw.read(MAX_IMAGE_BYTES + 1, decode_content=True)
+	if len(content) > MAX_IMAGE_BYTES:
+		raise ValueError("file too large")
+	return content
+
+
+def _shrink(content):
+	from PIL import Image, ImageOps
+
+	with Image.open(io.BytesIO(content)) as img:
+		img = ImageOps.exif_transpose(img)
+		img.thumbnail((THUMB_PX, THUMB_PX))
+		if img.mode in ("RGBA", "LA", "P"):
+			img = img.convert("RGBA")
+			background = Image.new("RGB", img.size, (255, 255, 255))
+			background.paste(img, mask=img.getchannel("A"))
+			img = background
+		elif img.mode != "RGB":
+			img = img.convert("RGB")
+		out = io.BytesIO()
+		img.save(out, "JPEG", quality=THUMB_QUALITY, optimize=True)
+		return out.getvalue()
