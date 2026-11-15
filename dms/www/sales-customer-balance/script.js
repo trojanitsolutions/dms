@@ -106,6 +106,7 @@ function renderTable() {
       ? 'No customers match your search.'
       : 'No customer balances match your selected filters.';
     $('showing-text').textContent = 'Showing 0 customers';
+    $('table-foot').hidden = true;
     loadMoreBtn.style.display = 'none';
     updateSelectionUI([]);
     return;
@@ -128,6 +129,7 @@ function renderTable() {
       <td class="text-right font-medium ${balanceClass(r.outstanding_balance)}">${fmt(r.outstanding_balance, r.currency)}</td>
     </tr>
   `).join('');
+  renderTotalRow(rowsSlice);
 
   tbody.querySelectorAll('.row-check').forEach(cb => {
     cb.addEventListener('change', () => {
@@ -137,6 +139,15 @@ function renderTable() {
     });
   });
   updateSelectionUI(rowsSlice);
+}
+
+// Total of the rows shown in the table, like the total row in the desk report.
+function renderTotalRow(rowsShown) {
+  const total = rowsShown.reduce((acc, r) => acc + Number(r.outstanding_balance || 0), 0);
+  const cell = $('table-total');
+  cell.textContent = fmt(total, rowsShown[0].currency);
+  cell.className = `text-right ${balanceClass(total)}`;
+  $('table-foot').hidden = false;
 }
 
 function updateSelectionUI(rowsShown) {

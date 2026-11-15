@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.query_builder.functions import Sum
+from frappe.query_builder.functions import Coalesce, Sum
 from frappe.utils import cint, flt, getdate
 
 
@@ -84,28 +84,34 @@ def get_columns() -> list[dict]:
 
 
 def get_data(filters: dict) -> list[dict]:
-	"""Return one row per customer with the net GL balance (debit - credit)."""
+	"""Return one row per customer with the net GL balance (debit - credit).
+
+	Customers with no matching GL entries get a 0 balance, so "Show Zero Balance" can list them.
+	"""
 	gle = frappe.qb.DocType("GL Entry")
 	customer = frappe.qb.DocType("Customer")
-	balance = Sum(gle.debit - gle.credit)
+	balance = Coalesce(Sum(gle.debit - gle.credit), 0)
+
+	# GL filters go in the join condition. In WHERE they would drop customers without entries.
+	join_condition = (
+		(gle.party == customer.name) & (gle.party_type == "Customer") & (gle.is_cancelled == 0)
+	)
+	if filters.get("as_on_date"):
+		join_condition &= gle.posting_date <= getdate(filters.get("as_on_date"))
+	if filters.get("company"):
+		join_condition &= gle.company == filters.get("company")
 
 	query = (
-		frappe.qb.from_(gle)
-		.inner_join(customer)
-		.on(customer.name == gle.party)
-		.select(gle.party.as_("customer"), customer.customer_name, balance.as_("outstanding_balance"))
-		.where(gle.party_type == "Customer")
-		.where(gle.is_cancelled == 0)
-		.groupby(gle.party, customer.customer_name)
+		frappe.qb.from_(customer)
+		.left_join(gle)
+		.on(join_condition)
+		.select(customer.name.as_("customer"), customer.customer_name, balance.as_("outstanding_balance"))
+		.groupby(customer.name, customer.customer_name)
 		.orderby(customer.customer_name)
 	)
 
-	if filters.get("as_on_date"):
-		query = query.where(gle.posting_date <= getdate(filters.get("as_on_date")))
-	if filters.get("company"):
-		query = query.where(gle.company == filters.get("company"))
 	if filters.get("customer"):
-		query = query.where(gle.party == filters.get("customer"))
+		query = query.where(customer.name == filters.get("customer"))
 	if filters.get("customer_group"):
 		query = query.where(customer.customer_group == filters.get("customer_group"))
 	if not filters.get("show_zero_balance"):

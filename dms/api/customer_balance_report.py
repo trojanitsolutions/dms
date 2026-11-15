@@ -39,8 +39,13 @@ def export_customer_balance(filters=None):
 
 	header = [col["label"] for col in columns]
 	rows = [[row.get(col["fieldname"], "") for col in columns] for row in data]
+	totals = {
+		"customer_name": "Total",
+		"outstanding_balance": sum(row.get("outstanding_balance") or 0 for row in data),
+	}
+	total_row = [totals.get(col["fieldname"], "") for col in columns]
 
-	content = make_xlsx([header, *rows], "Customer Balance").getvalue()
+	content = make_xlsx([header, *rows, total_row], "Customer Balance").getvalue()
 	provide_binary_file("Customer Balance Report", "xlsx", content)
 
 
