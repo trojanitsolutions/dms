@@ -3,63 +3,76 @@
 <head>
 <meta charset="utf-8">
 <style>
-  body { font-family: Helvetica, Arial, sans-serif; color: #1f2937; font-size: 11px; margin: 0; }
-  .header { width: 100%; border-bottom: 2px solid #1f2937; margin-bottom: 14px; padding-bottom: 8px; }
-  .header td { vertical-align: middle; }
-  .logo { max-height: 50px; max-width: 160px; }
-  .title { font-size: 20px; font-weight: bold; }
-  .meta { color: #6b7280; font-size: 10px; text-align: right; line-height: 1.5; }
-  table.grid { width: 100%; border-collapse: separate; border-spacing: 8px; }
-  table.grid tr { page-break-inside: avoid; }
-  td.card { width: 33.33%; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; vertical-align: top; text-align: center; }
-  td.empty { width: 33.33%; }
-  .img-box { height: 150px; line-height: 150px; text-align: center; background: #f9fafb; margin-bottom: 6px; }
-  .img-box img { max-height: 150px; max-width: 100%; vertical-align: middle; }
-  .no-img { color: #9ca3af; font-size: 10px; }
-  .name { font-weight: bold; font-size: 12px; margin-bottom: 2px; }
-  .code { color: #6b7280; font-size: 10px; }
-  .uom { color: #6b7280; font-size: 10px; }
-  .price { font-weight: bold; font-size: 13px; margin-top: 4px; color: #111827; }
+  /* Sized in mm for A4 with 12mm side/top and 15mm bottom margins (see PDF_OPTIONS):
+     usable area 186mm x 270mm. Each page holds 3 rows x 3 fixed-height cards, so a card
+     can never be split across two pages. */
+  body { font-family: Helvetica, Arial, sans-serif; color: #1f2937; font-size: 9pt; margin: 0; }
+  .page { height: 266mm; overflow: hidden; page-break-inside: avoid; }
+  .page-break { page-break-after: always; }
+
+  .header { width: 100%; height: 22mm; border-bottom: 0.5mm solid #1f2937; border-collapse: collapse; }
+  .header td { vertical-align: bottom; padding: 0 1mm 2mm; }
+  .logo { max-height: 10mm; max-width: 50mm; display: block; margin-bottom: 1mm; }
+  .title { font-size: 16pt; font-weight: bold; }
+  .meta { color: #6b7280; font-size: 7.5pt; text-align: right; line-height: 1.4; }
+
+  table.grid { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3mm; }
+  table.grid tr, table.grid td { page-break-inside: avoid; }
+  td.card { border: 0.3mm solid #e5e7eb; border-radius: 2mm; padding: 0; vertical-align: top; }
+  td.empty { border: 0; }
+  .card-inner { height: 74mm; overflow: hidden; padding: 2mm; text-align: center; }
+
+  .img-box { height: 46mm; line-height: 46mm; text-align: center; background: #f9fafb; margin-bottom: 2mm; overflow: hidden; }
+  .img-box img { max-height: 44mm; max-width: 100%; vertical-align: middle; }
+  .no-img { color: #9ca3af; font-size: 8pt; }
+
+  .name { font-weight: bold; font-size: 9pt; line-height: 4.2mm; max-height: 8.4mm; overflow: hidden; }
+  .line { font-size: 7.5pt; color: #6b7280; line-height: 3.8mm; height: 3.8mm; white-space: nowrap; overflow: hidden; }
+  .price { font-weight: bold; font-size: 10pt; line-height: 5mm; height: 5mm; margin-top: 1mm; white-space: nowrap; overflow: hidden; color: #111827; }
 </style>
 </head>
 <body>
-<table class="header">
-  <tr>
-    <td>
-      {% if company_logo %}<img class="logo" src="{{ company_logo }}"><br>{% endif %}
-      <span class="title">Product Catalog</span>
-    </td>
-    <td class="meta">
-      {% if company %}<b>{{ company }}</b><br>{% endif %}
-      {{ date }}<br>
-      {% if item_group %}Item Group: {{ item_group }}<br>{% endif %}
-      {% if include_price %}Price List: {{ price_list }}<br>{% endif %}
-      {{ items|length }} products
-    </td>
-  </tr>
-</table>
-
 {% if not items %}
 <p>No products found.</p>
-{% else %}
-<table class="grid">
-  {% for row in rows %}
-  <tr>
-    {% for item in row %}
-    <td class="card">
-      <div class="img-box">
-        {% if item.image_data %}<img src="{{ item.image_data }}">{% else %}<span class="no-img">No image</span>{% endif %}
-      </div>
-      <div class="name">{{ item.item_name }}</div>
-      <div class="code">{{ item.item_code }}</div>
-      {% if item.stock_uom %}<div class="uom">Unit: {{ item.stock_uom }}</div>{% endif %}
-      {% if include_price %}<div class="price">{{ item.price_display }}</div>{% endif %}
-    </td>
-    {% endfor %}
-    {% for _ in range(3 - row|length) %}<td class="empty"></td>{% endfor %}
-  </tr>
-  {% endfor %}
-</table>
 {% endif %}
+
+{% for page in pages %}
+<div class="page{% if not loop.last %} page-break{% endif %}">
+  <table class="header">
+    <tr>
+      <td>
+        {% if loop.first and company_logo %}<img class="logo" src="{{ company_logo }}">{% endif %}
+        <span class="title">Product Catalog</span>
+      </td>
+      <td class="meta">
+        {% if company %}<b>{{ company }}</b><br>{% endif %}
+        {{ date }}{% if item_group %} · {{ item_group }}{% endif %}<br>
+        {% if include_price %}Price List: {{ price_list }} · {% endif %}{{ items|length }} products
+      </td>
+    </tr>
+  </table>
+
+  <table class="grid">
+    {% for row in page %}
+    <tr>
+      {% for item in row %}
+      <td class="card">
+        <div class="card-inner">
+          <div class="img-box">
+            {% if item.image_data %}<img src="{{ item.image_data }}">{% else %}<span class="no-img">No image</span>{% endif %}
+          </div>
+          <div class="name">{{ item.item_name }}</div>
+          <div class="line">{{ item.item_code }}</div>
+          <div class="line">{% if item.stock_uom %}Unit: {{ item.stock_uom }}{% endif %}</div>
+          {% if include_price %}<div class="price">{{ item.price_display }}</div>{% endif %}
+        </div>
+      </td>
+      {% endfor %}
+      {% for _ in range(3 - row|length) %}<td class="empty"></td>{% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endfor %}
 </body>
 </html>

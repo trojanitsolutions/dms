@@ -13,6 +13,18 @@ from dms.api.sales import _get_default_company, _resolve_item_images
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 IMAGE_TIMEOUT = 10
+CARDS_PER_ROW = 3
+CARDS_PER_PAGE = 9
+# Fixed page size and margins: the template's mm layout is sized for A4 with these margins.
+PDF_OPTIONS = {
+	"page-size": "A4",
+	"margin-top": "12mm",
+	"margin-bottom": "15mm",
+	"margin-left": "12mm",
+	"margin-right": "12mm",
+	"footer-right": "Page [page] of [topage]",
+	"footer-font-size": "8",
+}
 
 
 @frappe.whitelist(methods=["GET"])
@@ -41,7 +53,8 @@ def export_catalog_pdf(item_group: str = "", search: str = "", include_price=0):
 		"dms/templates/product_catalog_pdf.html",
 		{
 			"items": items,
-			"rows": [items[i : i + 3] for i in range(0, len(items), 3)],
+			# Fixed pages of 3 rows x 3 cards, so no card is split across two PDF pages.
+			"pages": [_chunk(page, CARDS_PER_ROW) for page in _chunk(items, CARDS_PER_PAGE)],
 			"include_price": include_price,
 			"price_list": price_list,
 			"item_group": item_group if item_group and item_group != "All" else "",
@@ -54,7 +67,7 @@ def export_catalog_pdf(item_group: str = "", search: str = "", include_price=0):
 	from frappe.utils.pdf import get_pdf
 
 	frappe.local.response.filename = "Product Catalog.pdf"
-	frappe.local.response.filecontent = get_pdf(html, {"footer-right": "Page [page] of [topage]", "footer-font-size": "8"})
+	frappe.local.response.filecontent = get_pdf(html, PDF_OPTIONS.copy())
 	frappe.local.response.type = "pdf"
 
 
@@ -62,6 +75,10 @@ def export_catalog_pdf(item_group: str = "", search: str = "", include_price=0):
 def get_item_groups():
 	_require_report_role()
 	return frappe.get_all("Item Group", filters={"is_group": 0}, pluck="name", order_by="name")
+
+
+def _chunk(rows, size):
+	return [rows[i : i + size] for i in range(0, len(rows), size)]
 
 
 def _get_price_list():
