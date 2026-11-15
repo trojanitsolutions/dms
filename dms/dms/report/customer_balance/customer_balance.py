@@ -51,6 +51,7 @@ def get_columns() -> list[dict]:
 			"fieldname": "sl_no",
 			"fieldtype": "Int",
 			"width": 70,
+			"disable_total": 1,
 		},
 		{
 			"label": _("Customer ID"),
