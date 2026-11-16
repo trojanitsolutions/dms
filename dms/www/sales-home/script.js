@@ -7,6 +7,8 @@ async function get(method,args={}){
 }
 
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
+// Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
+function docTotal(d){return d.disable_rounded_total||!d.rounded_total?d.grand_total:d.rounded_total}
 
 function statusDot(s){const m={Submitted:'dot-blue',Delivered:'dot-green',Cancelled:'dot-gray',Draft:'dot-gray',Completed:'dot-green'};return m[s]||'dot-gray'}
 
@@ -64,7 +66,7 @@ function prettyDate(s){
         <div class="activity-dot ${statusDot(o.status)}"></div>
         <div class="activity-body">
           <div class="activity-text">Order <strong>${o.name}</strong> — <strong>${o.customer_name}</strong></div>
-          <div class="activity-time">${fmt(o.grand_total)} · ${o.status} · ${prettyDate(o.creation)}</div>
+          <div class="activity-time">${fmt(docTotal(o))} · ${o.status} · ${prettyDate(o.creation)}</div>
         </div>
       </div>`).join('');
   }

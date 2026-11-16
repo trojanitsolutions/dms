@@ -14,6 +14,8 @@ const AVATAR_COLORS=['#1E40AF','#92400E','#065F46','#7C3AED','#B91C1C','#0F766E'
 function avatarColor(name){let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))&0xFFFF;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
 function initials(name){return name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()}
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
+// Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
+function docTotal(d){return d.disable_rounded_total||!d.rounded_total?d.grand_total:d.rounded_total}
 function csrf(){const m=document.cookie.match(/X-Frappe-CSRF-Token=([^;]+)/);return m?decodeURIComponent(m[1]):'fetch'}
 
 async function get(method,args={}){
@@ -135,7 +137,7 @@ async function showDetail(custId){
   document.getElementById('d-orders-list').innerHTML=orders.length
     ?orders.map(o=>`<div class="order-row">
         <div><div class="order-name">${o.name}</div><div class="order-date">${relTime(o.creation)}</div></div>
-        <div class="order-right">${badge(o.status)}<div class="order-amount">${fmt(o.grand_total)}</div></div>
+        <div class="order-right">${badge(o.status)}<div class="order-amount">${fmt(docTotal(o))}</div></div>
       </div>`).join('')
     :'<div class="empty-state">No orders yet.</div>';
 }

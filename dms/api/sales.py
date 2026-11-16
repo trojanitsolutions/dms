@@ -2,7 +2,7 @@ import json
 import re
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 from dms.utils import get_owner_filter
 
@@ -12,6 +12,11 @@ def _require_sales_rep():
         frappe.throw(_("Not logged in"), frappe.AuthenticationError)
     if not frappe.db.exists("Has Role", {"parent": frappe.session.user, "role": "Sales Rep"}):
         frappe.throw(_("Access Denied"), frappe.PermissionError)
+
+
+def _rounding_disabled():
+    """Global Defaults "Disable Rounded Total", applied to every DMS Quotation and Sales Order."""
+    return cint(frappe.db.get_single_value("Global Defaults", "disable_rounded_total"))
 
 
 def _get_default_company():
@@ -298,7 +303,7 @@ def get_dashboard_stats():
     recent_orders = frappe.get_all(
         "Sales Order",
         filters={"owner": user, "docstatus": ["!=", 2]},
-        fields=["name", "customer_name", "grand_total", "status", "transaction_date", "creation"],
+        fields=["name", "customer_name", "grand_total", "rounded_total", "disable_rounded_total", "status", "transaction_date", "creation"],
         order_by="creation desc",
         limit=8,
     )
@@ -625,7 +630,7 @@ def _build_sales_order_doc(customer: str, warehouse: str, items: list, delivery_
 		"delivery_date": delivery_date or frappe.utils.today(),
 		"customer_address": customer_address or None,
 		"shipping_address_name": shipping_address or None,
-		"disable_rounded_total": frappe.db.get_single_value("Global Defaults", "disable_rounded_total") or 0,
+		"disable_rounded_total": _rounding_disabled(),
 		"selling_price_list": selling_price_list,
 		"items": doc_items,
 		"sales_team": [
@@ -765,6 +770,7 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             so.shipping_address_name = shipping_address or None
             so.set("items", _build_item_rows(items, warehouse))
             _bump_stale_payment_dates(so)
+            so.disable_rounded_total = _rounding_disabled()
         else:
             sales_person = _get_sales_person_for_user()
             so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, order_date, disable_stock_validation)
@@ -827,7 +833,7 @@ def get_my_orders(customer: str = ""):
     return frappe.get_all(
         "Sales Order",
         filters=filters,
-        fields=["name", "customer", "customer_name", "grand_total", "status", "transaction_date"],
+        fields=["name", "customer", "customer_name", "grand_total", "rounded_total", "disable_rounded_total", "status", "transaction_date"],
         order_by="creation desc",
         limit=50,
     )
@@ -846,7 +852,7 @@ def get_pending_orders(customer: str = ""):
     orders = frappe.get_all(
         "Sales Order",
         filters=filters,
-        fields=["name", "customer", "customer_name", "grand_total", "status", "transaction_date", "owner"],
+        fields=["name", "customer", "customer_name", "grand_total", "rounded_total", "disable_rounded_total", "status", "transaction_date", "owner"],
         order_by="creation desc",
         limit=2500,  # ponytail: unsubmitted drafts never approach this
     )
@@ -1034,7 +1040,7 @@ def get_customer_detail(customer: str):
     c["recent_orders"] = frappe.get_all(
         "Sales Order",
         filters={"customer": customer, "docstatus": ["!=", 2]},
-        fields=["name", "grand_total", "status", "transaction_date", "creation"],
+        fields=["name", "grand_total", "rounded_total", "disable_rounded_total", "status", "transaction_date", "creation"],
         order_by="creation desc",
         limit=5,
     )

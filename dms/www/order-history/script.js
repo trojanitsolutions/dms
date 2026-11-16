@@ -7,6 +7,8 @@ async function get(method,args={}){
 }
 
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
+// Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
+function docTotal(d){return d.disable_rounded_total||!d.rounded_total?d.grand_total:d.rounded_total}
 
 function esc(s){const el=document.createElement('div');el.textContent=s;return el.innerHTML}
 
@@ -119,7 +121,7 @@ function orderCard(o){
 		</div>
 		<div class="order-card-footer">
 			<span class="order-footer-label">Grand Total</span>
-			<span class="order-total">${fmt(o.grand_total)}</span>
+			<span class="order-total">${fmt(docTotal(o))}</span>
 			${editLink}
 		</div>
 	</div>`;

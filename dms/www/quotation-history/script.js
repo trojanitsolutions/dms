@@ -40,6 +40,8 @@ function confirmAction(title,msg,confirmLabel){
 }
 
 function fmt(n){return Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
+// Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
+function docTotal(d){return d.disable_rounded_total||!d.rounded_total?d.grand_total:d.rounded_total}
 function fmtCurrency(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
 function esc(s){const el=document.createElement('div');el.textContent=s;return el.innerHTML}
@@ -95,7 +97,7 @@ function linkedOrderCard(so){
 			<div class="so-items-wrap">${itemsHtml}</div>
 			<div class="so-card-footer">
 				<span class="so-footer-label">Grand Total</span>
-				<span class="so-total">${fmtCurrency(so.grand_total)}</span>
+				<span class="so-total">${fmtCurrency(docTotal(so))}</span>
 			</div>
 		</div>
 	</div>`;
@@ -104,6 +106,7 @@ function linkedOrderCard(so){
 let searchTerm='';
 let validTill='';
 let status='';
+let partyTypeFilter='';
 let offset=0;
 let loading=false;
 let hasMore=true;
@@ -124,7 +127,7 @@ async function loadNextPage(){
 
 	let result;
 	try{
-		result=await get('dms.api.quotation.get_quotation_history',{search:searchTerm,valid_till:validTill,status:status,limit_start:offset,limit_page_length:PAGE_SIZE});
+		result=await get('dms.api.quotation.get_quotation_history',{search:searchTerm,valid_till:validTill,status:status,party_type:partyTypeFilter,limit_start:offset,limit_page_length:PAGE_SIZE});
 	}catch(e){
 		result=null;
 	}
@@ -188,6 +191,10 @@ function itemRow(it){
 	</div>`;
 }
 
+function partyTag(partyType){
+	return partyType&&partyType!=='Customer'?`<span class="quotation-party-tag">${esc(partyType)}</span>`:'';
+}
+
 function quotationCard(q){
 	const itemsHtml=(q.items||[]).map(itemRow).join('');
 	const statusClass=getStatusBadgeClass(q.status);
@@ -196,7 +203,7 @@ function quotationCard(q){
 		<div class="quotation-card-header">
 			<div class="quotation-number">${esc(q.name)}</div>
 			<div class="quotation-header-top">
-				<span class="quotation-customer">${esc(q.customer_name)}</span>
+				<span class="quotation-customer">${esc(q.customer_name||q.party_name)}${partyTag(q.party_type)}</span>
 				<span class="quotation-date">${fmtDate(q.transaction_date)}</span>
 			</div>
 			<span class="quotation-status-badge ${statusClass}">${esc(statusText)}</span>
@@ -206,7 +213,7 @@ function quotationCard(q){
 		</div>
 		<div class="quotation-card-footer">
 			<span class="quotation-footer-label">Grand Total</span>
-			<span class="quotation-total">${fmtCurrency(q.grand_total)}</span>
+			<span class="quotation-total">${fmtCurrency(docTotal(q))}</span>
 		</div>
 	</div>`;
 }
@@ -241,6 +248,14 @@ const validTillEl = document.getElementById('valid-till-filter');
 if (validTillEl) {
 	validTillEl.addEventListener('change',e=>{
 		validTill=e.target.value;
+		resetAndReload();
+	});
+}
+
+const partyTypeEl = document.getElementById('party-type-filter');
+if (partyTypeEl) {
+	partyTypeEl.addEventListener('change',e=>{
+		partyTypeFilter=e.target.value;
 		resetAndReload();
 	});
 }
@@ -298,7 +313,12 @@ async function loadQuotationDetail(name){
 		badge.className='quotation-status-badge '+statusClass;
 		badge.textContent=esc(statusText);
 
-		document.getElementById('quotation-detail-customer').textContent=esc(q.customer_name||q.customer||'');
+		document.getElementById('quotation-detail-party-label').textContent=q.party_type||'Customer';
+		document.getElementById('quotation-detail-customer').textContent=q.customer_name||q.party_name||q.customer||'';
+		const partyMeta=document.getElementById('quotation-detail-party-meta');
+		const metaLines=[q.party_name&&q.party_name!==q.customer_name?q.party_name:'',[q.contact_mobile,q.contact_email].filter(Boolean).join(' · '),q.address_display].filter(Boolean);
+		partyMeta.innerHTML=metaLines.map(l=>`<div>${esc(l)}</div>`).join('');
+		partyMeta.hidden=!metaLines.length;
 		document.getElementById('quotation-detail-date').textContent=fmtDate(q.transaction_date);
 		document.getElementById('quotation-detail-valid-till').textContent=fmtDate(q.valid_till);
 
@@ -337,7 +357,7 @@ async function loadQuotationDetail(name){
 		}
 
 		document.getElementById('quotation-detail-net-total').textContent=fmtCurrency(q.net_total||q.total);
-		document.getElementById('quotation-detail-grand-total').textContent=fmtCurrency(q.grand_total);
+		document.getElementById('quotation-detail-grand-total').textContent=fmtCurrency(docTotal(q));
 
 		const termsWrap=document.getElementById('quotation-detail-terms-wrap');
 		if(q.terms){
@@ -384,6 +404,20 @@ document.getElementById('quotation-detail-back').addEventListener('click',e=>{
 
 document.getElementById('quotation-detail-create-so').addEventListener('click',async()=>{
 	if(!currentQuotation)return;
+	if(currentQuotation.party_type==='Lead'){
+		const ok=await confirmAction(
+			'Create Customer from Lead',
+			`A customer will be created from Lead ${currentQuotation.party_name} (or the existing linked customer will be used), and the lead will be marked as Converted. Continue?`,
+			'Continue'
+		);
+		if(!ok)return;
+		try{
+			await post('dms.api.quotation.ensure_customer_for_quotation',{name:currentQuotation.name});
+		}catch(e){
+			alert('Error: '+e.message);
+			return;
+		}
+	}
 	try{
 		const soData=await get('dms.api.quotation.get_quotation_for_sales_order',{name:currentQuotation.name});
 		if(soData){

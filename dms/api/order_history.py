@@ -41,7 +41,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 		"Sales Order",
 		filters=filters,
 		or_filters=or_filters,
-		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "status", "docstatus", "owner"],
+		fields=["name", "customer", "customer_name", "transaction_date", "delivery_date", "grand_total", "rounded_total", "disable_rounded_total", "status", "docstatus", "owner"],
 		order_by="transaction_date desc, creation desc, name desc",
 		limit_start=limit_start,
 		limit_page_length=limit_page_length + 1,

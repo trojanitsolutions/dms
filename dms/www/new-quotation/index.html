@@ -39,7 +39,7 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
     <span>New Order</span>
   </a>
-  <a class="nav-link active" href="/new-quotation">
+  <a class="nav-link active" href="/new-quotation" data-quotation-link>
     <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
     <span>Quotation</span>
   </a>
@@ -72,12 +72,12 @@
 <!-- Mobile page header -->
 <div class="mob-header">
   <div class="mob-header-left">
-    <a href="/sales-customer{% if customer %}?customer={{ customer }}{% endif %}" class="mob-back">
+    <a href="{% if party_type == 'Lead' %}/quotation-history{% else %}/sales-customer{% if customer %}?customer={{ customer|urlencode }}{% endif %}{% endif %}" class="mob-back" id="mob-back-link">
       <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
     </a>
     <div>
       <div class="mob-title">New Quotation</div>
-      <div class="mob-sub">{% if customer %}{{ customer_name or customer }}{% else %}No customer selected{% endif %}</div>
+      <div class="mob-sub" id="mob-party-sub">{% if party %}{{ party_name or party }}{% else %}No customer or lead selected{% endif %}</div>
     </div>
   </div>
 </div>
@@ -91,8 +91,7 @@
 <!-- Main quotation layout -->
 <div class="main-content" id="main-content">
 
-  {% if customer %}
-  <section class="addr-section" id="addr-section">
+  <section class="addr-section" id="addr-section"{% if not party %} style="display:none"{% endif %}>
     <div class="addr-col" id="billing-addr-col">
       <div class="addr-col-header">
         <label class="addr-col-title">Billing address</label>
@@ -120,7 +119,6 @@
       <div id="shipping-address-card" class="addr-card" style="display:none"></div>
     </div>
   </section>
-  {% endif %}
 
 <div class="order-wrap" id="order-wrap">
 
@@ -193,7 +191,24 @@
 
     <div class="cart-meta">
       <div class="meta-row"><span class="meta-key">Sales rep</span><span class="meta-val">{{ full_name }}</span></div>
-      <div class="meta-row"><span class="meta-key">Customer</span><span class="meta-val" id="sum-customer">{% if customer %}{{ customer_name or customer }}{% else %}—{% endif %}</span></div>
+    </div>
+
+    <div class="party-row" id="party-row">
+      <div class="party-type-field">
+        <label for="party-type-select">Party Type</label>
+        <select id="party-type-select">
+          <option value="Customer"{% if party_type == 'Customer' %} selected{% endif %}>Customer</option>
+          <option value="Lead"{% if party_type == 'Lead' %} selected{% endif %}>Lead</option>
+        </select>
+      </div>
+      <div class="party-field">
+        <label for="party-search" id="party-label">{{ party_type }}</label>
+        <div class="party-search-wrap">
+          <input type="text" id="party-search" autocomplete="off" placeholder="Search {{ party_type|lower }}…" value="{{ party_name or party }}">
+          <div class="party-results" id="party-results" hidden></div>
+        </div>
+      </div>
+      <div class="party-info" id="party-info" hidden></div>
     </div>
 
     <!-- Mobile warehouse (inside cart for cart tab) -->
@@ -243,11 +258,7 @@
         <label>Terms / Notes</label>
         <textarea id="quotation-terms" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--color-input-border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
       </div>
-      {% if customer %}
-      <button class="btn-submit" id="create-btn">Create Quotation</button>
-      {% else %}
-      <div class="select-customer-msg">Select a customer first</div>
-      {% endif %}
+      <button class="btn-submit" id="create-btn"{% if not party %} disabled{% endif %}>Create Quotation</button>
     </div>
   </div>
 
@@ -269,7 +280,7 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
     New Order
   </a>
-  <a href="/new-quotation" class="bnav-item active">
+  <a href="/new-quotation" class="bnav-item active" data-quotation-link>
     <img src="/assets/dms/images/quote.png" alt="" width="22" height="22">
     Quotation
   </a>
@@ -327,10 +338,14 @@
 
 <script>
 window.pageData = {
-  customer: '{{ customer or "" }}',
-  customer_name: '{{ customer_name or "" }}'
+  party_type: {{ (party_type or "Customer")|tojson }},
+  party: {{ (party or "")|tojson }},
+  party_name: {{ (party_name or "")|tojson }},
+  customer: {{ (customer or "")|tojson }},
+  customer_name: {{ (customer_name or "")|tojson }}
 };
 </script>
 <script src="/new-quotation/script.js"></script>
+<script src="/assets/dms/js/quotation_party_modal.js"></script>
 </body>
 </html>

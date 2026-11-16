@@ -8,10 +8,12 @@ from dms.api.sales import (
 	_validate_item_discount_amounts,
 	_apply_order_level_discount,
 	_build_item_rows,
+	_rounding_disabled,
 )
+from dms.api.quotation import _resolve_party, _validate_party, _validate_party_address
 
 
-def _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date=""):
+def _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date="", party_type="Customer"):
 	doc_items = _build_item_rows(items, warehouse)
 
 	selling_price_list = (
@@ -21,13 +23,14 @@ def _build_quotation_doc(customer, warehouse, items, valid_till, customer_addres
 
 	return frappe.get_doc({
 		"doctype": "Quotation",
-		"quotation_to": "Customer",
+		"quotation_to": party_type or "Customer",
 		"party_name": customer,
 		"company": company,
 		"transaction_date": transaction_date or frappe.utils.today(),
 		"valid_till": valid_till or None,
 		"customer_address": customer_address or None,
 		"shipping_address_name": shipping_address or None,
+		"disable_rounded_total": _rounding_disabled(),
 		"selling_price_list": selling_price_list,
 		"items": doc_items,
 		"terms": terms or None,
@@ -35,10 +38,12 @@ def _build_quotation_doc(customer, warehouse, items, valid_till, customer_addres
 
 
 @frappe.whitelist(methods=["POST"])
-def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_till: str = "",
+def get_quotation_totals(warehouse: str, items_json: str, customer: str = "", valid_till: str = "",
 						 customer_address: str = "", shipping_address: str = "",
-						 additional_discount_type: str = "", additional_discount_value: float = 0, transaction_date: str = ""):
+						 additional_discount_type: str = "", additional_discount_value: float = 0, transaction_date: str = "",
+						 party_type: str = "", party_name: str = ""):
 	_require_sales_rep()
+	party_type, customer = _resolve_party(party_type, party_name, customer)
 	items = json.loads(items_json)
 	if not items:
 		return {
@@ -55,7 +60,7 @@ def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_t
 		}
 
 	company = _get_default_company()
-	qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, "", transaction_date)
+	qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, "", transaction_date, party_type)
 	qtn.run_method("set_missing_values")
 	_validate_item_discount_amounts(qtn)
 	_apply_order_level_discount(qtn, additional_discount_type, additional_discount_value)
@@ -76,10 +81,12 @@ def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_t
 
 
 @frappe.whitelist(methods=["POST"])
-def create_quotation(customer: str, warehouse: str, items_json: str, valid_till: str = "",
+def create_quotation(warehouse: str, items_json: str, customer: str = "", valid_till: str = "",
 					  customer_address: str = "", shipping_address: str = "", terms: str = "",
-					  additional_discount_type: str = "", additional_discount_value: float = 0, transaction_date: str = ""):
+					  additional_discount_type: str = "", additional_discount_value: float = 0, transaction_date: str = "",
+					  party_type: str = "", party_name: str = ""):
 	_require_sales_rep()
+	party_type, customer = _resolve_party(party_type, party_name, customer)
 	try:
 		items = json.loads(items_json)
 		if not items:
@@ -90,36 +97,11 @@ def create_quotation(customer: str, warehouse: str, items_json: str, valid_till:
 
 		company = _get_default_company()
 
-		from erpnext.accounts.party import validate_party_frozen_disabled
-		validate_party_frozen_disabled(company, "Customer", customer)
+		_validate_party(company, party_type, customer)
+		_validate_party_address(customer_address, party_type, customer, "billing address")
+		_validate_party_address(shipping_address, party_type, customer, "shipping address")
 
-		if customer_address:
-			linked = frappe.db.exists(
-				"Dynamic Link",
-				{
-					"parent": customer_address,
-					"parenttype": "Address",
-					"link_doctype": "Customer",
-					"link_name": customer,
-				},
-			)
-			if not linked:
-				frappe.throw(_("Selected billing address does not belong to this customer."))
-
-		if shipping_address:
-			linked = frappe.db.exists(
-				"Dynamic Link",
-				{
-					"parent": shipping_address,
-					"parenttype": "Address",
-					"link_doctype": "Customer",
-					"link_name": customer,
-				},
-			)
-			if not linked:
-				frappe.throw(_("Selected shipping address does not belong to this customer."))
-
-		qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date)
+		qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date, party_type)
 		qtn.run_method("set_missing_values")
 		_validate_item_discount_amounts(qtn)
 		_apply_order_level_discount(qtn, additional_discount_type, additional_discount_value)
@@ -136,6 +118,6 @@ def create_quotation(customer: str, warehouse: str, items_json: str, valid_till:
 	except Exception:
 		frappe.log_error(
 			title=f"DMS Quotation create failed for {frappe.session.user}",
-			message=f"customer={customer}, warehouse={warehouse}\n\n{frappe.get_traceback()}",
+			message=f"{party_type}={customer}, warehouse={warehouse}\n\n{frappe.get_traceback()}",
 		)
 		raise

@@ -14,6 +14,7 @@ from dms.api.sales import (
 	_stock_validation_disabled,
 	_get_available_qty_map,
 	_get_credit_info,
+	_rounding_disabled,
 )
 
 
@@ -38,7 +39,158 @@ def _run_privileged(fn):
 		frappe.local.user_perms = None
 
 
-def _build_quotation_doc(customer: str, warehouse: str, items: list, valid_till: str, customer_address: str, shipping_address: str, company: str, sales_person: str, terms_text: str = ""):
+PARTY_TYPES = ("Customer", "Lead")
+
+
+def _resolve_party(party_type: str = "", party_name: str = "", customer: str = ""):
+	"""Return (party_type, party). Falls back to the legacy `customer` argument."""
+	party_type = party_type or "Customer"
+	if party_type not in PARTY_TYPES:
+		frappe.throw(_("Invalid party type {0}").format(party_type))
+	return party_type, (party_name or customer or "")
+
+
+def _validate_party(company: str, party_type: str, party: str):
+	if not party:
+		frappe.throw(_("Select a customer or lead."))
+	if not frappe.db.exists(party_type, party):
+		frappe.throw(_("{0} {1} not found").format(_(party_type), party), frappe.DoesNotExistError)
+
+	if party_type == "Customer":
+		from erpnext.accounts.party import validate_party_frozen_disabled
+		validate_party_frozen_disabled(company, "Customer", party)
+	elif frappe.db.get_value("Lead", party, "disabled"):
+		frappe.throw(_("Lead {0} is disabled").format(party))
+
+
+def _validate_party_address(address: str, party_type: str, party: str, label: str = "address"):
+	if not address:
+		return
+	linked = frappe.db.exists(
+		"Dynamic Link",
+		{
+			"parent": address,
+			"parenttype": "Address",
+			"link_doctype": party_type,
+			"link_name": party,
+		},
+	)
+	if not linked:
+		frappe.throw(_("Selected {0} does not belong to this {1}.").format(_(label), _(party_type).lower()))
+
+
+def _get_party_addresses(party_type: str, party: str):
+	return frappe.get_all(
+		"Address",
+		filters=[
+			["Dynamic Link", "link_doctype", "=", party_type],
+			["Dynamic Link", "link_name", "=", party],
+			["Dynamic Link", "parenttype", "=", "Address"],
+			["disabled", "=", 0],
+		],
+		fields=["name", "address_title", "address_line1", "address_line2", "city", "state", "country", "pincode"],
+		order_by="is_primary_address desc, creation asc",
+	)
+
+
+def _get_party_display_name(party_type: str, party: str) -> str:
+	if not party:
+		return ""
+	if party_type == "Lead":
+		row = frappe.db.get_value("Lead", party, ["lead_name", "company_name"], as_dict=True)
+		return (row.company_name or row.lead_name or party) if row else ""
+	return frappe.db.get_value("Customer", party, "customer_name") or ""
+
+
+@frappe.whitelist(methods=["GET"])
+def search_parties(party_type: str = "Customer", search: str = ""):
+	_require_sales_rep()
+	party_type, _party = _resolve_party(party_type)
+	like = f"%{search}%" if search else None
+
+	if party_type == "Lead":
+		rows = frappe.get_all(
+			"Lead",
+			filters={"disabled": 0, "status": ["!=", "Converted"]},
+			or_filters=(
+				[
+					["name", "like", like],
+					["lead_name", "like", like],
+					["company_name", "like", like],
+					["mobile_no", "like", like],
+				]
+				if like else None
+			),
+			fields=["name", "lead_name", "company_name", "mobile_no", "phone", "email_id", "territory", "status"],
+			order_by="modified desc",
+			limit=50,
+		)
+		for r in rows:
+			r["display_name"] = r.company_name or r.lead_name or r.name
+		return rows
+
+	rows = frappe.get_all(
+		"Customer",
+		filters={"disabled": 0},
+		or_filters=([["name", "like", like], ["customer_name", "like", like]] if like else None),
+		fields=["name", "customer_name", "mobile_no", "email_id", "territory", "is_frozen"],
+		order_by="customer_name",
+		limit=50,
+	)
+	for r in rows:
+		r["display_name"] = r.customer_name or r.name
+	return rows
+
+
+@frappe.whitelist(methods=["GET"])
+def get_party_details(party_type: str, party: str):
+	_require_sales_rep()
+	party_type, party = _resolve_party(party_type, party)
+	if not frappe.db.exists(party_type, party):
+		frappe.throw(_("{0} {1} not found").format(_(party_type), party), frappe.DoesNotExistError)
+
+	if party_type == "Lead":
+		d = frappe.db.get_value(
+			"Lead", party,
+			["name", "lead_name", "company_name", "mobile_no", "phone", "email_id", "territory", "status", "disabled"],
+			as_dict=True,
+		)
+		details = {
+			"display_name": d.company_name or d.lead_name or d.name,
+			"contact_person": d.lead_name if d.company_name else "",
+			"mobile": d.mobile_no or "",
+			"phone": d.phone or "",
+			"email": d.email_id or "",
+			"territory": d.territory or "",
+			"status": d.status or "",
+			"disabled": d.disabled,
+		}
+	else:
+		d = frappe.db.get_value(
+			"Customer", party,
+			["name", "customer_name", "mobile_no", "email_id", "territory", "disabled", "is_frozen"],
+			as_dict=True,
+		)
+		details = {
+			"display_name": d.customer_name or d.name,
+			"contact_person": "",
+			"mobile": d.mobile_no or "",
+			"phone": "",
+			"email": d.email_id or "",
+			"territory": d.territory or "",
+			"status": "Disabled" if d.disabled else ("Frozen" if d.is_frozen else "Active"),
+			"disabled": d.disabled,
+		}
+
+	details.update({
+		"party_type": party_type,
+		"party": party,
+		"addresses": _get_party_addresses(party_type, party),
+	})
+	return details
+
+
+def _build_quotation_doc(customer: str, warehouse: str, items: list, valid_till: str, customer_address: str, shipping_address: str, company: str, sales_person: str, terms_text: str = "", party_type: str = "Customer"):
 	doc_items = _build_item_rows(items, warehouse)
 
 	selling_price_list = (
@@ -48,14 +200,14 @@ def _build_quotation_doc(customer: str, warehouse: str, items: list, valid_till:
 
 	doc_dict = {
 		"doctype": "Quotation",
-		"quotation_to": "Customer",
+		"quotation_to": party_type or "Customer",
 		"party_name": customer,
 		"company": company,
 		"transaction_date": frappe.utils.today(),
 		"valid_till": valid_till or None,
 		"customer_address": customer_address or None,
 		"shipping_address_name": shipping_address or None,
-		"disable_rounded_total": frappe.db.get_single_value("Global Defaults", "disable_rounded_total") or 0,
+		"disable_rounded_total": _rounding_disabled(),
 		"selling_price_list": selling_price_list,
 		"items": doc_items,
 		"terms": terms_text or None,
@@ -71,8 +223,9 @@ def _build_quotation_doc(customer: str, warehouse: str, items: list, valid_till:
 
 
 @frappe.whitelist(methods=["POST"])
-def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_till: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0):
+def get_quotation_totals(warehouse: str, items_json: str, customer: str = "", valid_till: str = "", customer_address: str = "", shipping_address: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, party_type: str = "", party_name: str = ""):
 	_require_sales_rep()
+	party_type, customer = _resolve_party(party_type, party_name, customer)
 	items = json.loads(items_json)
 	if not items:
 		return {
@@ -90,7 +243,7 @@ def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_t
 
 	company = _get_default_company()
 	sales_person = _get_sales_person_for_user()
-	quotation = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, sales_person, "")
+	quotation = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, sales_person, "", party_type)
 	quotation.run_method("set_missing_values")
 	_validate_item_discount_amounts(quotation)
 	_apply_order_level_discount(quotation, additional_discount_type, additional_discount_value)
@@ -110,8 +263,9 @@ def get_quotation_totals(customer: str, warehouse: str, items_json: str, valid_t
 
 
 @frappe.whitelist(methods=["POST"])
-def create_quotation(customer: str, warehouse: str, items_json: str, valid_till: str = "", customer_address: str = "", shipping_address: str = "", terms: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, submit: bool = True, existing_quotation: str = ""):
+def create_quotation(warehouse: str, items_json: str, customer: str = "", valid_till: str = "", customer_address: str = "", shipping_address: str = "", terms: str = "", additional_discount_type: str = "", additional_discount_value: float = 0, submit: bool = True, existing_quotation: str = "", party_type: str = "", party_name: str = ""):
 	_require_sales_rep()
+	party_type, customer = _resolve_party(party_type, party_name, customer)
 	try:
 		items = json.loads(items_json)
 		if not items:
@@ -121,34 +275,9 @@ def create_quotation(customer: str, warehouse: str, items_json: str, valid_till:
 
 		company = _get_default_company()
 
-		from erpnext.accounts.party import validate_party_frozen_disabled
-		validate_party_frozen_disabled(company, "Customer", customer)
-
-		if customer_address:
-			linked = frappe.db.exists(
-				"Dynamic Link",
-				{
-					"parent": customer_address,
-					"parenttype": "Address",
-					"link_doctype": "Customer",
-					"link_name": customer,
-				},
-			)
-			if not linked:
-				frappe.throw(_("Selected address does not belong to this customer."))
-
-		if shipping_address:
-			linked = frappe.db.exists(
-				"Dynamic Link",
-				{
-					"parent": shipping_address,
-					"parenttype": "Address",
-					"link_doctype": "Customer",
-					"link_name": customer,
-				},
-			)
-			if not linked:
-				frappe.throw(_("Selected shipping address does not belong to this customer."))
+		_validate_party(company, party_type, customer)
+		_validate_party_address(customer_address, party_type, customer, "address")
+		_validate_party_address(shipping_address, party_type, customer, "shipping address")
 
 		if existing_quotation:
 			quotation = frappe.get_doc("Quotation", existing_quotation)
@@ -156,15 +285,17 @@ def create_quotation(customer: str, warehouse: str, items_json: str, valid_till:
 				frappe.throw(_("Not permitted"), frappe.PermissionError)
 			if quotation.docstatus != 0:
 				frappe.throw(_("Quotation is not pending"))
+			quotation.quotation_to = party_type
 			quotation.party_name = customer
 			quotation.valid_till = valid_till or None
 			quotation.customer_address = customer_address or None
 			quotation.shipping_address_name = shipping_address or None
 			quotation.terms = terms or None
 			quotation.set("items", _build_item_rows(items, warehouse))
+			quotation.disable_rounded_total = _rounding_disabled()
 		else:
 			sales_person = _get_sales_person_for_user()
-			quotation = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, sales_person, terms)
+			quotation = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, sales_person, terms, party_type)
 
 		quotation.run_method("set_missing_values")
 		_validate_item_discount_amounts(quotation)
@@ -190,37 +321,59 @@ def create_quotation(customer: str, warehouse: str, items_json: str, valid_till:
 	except Exception:
 		frappe.log_error(
 			title=f"DMS Quotation submit failed for {frappe.session.user}",
-			message=f"customer={customer}, warehouse={warehouse}\n\n{frappe.get_traceback()}",
+			message=f"{party_type}={customer}, warehouse={warehouse}\n\n{frappe.get_traceback()}",
 		)
 		raise
 
 
-@frappe.whitelist(methods=["GET"])
-def get_my_quotations(customer: str = ""):
-	_require_sales_rep()
-	filters = {"owner": frappe.session.user, "docstatus": ["!=", 2]}
+QUOTATION_LIST_FIELDS = [
+	"name",
+	"quotation_to as party_type",
+	"party_name",
+	"party_name as customer",
+	"customer_name",
+	"grand_total",
+	"rounded_total",
+	"disable_rounded_total",
+	"status",
+	"transaction_date",
+	"valid_till",
+]
+
+
+def _apply_party_filters(filters: dict, customer: str = "", party_type: str = ""):
+	if party_type:
+		if party_type not in PARTY_TYPES:
+			frappe.throw(_("Invalid party type {0}").format(party_type))
+		filters["quotation_to"] = party_type
 	if customer:
 		filters["party_name"] = customer
+
+
+@frappe.whitelist(methods=["GET"])
+def get_my_quotations(customer: str = "", party_type: str = ""):
+	_require_sales_rep()
+	filters = {"owner": frappe.session.user, "docstatus": ["!=", 2]}
+	_apply_party_filters(filters, customer, party_type)
 	return frappe.get_all(
 		"Quotation",
 		filters=filters,
-		fields=["name", "party_name as customer", "customer_name", "grand_total", "status", "transaction_date", "valid_till"],
+		fields=QUOTATION_LIST_FIELDS,
 		order_by="creation desc",
 		limit=50,
 	)
 
 
 @frappe.whitelist(methods=["GET"])
-def get_pending_quotations(customer: str = ""):
+def get_pending_quotations(customer: str = "", party_type: str = ""):
 	_require_sales_rep()
 	filters = {"owner": frappe.session.user, "docstatus": 0}
-	if customer:
-		filters["party_name"] = customer
+	_apply_party_filters(filters, customer, party_type)
 
 	quotations = frappe.get_all(
 		"Quotation",
 		filters=filters,
-		fields=["name", "party_name as customer", "customer_name", "grand_total", "status", "transaction_date", "valid_till"],
+		fields=QUOTATION_LIST_FIELDS,
 		order_by="creation desc",
 		limit=2500,
 	)
@@ -290,6 +443,8 @@ def get_pending_quotation_detail(name: str):
 
 	return {
 		"name": quotation.name,
+		"party_type": quotation.quotation_to,
+		"party_name": quotation.party_name,
 		"customer": quotation.party_name,
 		"customer_name": quotation.customer_name,
 		"valid_till": quotation.valid_till,
@@ -316,10 +471,20 @@ def get_quotation_detail(name: str):
 	if quotation.owner != frappe.session.user:
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
+	address_display = quotation.address_display or ""
+	if not address_display and quotation.customer_address:
+		from frappe.contacts.doctype.address.address import get_address_display
+		address_display = get_address_display(quotation.customer_address) or ""
+
 	return {
 		"name": quotation.name,
+		"party_type": quotation.quotation_to,
+		"party_name": quotation.party_name,
 		"customer": quotation.party_name,
 		"customer_name": quotation.customer_name,
+		"address_display": strip_html(address_display.replace("<br>", ", ")).strip(", ") if address_display else "",
+		"contact_mobile": quotation.contact_mobile or "",
+		"contact_email": quotation.contact_email or "",
 		"transaction_date": quotation.transaction_date,
 		"valid_till": quotation.valid_till,
 		"status": quotation.status,
@@ -425,7 +590,8 @@ def get_linked_sales_orders(quotation: str):
 	_require_sales_rep()
 	orders = frappe.db.sql(
 		"""
-		SELECT DISTINCT so.name, so.customer_name, so.transaction_date, so.status, so.grand_total
+		SELECT DISTINCT so.name, so.customer_name, so.transaction_date, so.status, so.grand_total,
+			so.rounded_total, so.disable_rounded_total
 		FROM `tabSales Order Item` soi
 		JOIN `tabSales Order` so ON soi.parent = so.name
 		WHERE soi.prevdoc_docname = %s AND soi.docstatus != 2 AND so.docstatus != 2
@@ -452,12 +618,78 @@ def get_linked_sales_orders(quotation: str):
 	return orders
 
 
+def _get_customer_for_lead(lead: str):
+	return frappe.db.get_value("Customer", {"lead_name": lead}, "name")
+
+
+@frappe.whitelist(methods=["POST"])
+def ensure_customer_for_quotation(name: str):
+	"""Make sure a Customer exists for the quotation's party.
+
+	For Lead quotations this reuses the Customer already created from the Lead,
+	or creates one with ERPNext's standard Lead -> Customer mapping (which also
+	marks the Lead as Converted).
+	"""
+	_require_sales_rep()
+	quotation = frappe.get_doc("Quotation", name)
+	_validate_quotation_convertible(quotation)
+	_check_quotation_already_converted(name)
+
+	if quotation.quotation_to == "Customer":
+		customer = quotation.party_name
+	elif quotation.quotation_to == "Lead":
+		customer = _get_customer_for_lead(quotation.party_name)
+		if not customer:
+			from erpnext.selling.doctype.quotation.quotation import _make_customer
+			customer = _run_privileged(lambda: _make_customer(name, ignore_permissions=True)).name
+	else:
+		frappe.throw(_("Quotations for {0} cannot be converted here.").format(quotation.quotation_to))
+
+	return {
+		"customer": customer,
+		"customer_name": frappe.db.get_value("Customer", customer, "customer_name"),
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_lead(first_name: str, last_name: str = "", mobile_no: str = "", company_name: str = ""):
+	"""Create a Lead from the Quotation pop-up so a quotation can be made for it."""
+	_require_sales_rep()
+	first_name = (first_name or "").strip()
+	last_name = (last_name or "").strip()
+	mobile_no = (mobile_no or "").strip()
+	company_name = (company_name or "").strip()
+	if not first_name:
+		frappe.throw(_("First Name is required."))
+	if not mobile_no:
+		frappe.throw(_("Mobile Number is required."))
+
+	lead_owner = frappe.session.user
+	lead = _run_privileged(
+		lambda: frappe.get_doc(
+			{
+				"doctype": "Lead",
+				"first_name": first_name,
+				"last_name": last_name,
+				"mobile_no": mobile_no,
+				"company_name": company_name,
+				"lead_owner": lead_owner,
+			}
+		).insert()
+	)
+	return {"name": lead.name, "display_name": lead.company_name or lead.lead_name}
+
+
 @frappe.whitelist(methods=["GET"])
 def get_quotation_for_sales_order(name: str):
 	_require_sales_rep()
 	quotation = frappe.get_doc("Quotation", name)
 	_validate_quotation_convertible(quotation)
 	_check_quotation_already_converted(name)
+
+	# GET requests are not committed, so never create the Customer here.
+	if quotation.quotation_to == "Lead" and not _get_customer_for_lead(quotation.party_name):
+		frappe.throw(_("Convert Lead {0} to a customer first.").format(quotation.party_name))
 
 	from erpnext.selling.doctype.quotation.quotation import _make_sales_order
 	so = _make_sales_order(name, target_doc=None, ignore_permissions=True)
@@ -512,6 +744,7 @@ def create_sales_order_from_quotation(name: str, items_json: str, customer_addre
 
 		from erpnext.selling.doctype.quotation.quotation import _make_sales_order
 		so = _make_sales_order(name, target_doc=None, ignore_permissions=True)
+		so.disable_rounded_total = _rounding_disabled()
 
 		# Validate item codes & quantities match the mapped SO
 		mapped_codes = {d.item_code for d in so.items}
@@ -623,13 +856,14 @@ def create_sales_order_from_quotation(name: str, items_json: str, customer_addre
 
 
 @frappe.whitelist(methods=["GET"])
-def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20, valid_till: str = "", status: str = ""):
+def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20, valid_till: str = "", status: str = "", party_type: str = ""):
 	_require_sales_rep()
 
 	limit_start = cint(limit_start)
 	limit_page_length = cint(limit_page_length) or 20
 
 	filters = {"owner": frappe.session.user, "docstatus": ["in", [0, 1]]}
+	_apply_party_filters(filters, party_type=party_type)
 
 	if valid_till:
 		filters["valid_till"] = valid_till
@@ -648,7 +882,7 @@ def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_len
 		"Quotation",
 		filters=filters,
 		or_filters=or_filters,
-		fields=["name", "party_name as customer", "customer_name", "transaction_date", "valid_till", "grand_total", "status"],
+		fields=QUOTATION_LIST_FIELDS,
 		order_by="transaction_date desc, creation desc, name desc",
 		limit_start=limit_start,
 		limit_page_length=limit_page_length + 1,

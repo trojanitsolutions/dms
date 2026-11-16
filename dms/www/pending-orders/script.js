@@ -12,6 +12,8 @@ async function post(method,args={}){
 }
 
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
+// Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
+function docTotal(d){return d.disable_rounded_total||!d.rounded_total?d.grand_total:d.rounded_total}
 function esc(s){const el=document.createElement('div');el.textContent=s;return el.innerHTML}
 function fmtDate(dateStr){
 	if(!dateStr)return '';
@@ -71,7 +73,7 @@ function render(){
 	const compact=matchMedia('(max-width:1199px)').matches,cat=compact?document.getElementById('category-filter').value:'';
 	filtered=orders.filter(o=>(o.name.toLowerCase().includes(searchTerm)||o.customer_name.toLowerCase().includes(searchTerm)||(compact&&(o.search_text||'').includes(searchTerm)))&&(!cat||(o.categories||[]).includes(cat)));
 	const toShow=filtered.slice(0,shown);
-	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(o.grand_total)}</td><td>${o.can_act?`<select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select>`:''}</td></tr>`).join('');
+	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(docTotal(o))}</td><td>${o.can_act?`<select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select>`:''}</td></tr>`).join('');
 	document.getElementById('order-list').innerHTML=rows;
 	const total=filtered.length;
 	const displaying=Math.min(shown,total);

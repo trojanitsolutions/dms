@@ -1,6 +1,8 @@
 const IS_DESKTOP = () => window.innerWidth >= 1025;
-const CUSTOMER_ID = window.pageData?.customer || '';
-const CUSTOMER_NAME = window.pageData?.customer_name || '';
+const PARTY_TYPES = ['Customer','Lead'];
+let partyType = PARTY_TYPES.includes(window.pageData?.party_type) ? window.pageData.party_type : 'Customer';
+let partyId = window.pageData?.party || window.pageData?.customer || '';
+let partyName = window.pageData?.party_name || window.pageData?.customer_name || '';
 let customerAddresses = [];
 let selectedBillingAddress = '';
 let selectedShippingAddress = '';
@@ -367,8 +369,10 @@ async function refreshTotals(){
 				if(discountType)row.discount_type=discountType,row.discount_value=discountValue;
 				return row;
 			});
+			if(!partyId)return;
 			const result=await post('dms.api.quotation_create.get_quotation_totals',{
-				customer:CUSTOMER_ID,
+				party_type:partyType,
+				party_name:partyId,
 				warehouse:wh,
 				items_json:JSON.stringify(itemsData),
 				valid_till:document.getElementById('valid-till').value||'',
@@ -573,8 +577,26 @@ function _populateAddressSelect(sel, addresses){
   });
 }
 
-async function loadCustomerAddresses(){
-  if(!CUSTOMER_ID)return;
+function resetAddresses(){
+  customerAddresses=[];
+  selectedBillingAddress='';
+  selectedShippingAddress='';
+  shippingSameAsBilling=true;
+  ['billing','shipping'].forEach(k=>{
+    const sel=document.getElementById(k+'-address-select');
+    if(sel){sel.innerHTML='<option value="">Select address…</option>';sel.style.display='none'}
+    const load=document.getElementById(k+'-address-loading');
+    if(load)load.style.display='block';
+    const none=document.getElementById(k+'-address-none-msg');
+    if(none)none.style.display='none';
+    _renderAddressCard(null,k+'-address-card');
+  });
+  const cb=document.getElementById('shipping-same-checkbox');
+  if(cb)cb.checked=true;
+}
+
+async function loadCustomerAddresses(preloaded){
+  if(!partyId)return;
   const billLoad=document.getElementById('billing-address-loading');
   const billNone=document.getElementById('billing-address-none-msg');
   const billSel=document.getElementById('billing-address-select');
@@ -582,9 +604,11 @@ async function loadCustomerAddresses(){
   const shipNone=document.getElementById('shipping-address-none-msg');
   const shipSel=document.getElementById('shipping-address-select');
 
-  let addresses=null;
-  try{ addresses=await get('dms.api.sales.get_customer_addresses',{customer:CUSTOMER_ID}); }
-  catch(e){ addresses=null; }
+  let addresses=preloaded||null;
+  if(!addresses){
+    try{ addresses=(await get('dms.api.quotation.get_party_details',{party_type:partyType,party:partyId}))?.addresses; }
+    catch(e){ addresses=null; }
+  }
 
   customerAddresses=addresses||[];
   if(billLoad)billLoad.style.display='none';
@@ -619,6 +643,133 @@ function applyShippingMirror(){
     if(shipSel)shipSel.value=selectedBillingAddress;
   }
   _renderAddressCard(customerAddresses.find(a=>a.name===selectedShippingAddress)||null,'shipping-address-card');
+}
+
+/* ── Party (Customer / Lead) picker ──────────────────────── */
+let partySearchTimer=null,partySearchSeq=0,partyResults=[],partyActiveIdx=-1;
+
+function setPartyUI(){
+  const label=document.getElementById('party-label');
+  if(label)label.textContent=partyType;
+  const input=document.getElementById('party-search');
+  if(input)input.placeholder=`Search ${partyType.toLowerCase()}…`;
+  const sub=document.getElementById('mob-party-sub');
+  if(sub)sub.textContent=partyId?(partyName||partyId):'No customer or lead selected';
+  const back=document.getElementById('mob-back-link');
+  if(back)back.href=partyType==='Customer'
+    ?(partyId?`/sales-customer?customer=${encodeURIComponent(partyId)}`:'/sales-customer')
+    :'/quotation-history';
+  const addr=document.getElementById('addr-section');
+  if(addr)addr.style.display=partyId?'':'none';
+  const btn=document.getElementById('create-btn');
+  if(btn)btn.disabled=!partyId;
+}
+
+function renderPartyInfo(d){
+  const el=document.getElementById('party-info');
+  if(!el)return;
+  if(!d){el.hidden=true;el.innerHTML='';return}
+  const meta=[d.contact_person,d.mobile||d.phone,d.email,d.territory].filter(Boolean).map(esc).join(' · ');
+  const status=d.party_type==='Lead'&&d.status?` <span style="font-weight:500">(${esc(d.status)})</span>`:'';
+  el.innerHTML=`<div class="party-info-name">${esc(d.display_name)} <span style="font-weight:400;color:var(--color-text-secondary)">${esc(d.party)}</span>${status}</div>${meta?`<div>${meta}</div>`:''}`;
+  el.hidden=false;
+}
+
+function clearParty(){
+  partyId='';partyName='';
+  renderPartyInfo(null);
+  resetAddresses();
+  setPartyUI();
+  refreshTotals();
+}
+
+async function selectParty(id,name,opts={}){
+  partyId=id;partyName=name||id;
+  const input=document.getElementById('party-search');
+  if(input)input.value=partyName;
+  closePartyResults();
+  resetAddresses();
+  setPartyUI();
+  let details=null;
+  try{details=await get('dms.api.quotation.get_party_details',{party_type:partyType,party:partyId})}catch(e){details=null}
+  if(partyId!==id)return; // selection changed while loading
+  if(details){
+    partyName=details.display_name||partyName;
+    if(input)input.value=partyName;
+    renderPartyInfo(details);
+    setPartyUI();
+  }
+  await loadCustomerAddresses(details?details.addresses||[]:null);
+  refreshTotals();
+}
+
+function closePartyResults(){
+  const box=document.getElementById('party-results');
+  if(box){box.hidden=true;box.innerHTML=''}
+  partyResults=[];partyActiveIdx=-1;
+}
+
+function renderPartyResults(){
+  const box=document.getElementById('party-results');
+  if(!box)return;
+  if(!partyResults.length){
+    box.innerHTML=`<div class="party-empty">No ${partyType.toLowerCase()}s found.</div>`;
+    box.hidden=false;return;
+  }
+  box.innerHTML=partyResults.map((r,i)=>{
+    const meta=[r.name,r.mobile_no||r.phone,r.email_id,r.territory].filter(Boolean).map(esc).join(' · ');
+    const frozen=r.is_frozen?' <span style="color:#B45309;font-size:11px">Frozen</span>':'';
+    return `<div class="party-result${i===partyActiveIdx?' active':''}" data-idx="${i}"><div class="party-result-name">${esc(r.display_name)}${frozen}</div><div class="party-result-meta">${meta}</div></div>`;
+  }).join('');
+  box.hidden=false;
+}
+
+async function searchParties(term){
+  const seq=++partySearchSeq;
+  let rows=null;
+  try{rows=await get('dms.api.quotation.search_parties',{party_type:partyType,search:term})}catch(e){rows=null}
+  if(seq!==partySearchSeq)return;
+  partyResults=rows||[];partyActiveIdx=-1;
+  renderPartyResults();
+}
+
+function initPartyPicker(){
+  const typeSel=document.getElementById('party-type-select');
+  const input=document.getElementById('party-search');
+  const box=document.getElementById('party-results');
+  if(typeSel)typeSel.value=partyType;
+  setPartyUI();
+  typeSel?.addEventListener('change',e=>{
+    partyType=PARTY_TYPES.includes(e.currentTarget.value)?e.currentTarget.value:'Customer';
+    if(input)input.value='';
+    clearParty();
+    closePartyResults();
+    input?.focus();
+  });
+  input?.addEventListener('focus',()=>{if(!partyId||!input.value)searchParties(input.value.trim())});
+  input?.addEventListener('input',()=>{
+    if(partyId&&input.value!==partyName)clearParty();
+    clearTimeout(partySearchTimer);
+    partySearchTimer=setTimeout(()=>searchParties(input.value.trim()),250);
+  });
+  input?.addEventListener('keydown',e=>{
+    if(box?.hidden||!partyResults.length){if(e.key==='Escape')closePartyResults();return}
+    if(e.key==='ArrowDown'){e.preventDefault();partyActiveIdx=Math.min(partyActiveIdx+1,partyResults.length-1);renderPartyResults()}
+    else if(e.key==='ArrowUp'){e.preventDefault();partyActiveIdx=Math.max(partyActiveIdx-1,0);renderPartyResults()}
+    else if(e.key==='Enter'){e.preventDefault();const r=partyResults[partyActiveIdx>=0?partyActiveIdx:0];if(r)selectParty(r.name,r.display_name)}
+    else if(e.key==='Escape')closePartyResults();
+  });
+  box?.addEventListener('mousedown',e=>{
+    const row=e.target.closest('.party-result');
+    if(!row)return;
+    e.preventDefault();
+    const r=partyResults[parseInt(row.dataset.idx,10)];
+    if(r)selectParty(r.name,r.display_name);
+  });
+  input?.addEventListener('blur',()=>setTimeout(()=>{
+    closePartyResults();
+    if(partyId&&input.value!==partyName)input.value=partyName;
+  },150));
 }
 
 /* ── Item detail modal ────────────────────────────────────── */
@@ -677,7 +828,7 @@ function renderItemModal(){
 function validateQuotationInputs(){
 	const items=Object.values(cart);
 	if(!items.length){alert('Add at least one item.');return false}
-	if(!CUSTOMER_ID){alert('No customer selected.');return false}
+	if(!partyId){alert('Select a customer or lead first.');return false}
 	const wh=getWarehouse();
 	if(!wh){alert('Select a warehouse first.');return false}
 	const qDate=document.getElementById('quotation-date').value;
@@ -694,7 +845,8 @@ function buildQuotationPayload(){
 		return row;
 	});
 	return {
-		customer:CUSTOMER_ID,
+		party_type:partyType,
+		party_name:partyId,
 		warehouse:getWarehouse(),
 		items_json:JSON.stringify(itemsData),
 		transaction_date:document.getElementById('quotation-date').value||'',
@@ -716,16 +868,19 @@ async function createQuotation(){
 		const total=result.disable_rounded_total?result.grand_total:result.rounded_total;
 		alert(`Quotation ${result.name} created as draft! Total: ${fmt(total)}`);
 		cart={};updateCartUI();
-		window.location.href=`/sales-customer?customer=${CUSTOMER_ID}`;
+		window.location.href=partyType==='Customer'
+			?`/sales-customer?customer=${encodeURIComponent(partyId)}`
+			:`/quotation-history?quotation=${encodeURIComponent(result.name)}`;
 	}catch(e){alert('Error: '+e.message)}
-	finally{btn.disabled=false;btn.textContent='Create Quotation'}
+	finally{btn.disabled=!partyId;btn.textContent='Create Quotation'}
 }
 
 (async function(){
 	const createBtn=document.getElementById('create-btn');
-	if(!CUSTOMER_ID&&createBtn){
+	if(!partyId&&createBtn){
 		createBtn.disabled=true;
 	}
+	initPartyPicker();
 	const _todayStr=(()=>{const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${day}`})();
 	const dateEl=document.getElementById('quotation-date');
 	if(dateEl){dateEl.min=_todayStr;dateEl.value=_todayStr;}
@@ -896,8 +1051,7 @@ async function createQuotation(){
 		});
 		document.getElementById('cat-count-all').textContent=allItems.length;
 	}
-	if(CUSTOMER_ID){
-		await loadCustomerAddresses();
-		if(itemsData)refreshTotals();
+	if(partyId){
+		await selectParty(partyId,partyName,{keepCart:true});
 	}
 })();

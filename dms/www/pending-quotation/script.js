@@ -12,6 +12,8 @@ async function post(method,args={}){
 }
 
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
+// Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
+function docTotal(d){return d.disable_rounded_total||!d.rounded_total?d.grand_total:d.rounded_total}
 function esc(s){const el=document.createElement('div');el.textContent=s;return el.innerHTML}
 function fmtDate(dateStr){
 	if(!dateStr)return '';
@@ -61,9 +63,9 @@ function fmtTime(dateStr){
 
 function render(){
 	const searchTerm=document.getElementById('search-input').value.toLowerCase();
-	filtered=quotations.filter(q=>q.name.toLowerCase().includes(searchTerm)||q.customer_name.toLowerCase().includes(searchTerm));
+	filtered=quotations.filter(q=>q.name.toLowerCase().includes(searchTerm)||(q.customer_name||'').toLowerCase().includes(searchTerm)||(q.party_name||'').toLowerCase().includes(searchTerm));
 	const toShow=filtered.slice(0,shown);
-	const rows=toShow.map(q=>`<tr><td class="quotation-number-cell">${esc(q.name)}</td><td>${esc(q.customer_name)}</td><td><div class="quotation-date-cell"><div class="quotation-date-main">${fmtDate(q.transaction_date)}</div><div class="quotation-date-time">${fmtTime(q.transaction_date)}</div></div></td><td>${fmtDate(q.valid_till)}</td><td>${q.item_count||0}</td><td>${fmt(q.grand_total)}</td><td><select class="action-select" data-name="${esc(q.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select></td></tr>`).join('');
+	const rows=toShow.map(q=>`<tr><td class="quotation-number-cell">${esc(q.name)}</td><td>${esc(q.customer_name||q.party_name)}${q.party_type&&q.party_type!=='Customer'?`<span class="quotation-party-tag">${esc(q.party_type)}</span>`:''}</td><td><div class="quotation-date-cell"><div class="quotation-date-main">${fmtDate(q.transaction_date)}</div><div class="quotation-date-time">${fmtTime(q.transaction_date)}</div></div></td><td>${fmtDate(q.valid_till)}</td><td>${q.item_count||0}</td><td>${fmt(docTotal(q))}</td><td><select class="action-select" data-name="${esc(q.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select></td></tr>`).join('');
 	document.getElementById('quotation-list').innerHTML=rows;
 	const total=filtered.length;
 	const displaying=Math.min(shown,total);
@@ -94,7 +96,10 @@ document.getElementById('quotation-list').addEventListener('change',async e=>{
 		if(!action)return;
 		if(action==='reopen'){
 			const q=quotations.find(x=>x.name===name);
-			window.location.href='/new-quotation?customer='+encodeURIComponent(q.customer)+'&quotation='+encodeURIComponent(name);
+			const partyType=q.party_type||'Customer';
+			const params=new URLSearchParams({party_type:partyType,party:q.party_name||q.customer,quotation:name});
+			if(partyType==='Customer')params.set('customer',q.customer);
+			window.location.href='/new-quotation?'+params.toString();
 			return;
 		}
 		if(action==='submit'){
