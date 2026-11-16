@@ -1,0 +1,146 @@
+/*
+ * Sales portal: phone and tablet fixes. Loaded last on every Sales page.
+ * Visual only. No element is hidden, renamed or moved out of its container,
+ * and desktop (≥1200px with a fine pointer) is not affected.
+ */
+
+/* ── Safe defaults at every size ──────────────────────── */
+.stats-grid>*,.kpi-grid>*,.card-meta>*,.mob-header-left>div{min-width:0}
+.activity-text,.cust-name,.detail-name,.product-name,.product-code,.item-name,.cart-item-name{overflow-wrap:anywhere}
+.stat-value,.kpi-value,.fin-value{overflow-wrap:anywhere}
+.modal,.modal-box,.qpm-modal,.confirm-modal,.logout-confirm-modal{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
+.wh-popup{max-height:60vh;max-height:60dvh;overflow-y:auto;overscroll-behavior:contain}
+.qpm-list{max-height:min(280px,40vh)}
+
+/* ── Hover lifts only where a pointer can hover ───────── */
+@media (hover:none){
+  .stat-card:hover,.kpi-card:hover,.customer-card:hover,.order-card:hover,.quotation-card:hover,.item-card:hover,.quick-item:hover{transform:none}
+}
+
+/* ── Touch devices: 44px targets, no focus zoom ───────── */
+@media (pointer:coarse){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}
+  .page-size-btn,.btn-load-more,.btn-text,.btn-back,.back-btn,.btn-retry,.status-chip,.cat-chip,.toggle-pill,
+  .add-btn,.action-select,.qpm-btn,.quotation-detail-create-so-btn,.btn-doc-pill{min-height:44px}
+  .vt-btn,.mob-back,.modal-close-btn,.cart-remove,.qpm-close,.wh-peek-btn{min-width:44px;min-height:44px}
+  .qty-btn{width:40px;height:40px;min-width:40px}
+  .col-check input,.card-check{width:22px;height:22px}
+  .field-icon-btn{min-width:44px;min-height:44px}
+}
+
+/* ── Phone (≤767px) ───────────────────────────────────── */
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}
+
+  /* Bottom nav: every tab kept, one-line labels, scrolls sideways if needed */
+  .bottom-nav{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+    padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  .bottom-nav::-webkit-scrollbar{display:none}
+  .bnav-item{flex:1 1 0;min-width:44px;padding:8px 3px;justify-content:flex-start;text-align:center;line-height:1.1;overflow-wrap:normal;hyphens:none}
+
+  /* Grids never grow past the screen */
+  .stats-grid,.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat-value,.kpi-value{font-size:clamp(16px,5vw,22px)}
+  .fin-value{font-size:clamp(16px,5vw,20px)}
+  .two-col{display:block}
+
+  /* Quotation detail: no double padding, totals fit */
+  .quotation-detail-full{padding:0}
+
+  /* Pending Orders / Pending Quotations: each row becomes a card */
+  .orders-table,.quotations-table{table-layout:auto;border:none;background:transparent;box-shadow:none}
+  .orders-table thead,.quotations-table thead{display:none}
+  .orders-table tbody,.quotations-table tbody{display:flex;flex-direction:column;gap:10px}
+  .orders-table tbody tr,.quotations-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;padding:14px;
+    background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 4px 16px rgba(60,70,140,.08)}
+  .orders-table tbody tr:hover,.quotations-table tbody tr:hover{background:rgba(255,255,255,.92)}
+  .orders-table td,.quotations-table td{display:block;width:auto!important;padding:0!important;border:none!important;font-size:14px!important;min-width:0;overflow-wrap:anywhere}
+  .orders-table td::before,.quotations-table td::before{display:block;margin-bottom:2px;font-size:11px;font-weight:600;color:#5c5c63;text-transform:uppercase;letter-spacing:.04em}
+  .orders-table td:nth-child(1)::before{content:"Order ID"}
+  .orders-table td:nth-child(2)::before{content:"Customer"}
+  .orders-table td:nth-child(3)::before{content:"Date"}
+  .orders-table td:nth-child(4)::before{content:"Items"}
+  .orders-table td:nth-child(5)::before{content:"Grand Total"}
+  .orders-table td:nth-child(6){grid-column:1/-1}
+  .quotations-table td:nth-child(1)::before{content:"Quotation #"}
+  .quotations-table td:nth-child(2)::before{content:"Customer / Lead"}
+  .quotations-table td:nth-child(3)::before{content:"Date"}
+  .quotations-table td:nth-child(4)::before{content:"Valid Till"}
+  .quotations-table td:nth-child(5)::before{content:"Items"}
+  .quotations-table td:nth-child(6)::before{content:"Grand Total"}
+  .quotations-table td:nth-child(7){grid-column:1/-1}
+  .orders-table td[colspan],.quotations-table td[colspan]{grid-column:1/-1}
+  .orders-table td[colspan]::before,.quotations-table td[colspan]::before{content:none}
+  .action-select{width:100%;min-height:44px;padding:8px 32px 8px 12px!important}
+
+  .quotation-date-main,.order-date-main{font-size:14px!important}
+
+  /* Glass cards: no blur on phones, so long lists scroll smoothly */
+  .customer-card,.order-card,.quotation-card,.item-card,.kpi-card,.stat-card{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.86)}
+}
+
+/* ── Small phones / filters (≤600px) ──────────────────── */
+@media (max-width:600px){
+  .filter-top-row>.filter-group,.filter-bottom-row>.filter-group{flex:1 1 calc(50% - 6px);min-width:0}
+  .filter-group input,.filter-group select,.filter-group input[list]{width:100%;min-width:0;box-sizing:border-box}
+  .topbar .search-bar{flex:1 1 auto}
+  .search-box{min-width:0;flex:1 1 100%}
+  .topbar .search-bar{min-width:0}
+  .table-footer{flex-wrap:wrap}
+  .quotation-summary-totals{min-width:0;width:100%}
+  .detail-total-value{min-width:0}
+}
+
+/* ── Order / quotation builder, phone + tablet layout ─── */
+@media (max-width:1024px){
+  .cart-footer{flex-direction:row;flex-wrap:wrap;align-items:flex-end;gap:10px;padding:12px 16px;
+    background:rgba(255,255,255,.94);-webkit-backdrop-filter:saturate(160%) blur(20px);backdrop-filter:saturate(160%) blur(20px);box-shadow:0 -6px 20px rgba(60,70,140,.08)}
+  .cart-footer>*{flex:1 1 100%}
+  .cart-footer>.btn-save,.cart-footer>.btn-save+.btn-submit{flex:1 1 0;min-width:0}
+  .cart-footer .date-pair{flex-direction:row;gap:10px}
+  .cart-footer .date-pair .delivery-row{flex:1 1 0;min-width:0}
+  .cart-footer .date-pair input{width:100%;box-sizing:border-box}
+  .cart-footer .terms-row textarea{min-height:44px}
+  .cart-footer .btn-save,.cart-footer .btn-submit{min-height:46px;padding:12px}
+}
+@media (max-width:1024px) and (max-height:740px){
+  .cart-footer{position:static}
+}
+@media (min-width:640px) and (max-width:1024px){
+  .items-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* ── Tablet (768–1199px) ──────────────────────────────── */
+@media (min-width:768px) and (max-width:1199px){
+  .kpi-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .customer-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+  .quotation-detail-info-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .quotation-detail-summary{flex-wrap:wrap}
+  .stat-value,.kpi-value{font-size:clamp(18px,2.6vw,24px)}
+}
+@media (min-width:768px) and (max-width:1023px){
+  .two-col{display:block}
+  .two-col>*+*{margin-top:20px}
+}
+@media (min-width:600px) and (max-width:767px){
+  .customer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+}
+
+/* ── Quotation pop-up: bottom sheet on phones ─────────── */
+@media (max-width:600px){
+  .qpm-overlay.open{align-items:flex-end}
+  .qpm-overlay .qpm-modal{width:100%;max-width:none;border-radius:22px 22px 0 0;border-bottom:none;
+    padding:22px 18px calc(22px + env(safe-area-inset-bottom));max-height:90vh;max-height:90dvh;
+    animation:qpm-sheet-up .22s cubic-bezier(.25,.1,.25,1)}
+  .qpm-overlay .qpm-choice{min-height:56px}
+  .qpm-overlay .qpm-field input,.qpm-overlay .qpm-search{height:44px}
+  .qpm-overlay .qpm-btn{min-height:44px;padding:10px 18px}
+  .qpm-overlay .qpm-close{width:36px;height:36px}
+}
+@media (max-height:500px){
+  .qpm-overlay .qpm-list{max-height:140px}
+  .qpm-overlay .qpm-field{margin-bottom:8px}
+}
+@keyframes qpm-sheet-up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.qpm-overlay .qpm-modal{animation:none}}

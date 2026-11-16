@@ -1,0 +1,105 @@
+/*
+ * Sales portal — glassmorphism ("Soft aurora") for every Sales app page.
+ * Loaded after /sales-ui.css. Visual only: no display/position/order changes
+ * to anything the page scripts control.
+ */
+
+/* ── Aurora background ────────────────────────────────── */
+html{background:#eef2fb}
+body{background:transparent}
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(42% 48% at 12% 8%, rgba(120,160,255,.45), transparent 70%),
+    radial-gradient(40% 45% at 92% 6%, rgba(255,190,160,.40), transparent 70%),
+    radial-gradient(48% 52% at 28% 92%, rgba(190,160,255,.40), transparent 70%),
+    radial-gradient(38% 42% at 90% 88%, rgba(150,220,210,.25), transparent 70%),
+    linear-gradient(180deg,#f3f5fc,#eef2fb)}
+.main,.content,.catalog-panel,.order-wrap{background:transparent}
+
+/* ── Glass surfaces ───────────────────────────────────── */
+.stat-card,.section-card,.kpi-card,.filter-card,.filter-container,.state-card,.customer-card,.fin-card,
+.orders-section,.order-card,.quotation-card,.item-card{
+  background:rgba(255,255,255,.58);
+  -webkit-backdrop-filter:saturate(160%) blur(24px);backdrop-filter:saturate(160%) blur(24px);
+  border:1px solid rgba(255,255,255,.75);border-radius:20px;
+  box-shadow:0 8px 32px rgba(60,70,140,.10),inset 0 1px 0 rgba(255,255,255,.7)}
+.customer-card.cust-frozen{box-shadow:inset 3px 0 0 var(--color-warning-bg),0 8px 32px rgba(60,70,140,.10)}
+.stat-card,.kpi-card,.customer-card,.order-card,.quotation-card,.item-card{transition:background .2s var(--ease),box-shadow .2s var(--ease),transform .2s var(--ease)}
+.stat-card:hover,.kpi-card:hover,.customer-card:hover,.order-card:hover,.quotation-card:hover,.item-card:not(.oos):hover{
+  background:rgba(255,255,255,.72);border-color:rgba(255,255,255,.9);box-shadow:0 12px 40px rgba(60,70,140,.14),inset 0 1px 0 rgba(255,255,255,.8)}
+.kpi-card.active{background:rgba(255,255,255,.8);box-shadow:0 0 0 2px var(--color-primary),0 8px 32px rgba(60,70,140,.10)}
+
+/* Data-dense surfaces get more opaque glass for readability */
+.table-container,.orders-table,.quotations-table{
+  background:rgba(255,255,255,.74);
+  -webkit-backdrop-filter:saturate(160%) blur(24px);backdrop-filter:saturate(160%) blur(24px);
+  border:1px solid rgba(255,255,255,.8);border-radius:20px;box-shadow:0 8px 32px rgba(60,70,140,.10)}
+.report-table th,.orders-table th,.quotations-table th,.orders-table thead,.quotations-table thead{background:rgba(255,255,255,.55)}
+.report-table td,.orders-table td,.quotations-table td{border-bottom-color:rgba(0,0,0,.06)}
+.report-table tbody tr:hover,.orders-table tbody tr:hover,.quotations-table tbody tr:hover{background:rgba(255,255,255,.6)}
+.report-table tfoot td{background:rgba(255,255,255,.6)}
+.table-footer{background:transparent;border-top-color:rgba(0,0,0,.06)}
+
+/* ── Text on glass (darker greys keep ≥ 4.5:1) ───────── */
+.stat-label,.kpi-label,.fin-label,.page-date,.page-sub{color:#4a4a52}
+.stat-value,.kpi-value,.page-title,.page-greeting{color:#1d1d1f}
+.stat-value.loading,.kpi-card.loading .kpi-value{color:rgba(29,29,31,.25)}
+.activity-time,.empty-activity,.state-desc,.empty-state,#empty-state,#error-state,.showing-text,.item-code,.cart-item-code,.meta-key{color:#5c5c63}
+.section-header{background:transparent;border-bottom:1px solid rgba(0,0,0,.06)}
+.activity-item,.order-row{border-bottom-color:rgba(0,0,0,.06)}
+.order-card-footer,.quotation-card-footer{border-top-color:rgba(0,0,0,.06)}
+
+/* ── Quick actions (dashboard) ────────────────────────── */
+.quick-item{background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.7);border-radius:16px;box-shadow:none;
+  transition:background .2s var(--ease),box-shadow .2s var(--ease)}
+.quick-item:hover,.quick-item:active{background:rgba(255,255,255,.75);border-color:rgba(255,255,255,.9);box-shadow:0 6px 20px rgba(60,70,140,.10)}
+.quick-icon{background:#fff;border-radius:12px;box-shadow:0 2px 6px rgba(60,70,140,.12)}
+.quick-icon svg,.quick-label{color:#1d1d1f}
+
+/* ── Controls on glass ────────────────────────────────── */
+.btn-primary{box-shadow:0 6px 20px rgba(0,113,227,.28)}
+.btn-outline,.btn-cancel,.btn-load-more,.btn-reopen-pending,.page-size-btn:not(.active),.new-order-fab,.btn-doc-pill,.vt-btn:not(.active){background:rgba(255,255,255,.6)}
+.btn-outline:hover,.btn-load-more:hover,.btn-reopen-pending:hover,.page-size-btn:not(.active):hover,.new-order-fab:hover,.btn-doc-pill:hover,.vt-btn:not(.active):hover{background:rgba(255,255,255,.85)}
+.search-bar,.category-filter{background-color:rgba(255,255,255,.7);box-shadow:0 0 0 1px rgba(255,255,255,.8),0 2px 8px rgba(60,70,140,.06)}
+.search-bar input{background-color:transparent}
+.search-bar:focus-within{background-color:#fff}
+.status-chip:not(.active),.cat-chip:not(.active),.toggle-pill{background:rgba(255,255,255,.6);box-shadow:0 0 0 1px rgba(255,255,255,.8)}
+.search-box input,.filter-group input[type="date"],.filter-group select,.form-group input,.form-group select,
+.party-row select,.party-row input,.warehouse-row select,.address-row select,.addr-col select,.mob-cat-filter select,
+.action-select,.search-wrap input,.delivery-row input,.terms-row textarea,.wh-select{background-color:rgba(255,255,255,.62)}
+
+/* ── Navigation and bars over the aurora ──────────────── */
+@media(min-width:768px){
+  .sidebar{background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7)}
+}
+.bottom-nav{background:rgba(255,255,255,.6);border-top:1px solid rgba(255,255,255,.8)}
+.topbar{background:transparent}
+
+/* ── Customers detail view ────────────────────────────── */
+.back-bar{background:rgba(255,255,255,.55);-webkit-backdrop-filter:saturate(160%) blur(20px);backdrop-filter:saturate(160%) blur(20px);border-bottom:1px solid rgba(255,255,255,.7)}
+
+/* ── Order / quotation builder panels ─────────────────── */
+.desk-cat-sidebar,.cart-panel,.catalog-top,.items-list{
+  background:rgba(255,255,255,.55);-webkit-backdrop-filter:saturate(160%) blur(24px);backdrop-filter:saturate(160%) blur(24px)}
+.desk-cat-sidebar{border-right:1px solid rgba(255,255,255,.7)}
+.cart-panel{border-left:1px solid rgba(255,255,255,.7)}
+.catalog-top{border-bottom:1px solid rgba(255,255,255,.7)}
+.cart-header{background:transparent}
+.cart-footer{background:rgba(255,255,255,.7)}
+.mob-header,.mob-tabs{background:rgba(255,255,255,.6);border-bottom-color:rgba(255,255,255,.8)}
+.item-img{background:rgba(255,255,255,.5)}
+.addr-card{background:rgba(255,255,255,.6)}
+
+/* ── Fallbacks ────────────────────────────────────────── */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .stat-card,.section-card,.kpi-card,.filter-card,.filter-container,.state-card,.customer-card,.fin-card,.orders-section,
+  .order-card,.quotation-card,.item-card,.table-container,.orders-table,.quotations-table,.sidebar,.bottom-nav,
+  .desk-cat-sidebar,.cart-panel,.catalog-top,.items-list,.back-bar,.mob-header,.mob-tabs{background:rgba(255,255,255,.9)}
+}
+@media (prefers-reduced-transparency:reduce){
+  html{background:#f5f5f7}
+  body::before{display:none}
+  .stat-card,.section-card,.kpi-card,.filter-card,.filter-container,.state-card,.customer-card,.fin-card,.orders-section,
+  .order-card,.quotation-card,.item-card,.table-container,.orders-table,.quotations-table,.sidebar,.bottom-nav,.quick-item,
+  .desk-cat-sidebar,.cart-panel,.catalog-top,.items-list,.back-bar,.mob-header,.mob-tabs{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+}

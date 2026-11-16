@@ -166,3 +166,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-cancel{flex:1;padding:14px;border:1.5px solid var(--color-gray-300);border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;background:var(--color-bg-surface);min-height:52px}
 .btn-logout-confirm{flex:1;padding:14px;background:var(--color-primary);color:var(--color-bg-surface);border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;min-height:52px}
 .btn-logout-confirm:hover{background:var(--color-primary-dark)}
+
+/* ── Order comments ─────────────────────────────────────── */
+.order-comments{border-top:1px solid rgba(0,0,0,.06)}
+.oc-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:10px 16px;background:none;border:none;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:var(--color-text-secondary);text-align:left;transition:color .15s,background .15s}
+.oc-toggle:hover{color:var(--color-text-primary);background:rgba(255,255,255,.4)}
+.oc-toggle:focus-visible{outline:none;box-shadow:inset var(--focus-ring)}
+.order-comments .oc-toggle>svg{width:16px!important;height:16px!important;flex:none}
+.oc-count{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-badge-info-bg);color:var(--color-badge-info-text);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.oc-chevron{margin-left:auto;transition:transform .2s var(--ease)}
+.order-comments.open .oc-chevron{transform:rotate(180deg)}
+.oc-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.oc-form{display:flex;flex-direction:column;gap:8px}
+.oc-input{width:100%;min-height:64px;resize:vertical;padding:10px 12px;font:inherit;font-size:14px;line-height:1.4;color:var(--color-text-primary);
+  background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.5));-webkit-backdrop-filter:saturate(160%) blur(14px);backdrop-filter:saturate(160%) blur(14px);
+  border:1px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 2px 8px rgba(60,70,140,.08);outline:none;transition:border-color .15s,box-shadow .15s,background .15s}
+.oc-input::placeholder{color:#8e8e93}
+.oc-input:focus{background:rgba(255,255,255,.92);border-color:rgba(0,113,227,.55);box-shadow:0 0 0 4px rgba(0,113,227,.16),0 2px 8px rgba(60,70,140,.08)}
+.oc-form-row{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.oc-error{flex:1;font-size:12px;color:var(--color-error)}
+.oc-error:empty{display:none}
+.oc-submit{min-height:36px;padding:8px 18px;border:none;border-radius:980px;background:var(--color-primary);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,opacity .15s}
+.oc-submit:hover:not(:disabled){background:var(--color-btn-primary-hover)}
+.oc-submit:disabled{opacity:.45;cursor:default}
+.oc-submit:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.oc-list{display:flex;flex-direction:column;gap:12px}
+.oc-item{display:flex;gap:10px;align-items:flex-start}
+.oc-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:rgba(0,113,227,.14);color:var(--color-primary-dark);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.oc-main{flex:1;min-width:0;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.8);border-radius:4px 14px 14px 14px;padding:8px 12px}
+.oc-meta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+.oc-author{font-size:13px;font-weight:600;color:var(--color-text-primary);overflow-wrap:anywhere}
+.oc-time{font-size:11px;color:#5c5c63}
+.oc-text{font-size:14px;line-height:1.45;color:var(--color-text-primary);white-space:pre-line;overflow-wrap:anywhere}
+.oc-empty{font-size:13px;color:#5c5c63;padding:4px 0}
+@media (pointer:coarse){.oc-submit{min-height:44px}}
+@media (prefers-reduced-transparency:reduce){.oc-input{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}.oc-main{background:#fff}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.oc-input{background:#fff}}

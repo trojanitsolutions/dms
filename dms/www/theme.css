@@ -1,153 +1,170 @@
-/* Enterprise theme with light sidebar and clean design */
+/* Sales portal theme — modern Apple-style palette (grouped gray canvas, white surfaces,
+   one blue accent for actions). Token names unchanged; values only.
+   Contrast on white: text #1d1d1f 16.8:1, secondary #6e6e73 5.0:1, accent #0071e3 4.6:1. */
 :root {
   /* Layout colors */
-  --color-bg-page: #f3f2f2;
-  --color-bg-sidebar: #eae9e9;
+  --color-bg-page: #f5f5f7;
+  --color-bg-sidebar: #f5f5f7;
   --color-bg-surface: #ffffff;
-  --color-border-divider: rgba(32, 30, 29, 0.16);
+  --color-border-divider: #e8e8ed;
 
   /* Typography colors */
-  --color-text-primary: #201e1d;
-  --color-text-secondary: #7d7979;
-  --color-text-tertiary: #7d7979;
-  --color-text-muted: #7d7979;
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-text-tertiary: #6e6e73;
+  --color-text-muted: #424245;
 
   /* Interactive colors */
-  --color-primary: #2d2b2b;
-  --color-primary-dark: #201e1d;
-  --color-primary-pressed: #201e1d;
-  --color-primary-hover-tint: #eae7e7;
-  --color-primary-light: #7d7979;
+  --color-primary: #0071e3;
+  --color-primary-dark: #0062c4;
+  --color-primary-pressed: #0058b0;
+  --color-primary-hover-tint: #e8f2fd;
+  --color-primary-light: #7ab7f5;
 
   /* Background variants */
-  --color-bg-hover: #eae7e7;
-  --color-bg-page: #f3f2f2;
+  --color-bg-hover: #f0f0f3;
 
   /* Border colors */
-  --color-border-light: rgba(32, 30, 29, 0.16);
-  --color-border-section: #f3f2f2;
+  --color-border-light: #e8e8ed;
+  --color-border-section: #f0f0f3;
 
   /* Sidebar specific */
-  --color-sidebar-bg: #eae9e9;
+  --color-sidebar-bg: #f5f5f7;
   --color-sidebar-logo-bg: transparent;
-  --color-sidebar-text: #201e1d;
-  --color-sidebar-text-secondary: #7d7979;
-  --color-sidebar-text-hover: #201e1d;
-  --color-sidebar-hover: #eae7e7;
-  --color-sidebar-active: #201e1d;
-  --color-sidebar-active-bg: #eae7e7;
-  --color-sidebar-active-text: #201e1d;
+  --color-sidebar-text: #1d1d1f;
+  --color-sidebar-text-secondary: #6e6e73;
+  --color-sidebar-text-hover: #1d1d1f;
+  --color-sidebar-hover: rgba(0, 0, 0, 0.04);
+  --color-sidebar-active: #0071e3;
+  --color-sidebar-active-bg: rgba(0, 0, 0, 0.06);
+  --color-sidebar-active-text: #1d1d1f;
 
   /* Card styling */
   --color-card-bg: #ffffff;
-  --color-card-border: rgba(32, 30, 29, 0.16);
-  --color-card-shadow: 0 2px 8px rgba(32, 30, 29, 0.08);
-  --color-card-radius: 12px;
+  --color-card-border: #e8e8ed;
+  --color-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --color-card-radius: 18px;
 
   /* Button colors */
-  --color-btn-primary-bg: #2d2b2b;
-  --color-btn-primary-hover: #201e1d;
+  --color-btn-primary-bg: #0071e3;
+  --color-btn-primary-hover: #0077ed;
   --color-btn-primary-text: #ffffff;
-  --color-btn-secondary-bg: #ffffff;
-  --color-btn-secondary-border: rgba(32, 30, 29, 0.16);
-  --color-btn-secondary-hover: #f3f2f2;
+  --color-btn-secondary-bg: rgba(118, 118, 128, 0.12);
+  --color-btn-secondary-border: transparent;
+  --color-btn-secondary-hover: rgba(118, 118, 128, 0.18);
 
   /* Input styling */
-  --color-input-bg: #ffffff;
-  --color-input-border: rgba(32, 30, 29, 0.16);
-  --color-input-focus-border: #2d2b2b;
-  --color-input-focus-shadow: 0 0 0 3px rgba(45, 43, 43, 0.1);
+  --color-input-bg: rgba(118, 118, 128, 0.1);
+  --color-input-border: #d2d2d7;
+  --color-input-focus-border: #0071e3;
+  --color-input-focus-shadow: 0 0 0 4px rgba(0, 113, 227, 0.18);
 
-  /* Status colors (desaturated/neutral-friendly palette) */
-  --color-success: #3d8a50;
-  --color-success-light: #5aa370;
-  --color-success-bg: #5aa370;
-  --color-warning: #9a7a3d;
-  --color-warning-bg: #9a7a3d;
-  --color-warning-light: #b39354;
-  --color-error: #8a3d3d;
-  --color-error-light: #a85a5a;
-  --color-error-bg: #f3e8e8;
-  --color-error-text: #6b3d3d;
-  --color-info: #3d5f8a;
+  /* Status colors (Apple system colors, text-safe variants) */
+  --color-success: #248a3d;
+  --color-success-light: #34c759;
+  --color-success-bg: #34c759;
+  --color-warning: #c93400;
+  --color-warning-bg: #ff9500;
+  --color-warning-light: #ffb340;
+  --color-error: #d70015;
+  --color-error-light: #ff3b30;
+  --color-error-bg: #fff0ef;
+  --color-error-text: #d70015;
+  --color-info: #0066cc;
 
-  /* Status badges */
-  --color-badge-green-bg: #e8f3ea;
-  --color-badge-green-text: #2d5f3f;
-  --color-badge-orange-bg: #f5ede0;
-  --color-badge-orange-text: #6b5a3d;
-  --color-badge-gray-bg: #f3f2f2;
-  --color-badge-gray-text: #7d7979;
-  --color-badge-success-bg: #e8f3ea;
-  --color-badge-success-text: #2d5f3f;
-  --color-badge-warning-bg: #f5ede0;
-  --color-badge-warning-text: #6b5a3d;
-  --color-badge-error-bg: #f3e8e8;
-  --color-badge-error-text: #6b3d3d;
-  --color-badge-info-bg: #e8eff5;
-  --color-badge-info-text: #2d4a5f;
+  /* Status badges (tinted capsules) */
+  --color-badge-green-bg: rgba(52, 199, 89, 0.14);
+  --color-badge-green-text: #1f7a36;
+  --color-badge-orange-bg: rgba(255, 149, 0, 0.16);
+  --color-badge-orange-text: #a43c00;
+  --color-badge-gray-bg: rgba(118, 118, 128, 0.12);
+  --color-badge-gray-text: #424245;
+  --color-badge-success-bg: rgba(52, 199, 89, 0.14);
+  --color-badge-success-text: #1f7a36;
+  --color-badge-warning-bg: rgba(255, 149, 0, 0.16);
+  --color-badge-warning-text: #a43c00;
+  --color-badge-error-bg: rgba(255, 59, 48, 0.12);
+  --color-badge-error-text: #c00011;
+  --color-badge-info-bg: rgba(0, 122, 255, 0.12);
+  --color-badge-info-text: #0058b0;
 
-  /* Tint backgrounds (soft background variants) */
-  --color-tint-blue: #eae7e7;
-  --color-tint-blue-light: #eae7e7;
-  --color-tint-blue-lighter: #f3f2f2;
-  --color-tint-blue-lightest: #f3f2f2;
-  --color-tint-error: #f3e8e8;
-  --color-tint-error-light: #f3e8e8;
-  --color-tint-warning: #f5ede0;
-  --color-tint-warning-light: #f5ede0;
-  --color-tint-success: #e8f3ea;
+  /* Tint backgrounds */
+  --color-tint-blue: #e8f2fd;
+  --color-tint-blue-light: #e8f2fd;
+  --color-tint-blue-lighter: #f2f7fe;
+  --color-tint-blue-lightest: #f7fafe;
+  --color-tint-error: #fff0ef;
+  --color-tint-error-light: #fff0ef;
+  --color-tint-warning: #fff5e6;
+  --color-tint-warning-light: #fff5e6;
+  --color-tint-success: #eaf8ee;
 
   /* Neutral grays */
-  --color-gray-50: #f3f2f2;
-  --color-gray-100: #eae9e9;
-  --color-gray-200: #e0dbd8;
-  --color-gray-300: rgba(32, 30, 29, 0.16);
-  --color-gray-400: #a89f9b;
-  --color-gray-500: #7d7979;
-  --color-gray-600: #5a5855;
+  --color-gray-50: #fafafc;
+  --color-gray-100: #f5f5f7;
+  --color-gray-200: #e8e8ed;
+  --color-gray-300: #d2d2d7;
+  --color-gray-400: #aeaeb2;
+  --color-gray-500: #6e6e73;
+  --color-gray-600: #424245;
 
   /* Overlay/interactive states */
-  --color-overlay-dark-light: rgba(32, 30, 29, 0.04);
-  --color-overlay-dark-medium: rgba(32, 30, 29, 0.08);
-  --color-overlay-dark-hover: rgba(32, 30, 29, 0.12);
-  --color-overlay-dark-active: rgba(32, 30, 29, 0.16);
-  --color-overlay-white-light: rgba(32, 30, 29, 0.04);
-  --color-overlay-white-lighter: rgba(32, 30, 29, 0.08);
-  --color-overlay-white-lightest: rgba(32, 30, 29, 0.12);
+  --color-overlay-dark-light: rgba(0, 0, 0, 0.03);
+  --color-overlay-dark-medium: rgba(0, 0, 0, 0.05);
+  --color-overlay-dark-hover: rgba(0, 0, 0, 0.08);
+  --color-overlay-dark-active: rgba(0, 0, 0, 0.12);
+  --color-overlay-white-light: rgba(0, 0, 0, 0.03);
+  --color-overlay-white-lighter: rgba(0, 0, 0, 0.05);
+  --color-overlay-white-lightest: rgba(0, 0, 0, 0.08);
   --color-overlay-black-light: rgba(0, 0, 0, 0.04);
   --color-overlay-black-medium: rgba(0, 0, 0, 0.08);
-  --color-overlay-blue-active: rgba(45, 43, 43, 0.12);
+  --color-overlay-blue-active: rgba(0, 113, 227, 0.12);
 
   /* Semantic status colors */
-  --color-status-error-alt: #8a3d3d;
-  --color-status-error-alt-bg: #f3e8e8;
-  --color-status-teal: #3d8a50;
-  --color-status-teal-light: #e8f3ea;
-  --color-status-purple: #7d7979;
+  --color-status-error-alt: #d70015;
+  --color-status-error-alt-bg: #fff0ef;
+  --color-status-teal: #248a3d;
+  --color-status-teal-light: #eaf8ee;
+  --color-status-purple: #6e6e73;
 
   /* Activity indicator dots */
-  --color-dot-blue: #2d2b2b;
-  --color-dot-green: #3d8a50;
-  --color-dot-orange: #9a7a3d;
-  --color-dot-gray: rgba(32, 30, 29, 0.16);
+  --color-dot-blue: #0071e3;
+  --color-dot-green: #34c759;
+  --color-dot-orange: #ff9500;
+  --color-dot-gray: #d2d2d7;
 
-  /* Additional tints (mapped to specification) */
-  --color-blue-lighter: #eae7e7;
-  --color-blue-lightest: #7d7979;
-  --color-blue-ultra-light: #eae7e7;
-  --color-blue-status: #2d2b2b;
-  --color-blue-dark-status: #201e1d;
-  --color-tint-blue-pale: rgba(32, 30, 29, 0.16);
+  /* Additional tints */
+  --color-blue-lighter: #e8f2fd;
+  --color-blue-lightest: #6e6e73;
+  --color-blue-ultra-light: #e8f2fd;
+  --color-blue-status: #0071e3;
+  --color-blue-dark-status: #0058b0;
+  --color-tint-blue-pale: #cfe4fb;
 
   /* Additional overlay states */
-  --color-overlay-blue-medium: rgba(45, 43, 43, 0.08);
-  --color-overlay-blue-active: rgba(45, 43, 43, 0.12);
-  --color-overlay-blue-glow: rgba(45, 43, 43, 0.3);
-  --color-overlay-white-pale: rgba(32, 30, 29, 0.12);
+  --color-overlay-blue-medium: rgba(0, 113, 227, 0.08);
+  --color-overlay-blue-glow: transparent;
+  --color-overlay-white-pale: rgba(0, 0, 0, 0.08);
 
-  /* Sidebar text colors for light sidebar */
-  --color-sidebar-text-light: #7d7979;
-  --color-sidebar-accent: #7d7979;
-  --color-sidebar-accent-darker: #5a5855;
+  /* Sidebar text colors */
+  --color-sidebar-text-light: #6e6e73;
+  --color-sidebar-accent: #6e6e73;
+  --color-sidebar-accent-darker: #424245;
+
+  /* Shared scale */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'InterVariable', 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-pill: 980px;
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill-hover: rgba(118, 118, 128, 0.18);
+  --hairline: rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --border-strong: #d2d2d7;
+  --focus-ring: 0 0 0 4px rgba(0, 113, 227, 0.22);
+  --ease: cubic-bezier(.25, .1, .25, 1);
 }

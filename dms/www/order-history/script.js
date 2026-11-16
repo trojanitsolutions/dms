@@ -5,6 +5,11 @@ async function get(method,args={}){
 	if(!r.ok)return null;
 	try{return(await r.json()).message}catch(e){return null}
 }
+async function post(method,args={}){
+	const r=await fetch(`/api/method/${method}`,{method:'POST',headers:{'X-Frappe-CSRF-Token':csrf(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(args)});
+	if(!r.ok){let d={};try{d=await r.json()}catch(e){}let m='';try{m=JSON.parse(JSON.parse(d._server_messages)[0]).message.replace(/<[^>]+>/g,'')}catch(e){}throw new Error(m||d.exc_type||'Could not save the comment.')}
+	try{return(await r.json()).message}catch(e){throw new Error('Invalid response')}
+}
 
 function fmt(n){return 'QAR '+Number(n||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}
 // Rounded total unless rounding is disabled on the document (Global Defaults "Disable Rounded Total").
@@ -124,12 +129,150 @@ function orderCard(o){
 			<span class="order-total">${fmt(docTotal(o))}</span>
 			${editLink}
 		</div>
+		${commentsSection(o.name)}
 	</div>`;
 }
 
 function appendCards(orders){
 	document.getElementById('order-list').insertAdjacentHTML('beforeend',orders.map(orderCard).join(''));
 	updateOrderCount();
+	loadCommentCounts(orders.map(o=>o.name));
+}
+
+/* ── Comments ───────────────────────────────────────────── */
+const ICON_COMMENT='<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.84 8.84 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-6 0h2v2H9V9z" clip-rule="evenodd"/></svg>';
+const ICON_CHEVRON='<svg class="oc-chevron" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>';
+
+function commentsSection(name){
+	const id='oc-'+name.replace(/[^A-Za-z0-9_-]/g,'_');
+	return `<div class="order-comments" data-order="${esc(name)}">
+		<button type="button" class="oc-toggle" aria-expanded="false" aria-controls="${id}">
+			${ICON_COMMENT}<span>Comments</span><span class="oc-count" hidden></span>${ICON_CHEVRON}
+		</button>
+		<div class="oc-body" id="${id}" hidden>
+			<form class="oc-form">
+				<textarea class="oc-input" rows="2" maxlength="2000" placeholder="Add a comment…" aria-label="Add a comment to ${esc(name)}"></textarea>
+				<div class="oc-form-row">
+					<span class="oc-error" role="alert"></span>
+					<button type="submit" class="oc-submit" disabled>Comment</button>
+				</div>
+			</form>
+			<div class="oc-list" aria-live="polite"></div>
+		</div>
+	</div>`;
+}
+
+function commentText(html){
+	const withBreaks=String(html||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li)>/gi,'\n');
+	const doc=new DOMParser().parseFromString(withBreaks,'text/html');
+	return (doc.body.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function timeAgo(dateStr){
+	if(!dateStr)return '';
+	const d=new Date(dateStr.replace(' ','T'));
+	const s=Math.round((Date.now()-d.getTime())/1000);
+	if(s<60)return 'just now';
+	if(s<3600)return Math.floor(s/60)+' min ago';
+	if(s<86400)return Math.floor(s/3600)+' h ago';
+	if(s<604800)return Math.floor(s/86400)+' d ago';
+	return d.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'});
+}
+
+function initials(name){
+	return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
+}
+
+function commentItem(c){
+	const by=c.comment_by||c.comment_email||c.owner||'';
+	const d=c.creation?new Date(String(c.creation).replace(' ','T')):null;
+	const full=d?d.toLocaleString('en',{dateStyle:'medium',timeStyle:'short'}):'';
+	return `<div class="oc-item">
+		<div class="oc-avatar" aria-hidden="true">${esc(initials(by))}</div>
+		<div class="oc-main">
+			<div class="oc-meta"><span class="oc-author">${esc(by)}</span><time class="oc-time" datetime="${esc(String(c.creation||''))}" title="${esc(full)}">${esc(timeAgo(String(c.creation||'')))}</time></div>
+			<div class="oc-text">${esc(commentText(c.content))}</div>
+		</div>
+	</div>`;
+}
+
+function setCount(box,n){
+	const el=box.querySelector('.oc-count');
+	box.dataset.count=n;
+	el.textContent=n;
+	el.hidden=!n;
+}
+
+async function loadCommentCounts(names){
+	if(!names.length)return;
+	const counts=await get('dms.api.order_comments.get_comment_counts',{orders:JSON.stringify(names)}).catch(()=>null);
+	if(!counts)return;
+	document.querySelectorAll('.order-comments').forEach(box=>{
+		const n=counts[box.dataset.order];
+		if(n)setCount(box,n);
+	});
+}
+
+async function loadComments(box){
+	const list=box.querySelector('.oc-list');
+	list.innerHTML='<div class="oc-empty">Loading comments…</div>';
+	const rows=await get('dms.api.order_comments.get_order_comments',{order:box.dataset.order}).catch(()=>null);
+	if(rows===null){list.innerHTML='<div class="oc-empty">Could not load comments.</div>';return}
+	box.dataset.loaded='1';
+	setCount(box,rows.length);
+	list.innerHTML=rows.length?rows.map(commentItem).join(''):'<div class="oc-empty">No comments yet.</div>';
+}
+
+const orderListEl=document.getElementById('order-list');
+if(orderListEl){
+	orderListEl.addEventListener('click',e=>{
+		const btn=e.target.closest('.oc-toggle');
+		if(!btn)return;
+		const box=btn.closest('.order-comments');
+		const body=box.querySelector('.oc-body');
+		const open=btn.getAttribute('aria-expanded')!=='true';
+		btn.setAttribute('aria-expanded',String(open));
+		body.hidden=!open;
+		box.classList.toggle('open',open);
+		if(open&&!box.dataset.loaded)loadComments(box);
+	});
+	orderListEl.addEventListener('input',e=>{
+		if(!e.target.classList.contains('oc-input'))return;
+		const form=e.target.closest('.oc-form');
+		form.querySelector('.oc-submit').disabled=!e.target.value.trim();
+		form.querySelector('.oc-error').textContent='';
+	});
+	orderListEl.addEventListener('keydown',e=>{
+		if(e.target.classList.contains('oc-input')&&e.key==='Enter'&&(e.metaKey||e.ctrlKey)){
+			e.preventDefault();
+			e.target.closest('.oc-form').requestSubmit();
+		}
+	});
+	orderListEl.addEventListener('submit',async e=>{
+		if(!e.target.classList.contains('oc-form'))return;
+		e.preventDefault();
+		const form=e.target;
+		const box=form.closest('.order-comments');
+		const input=form.querySelector('.oc-input');
+		const btn=form.querySelector('.oc-submit');
+		const err=form.querySelector('.oc-error');
+		const text=input.value.trim();
+		if(!text||btn.dataset.busy)return;
+		btn.dataset.busy='1';btn.disabled=true;btn.textContent='Saving…';err.textContent='';
+		try{
+			const c=await post('dms.api.order_comments.add_order_comment',{order:box.dataset.order,content:text});
+			const list=box.querySelector('.oc-list');
+			const empty=list.querySelector('.oc-empty');
+			if(empty)empty.remove();
+			list.insertAdjacentHTML('afterbegin',commentItem(c));
+			setCount(box,(+box.dataset.count||0)+1);
+			input.value='';
+		}catch(ex){
+			err.textContent=ex.message||'Could not save the comment.';
+		}finally{
+			delete btn.dataset.busy;btn.textContent='Comment';btn.disabled=!input.value.trim();
+		}
+	});
 }
 
 function resetAndReload(){
