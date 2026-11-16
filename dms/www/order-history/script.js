@@ -137,6 +137,22 @@ function appendCards(orders){
 	document.getElementById('order-list').insertAdjacentHTML('beforeend',orders.map(orderCard).join(''));
 	updateOrderCount();
 	loadCommentCounts(orders.map(o=>o.name));
+	openLinkedComments();
+}
+
+/* Opened from a notification: /order-history?order=<name>[&comments=1] */
+let linkedOrder='';
+let linkedOpenComments=false;
+function openLinkedComments(){
+	if(!linkedOrder)return;
+	const box=[...document.querySelectorAll('.order-comments')].find(el=>el.dataset.order===linkedOrder);
+	if(!box)return;
+	if(linkedOpenComments){
+		const t=box.querySelector('.oc-toggle');
+		if(t&&t.getAttribute('aria-expanded')!=='true')t.click();
+	}
+	box.closest('.order-card')?.scrollIntoView({block:'center'});
+	linkedOrder='';
 }
 
 /* ── Comments ───────────────────────────────────────────── */
@@ -332,5 +348,15 @@ if (sentinel) {
 	},{root:null,rootMargin:'400px',threshold:0});
 	observer.observe(sentinel);
 }
+
+(function(){
+	const q=new URLSearchParams(location.search);
+	const order=(q.get('order')||'').trim();
+	if(!order)return;
+	linkedOrder=order;
+	linkedOpenComments=q.get('comments')==='1';
+	searchTerm=order;
+	if(searchInputEl)searchInputEl.value=order;
+})();
 
 loadNextPage();
