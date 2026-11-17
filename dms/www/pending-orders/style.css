@@ -197,3 +197,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 	.user-info{opacity:1}
 	.logout-btn,.system-btn{opacity:1}
 }
+
+/* Activity button (opens the order's timeline panel) */
+.activity-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:36px;margin-top:6px;padding:6px 12px;border:1px solid rgba(0,0,0,.08);border-radius:980px;background:rgba(255,255,255,.6);color:var(--color-primary,#0066cc);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s}
+.activity-btn:hover{background:rgba(255,255,255,.95);border-color:rgba(0,113,227,.3)}
+.activity-btn:focus-visible{outline:none;box-shadow:0 0 0 4px rgba(0,113,227,.22)}
+.activity-btn:first-child{margin-top:0}
+.activity-btn svg{flex:none}
+@media (pointer:coarse),(max-width:767px){.activity-btn{min-height:44px}}

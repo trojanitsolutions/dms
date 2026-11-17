@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
- "allow_rename": 1,
  "creation": "2026-08-05 14:52:19.602604",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "disable_stock_validation"
+  "disable_stock_validation",
+  "sales_invoice_based_on",
+  "show_sales_invoice"
  ],
  "fields": [
   {
@@ -15,13 +16,25 @@
    "fieldname": "disable_stock_validation",
    "fieldtype": "Check",
    "label": "Disable Stock Validation"
+  },
+  {
+   "fieldname": "sales_invoice_based_on",
+   "fieldtype": "Select",
+   "label": "Sales Invoice Based On ?",
+   "options": "All\nDraft\nSubmitted"
+  },
+  {
+   "fieldname": "show_sales_invoice",
+   "fieldtype": "Select",
+   "label": "Show Sales Invoice",
+   "options": "All\nIndividual"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-08-05 14:53:21.314614",
+ "modified": "2026-11-17 09:35:11.030645",
  "modified_by": "Administrator",
  "module": "DMS",
  "name": "Sales Management Settings",

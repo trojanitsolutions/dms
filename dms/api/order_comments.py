@@ -1,13 +1,22 @@
 import json
+from zoneinfo import ZoneInfo
 
 import frappe
 from frappe import _
-from frappe.utils import escape_html
+from frappe.utils import escape_html, get_datetime, get_system_timezone
 
 from dms.utils import get_owner_filter
 
 MAX_COMMENT_LENGTH = 2000
 MAX_BATCH = 100
+
+
+def _iso(value):
+	"""Naive system-time datetime -> ISO string with offset (e.g. 2026-11-16T15:58:00+03:00)."""
+	if not value:
+		return value
+	dt = get_datetime(value).replace(microsecond=0)
+	return dt.replace(tzinfo=ZoneInfo(get_system_timezone())).isoformat()
 
 
 def _require_login():
@@ -56,13 +65,16 @@ def get_comment_counts(orders: str):
 def get_order_comments(order: str):
 	_require_login()
 	_check_order_access(order)
-	return frappe.get_all(
+	rows = frappe.get_all(
 		"Comment",
 		filters={"reference_doctype": "Sales Order", "reference_name": order, "comment_type": "Comment"},
 		fields=["name", "content", "comment_email", "comment_by", "owner", "creation"],
 		order_by="creation desc",
 		limit_page_length=200,
 	)
+	for r in rows:
+		r["creation"] = _iso(r["creation"])
+	return rows
 
 
 @frappe.whitelist(methods=["POST"])
@@ -86,5 +98,5 @@ def add_order_comment(order: str, content: str):
 		"comment_email": comment.comment_email,
 		"comment_by": comment.comment_by,
 		"owner": comment.owner,
-		"creation": comment.creation,
+		"creation": _iso(comment.creation),
 	}

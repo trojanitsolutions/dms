@@ -5,12 +5,14 @@ No new DocType, no hooks.
 """
 
 import json
+from zoneinfo import ZoneInfo
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, get_datetime, now_datetime, strip_html
+from frappe.utils import add_days, cint, get_datetime, get_system_timezone, now_datetime, strip_html
 
 SEEN_KEY = "dms_order_notif_seen"
+CLEARED_KEY = "dms_order_notif_cleared"
 LOOKBACK_DAYS = 30
 MAX_ORDERS = 500
 MAX_LIMIT = 50
@@ -21,6 +23,22 @@ SKIP_FIELDS = {"modified", "modified_by", "creation", "idx", "_comments", "_assi
 def _require_login():
 	if frappe.session.user == "Guest":
 		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+
+
+def _iso(value):
+	"""Naive system-time datetime -> ISO string with offset (e.g. 2026-11-16T15:58:00+03:00)."""
+	if not value:
+		return value
+	dt = get_datetime(value).replace(microsecond=0)
+	return dt.replace(tzinfo=ZoneInfo(get_system_timezone())).isoformat()
+
+
+def _add_scope(filters, since=None, user=None):
+	"""Limit to records newer than `since` and not made by `user`; None skips that limit."""
+	if user:
+		filters["owner"] = ["!=", user]
+	if since:
+		filters["creation"] = [">=", since]
 
 
 def _short(value, length=40):
@@ -38,14 +56,11 @@ def _full_names(users):
 
 def _version_items(orders, since, user):
 	meta = frappe.get_meta("Sales Order")
+	filters = {"ref_doctype": "Sales Order", "docname": ["in", list(orders)]}
+	_add_scope(filters, since, user)
 	rows = frappe.get_all(
 		"Version",
-		filters={
-			"ref_doctype": "Sales Order",
-			"docname": ["in", list(orders)],
-			"owner": ["!=", user],
-			"creation": [">=", since],
-		},
+		filters=filters,
 		fields=["name", "docname", "owner", "creation", "data"],
 		order_by="creation desc",
 		limit_page_length=200,
@@ -83,15 +98,15 @@ def _version_items(orders, since, user):
 
 
 def _comment_items(orders, since, user):
+	filters = {
+		"reference_doctype": "Sales Order",
+		"reference_name": ["in", list(orders)],
+		"comment_type": ["in", COMMENT_TYPES],
+	}
+	_add_scope(filters, since, user)
 	rows = frappe.get_all(
 		"Comment",
-		filters={
-			"reference_doctype": "Sales Order",
-			"reference_name": ["in", list(orders)],
-			"comment_type": ["in", COMMENT_TYPES],
-			"owner": ["!=", user],
-			"creation": [">=", since],
-		},
+		filters=filters,
 		fields=["name", "reference_name", "comment_type", "owner", "creation", "content"],
 		order_by="creation desc",
 		limit_page_length=200,
@@ -112,18 +127,18 @@ def _comment_items(orders, since, user):
 def _linked_items(orders, since, user, doctype, child_doctype, link_field, kind):
 	parent = frappe.qb.DocType(doctype)
 	child = frappe.qb.DocType(child_doctype)
-	rows = (
+	query = (
 		frappe.qb.from_(child)
 		.join(parent).on(parent.name == child.parent)
 		.select(parent.name, child[link_field].as_("sales_order"), parent.owner, parent.creation)
 		.where(child[link_field].isin(list(orders)))
 		.where(parent.docstatus == 1)
-		.where(parent.owner != user)
-		.where(parent.creation >= since)
-		.distinct()
-		.limit(200)
-		.run(as_dict=True)
 	)
+	if user:
+		query = query.where(parent.owner != user)
+	if since:
+		query = query.where(parent.creation >= since)
+	rows = query.distinct().limit(200).run(as_dict=True)
 	return [{
 		"id": f"{doctype}:{r.name}:{r.sales_order}", "kind": kind, "order": r.sales_order,
 		"owner": r.owner, "time": r.creation,
@@ -152,12 +167,20 @@ def get_notifications(limit: int = 30):
 	if not orders:
 		return {"items": [], "unread": 0}
 
+	# Items before the last "Clear all" are hidden; the orders list keeps the full lookback window.
+	cleared = frappe.defaults.get_user_default(CLEARED_KEY)
+	cleared_dt = get_datetime(cleared) if cleared else None
+	if cleared_dt and cleared_dt > since:
+		since = cleared_dt
+
 	items = (
 		_version_items(orders, since, user)
 		+ _comment_items(orders, since, user)
 		+ _linked_items(orders, since, user, "Delivery Note", "Delivery Note Item", "against_sales_order", "delivery")
 		+ _linked_items(orders, since, user, "Sales Invoice", "Sales Invoice Item", "sales_order", "invoice")
 	)
+	if cleared_dt:
+		items = [i for i in items if get_datetime(i["time"]) > cleared_dt]
 	items.sort(key=lambda i: get_datetime(i["time"]), reverse=True)
 	items = items[:limit]
 
@@ -170,6 +193,7 @@ def get_notifications(limit: int = 30):
 		i["by"] = names.get(i.pop("owner"), "")
 		i["unread"] = seen_dt is None or get_datetime(i["time"]) > seen_dt
 		unread += i["unread"]
+		i["time"] = _iso(i["time"])
 	return {"items": items, "unread": unread}
 
 
@@ -177,4 +201,14 @@ def get_notifications(limit: int = 30):
 def mark_notifications_seen():
 	_require_login()
 	frappe.defaults.set_user_default(SEEN_KEY, str(now_datetime()))
+	return {"ok": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def clear_notifications():
+	"""Hide every current item from the bell. Records stay; only the feed's start time moves."""
+	_require_login()
+	now = str(now_datetime())
+	frappe.defaults.set_user_default(CLEARED_KEY, now)
+	frappe.defaults.set_user_default(SEEN_KEY, now)
 	return {"ok": True}

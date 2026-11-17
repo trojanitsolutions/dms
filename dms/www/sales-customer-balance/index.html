@@ -6,7 +6,8 @@
 <title>Customer Balance — Luxury Stationery Field Sales</title>
 <link rel="stylesheet" href="/sales-customer-balance/style.css">
 <link rel="stylesheet" href="/sales-ui.css">
-<link rel="stylesheet" href="/sales-glass.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+<link rel="stylesheet" href="/sales-glass.css?v=g6">
 <link rel="stylesheet" href="/sales-mobile.css?v=1">
 </head>
 <body>
@@ -54,6 +55,10 @@
     <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
     <span>Quotation History</span>
   </a>
+  <a class="nav-link" href="/sales-invoice">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+    <span>Sales Invoices</span>
+  </a>
   <a class="nav-link" href="/pending-orders">
     <span class="nav-icon">◴</span>
     <span>Pending Orders</span>
@@ -91,6 +96,10 @@
       <div class="page-sub">Outstanding balance per customer from the General Ledger</div>
     </div>
     <div class="topbar-actions">
+      <a href="/sales-customer-ledger" class="btn-outline" title="Open the Customer Ledger Summary">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
+        Customer Ledger
+      </a>
       <button id="refresh-btn" class="btn-outline" title="Refresh report">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
         Refresh
@@ -233,6 +242,10 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
     Pending
   </a>
+  <a href="/sales-invoice" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+    Invoices
+  </a>
   <a href="/sales-analysis" class="bnav-item">
     <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
     Analysis
@@ -259,8 +272,12 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+
+<script src="/assets/dms/js/glass_datepicker.js?v=d4"></script>
+
 <script src="/sales-customer-balance/script.js"></script>
 <script src="/assets/dms/js/quotation_party_modal.js?v=glass2"></script>
-<script src="/assets/dms/js/order_notifications.js?v=n1"></script>
+<script src="/assets/dms/js/order_notifications.js?v=n2"></script>
 </body>
 </html>

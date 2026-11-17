@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sales Invoices — Luxury Stationery Field Sales</title>
+<link rel="stylesheet" href="/sales-invoice/style.css?v=i8">
+<link rel="stylesheet" href="/assets/dms/css/sales_return.css?v=r3">
+<link rel="stylesheet" href="/sales-ui.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+<link rel="stylesheet" href="/sales-glass.css?v=g6">
+<link rel="stylesheet" href="/sales-mobile.css?v=1">
+</head>
+<body>
+
+<!-- Sidebar (desktop) -->
+<aside class="sidebar">
+  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+  </button>
+  <div class="sidebar-brand">
+    <div class="brand-logo-container">
+      {% if company_logo %}
+      <img src="{{ company_logo }}" alt="Company Logo" class="brand-logo">
+      {% else %}
+      <div class="brand-badge">LS</div>
+      {% endif %}
+    </div>
+    <div class="brand-text">
+      <div class="name">Luxury Stationery</div>
+      <div class="role">Field Sales</div>
+    </div>
+  </div>
+  <div class="nav-section">Workspace</div>
+  <a class="nav-link" href="/sales-home">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    <span>Customers</span>
+  </a>
+  <a class="nav-link" href="/sales-customer">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    <span>New Order</span>
+  </a>
+  <a class="nav-link" href="/sales-customer" data-quotation-link>
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 100-2H6a1 1 0 00-1 1v1H3a1 1 0 000 2h3V7a1 1 0 100 2H5a1 1 0 000 2h1v1H4a2 2 0 01-2-2V5zm12-2a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+    <span>Quotation</span>
+  </a>
+  <a class="nav-link" href="/order-history">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+    <span>Order History</span>
+  </a>
+  <a class="nav-link" href="/quotation-history">
+    <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
+    <span>Quotation History</span>
+  </a>
+  <a class="nav-link active" href="/sales-invoice">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+    <span>Sales Invoices</span>
+  </a>
+  <a class="nav-link" href="/pending-orders">
+    <span class="nav-icon">◴</span>
+    <span>Pending Orders</span>
+  </a>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">{{ full_name[:2].upper() }}</div>
+      <div class="user-info"><div class="uname">{{ full_name }}</div></div>
+      <a href="/desk" class="system-btn" title="Switch to System">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h5a1 1 0 010 2H5v10h10v-4a1 1 0 112 0v5a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm9-1a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 001.414 1.414L15 6.414V9a1 1 0 102 0V3h-6z" clip-rule="evenodd"/></svg>
+      </a>
+      <a href="/sales-logout" class="logout-btn" title="Sign out">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+	<div class="topbar">
+		<div>
+			<div class="page-title">Sales Invoices</div>
+			<div class="page-sub" id="invoice-sub">View sales invoices.</div>
+		</div>
+	</div>
+
+	<div class="content">
+		<div class="search-fields">
+			<div class="search-bar">
+				<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+				<input type="search" id="search-invoice" data-search-field placeholder="Sales Invoice ID" aria-label="Sales Invoice ID" autocomplete="off">
+			</div>
+			<div class="search-bar">
+				<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+				<input type="search" id="search-customer" data-search-field placeholder="Customer name or ID" aria-label="Customer"
+					autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="customer-suggest">
+				<div class="suggest-list" id="customer-suggest" role="listbox" hidden></div>
+			</div>
+			<div class="search-bar">
+				<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+				<input type="search" id="search-order" data-search-field placeholder="Sales Order ID" aria-label="Sales Order ID" autocomplete="off">
+			</div>
+		</div>
+
+		<div class="inv-tab-row">
+			<div class="inv-tabs" role="tablist" aria-label="Invoices or returns">
+				<button type="button" class="inv-tab active" role="tab" aria-selected="true" data-kind="invoices">Invoices</button>
+				<button type="button" class="inv-tab" role="tab" aria-selected="false" data-kind="returns">Returns</button>
+			</div>
+			<button type="button" class="invoice-new-return" id="new-return-btn" hidden>+ New Return</button>
+		</div>
+
+		<div class="filter-container">
+			<div class="filter-row">
+				<div class="filter-group">
+					<label for="posting-date-filter">Posting Date</label>
+					<input type="date" id="posting-date-filter" />
+				</div>
+				<div class="filter-group">
+					<label for="from-date-filter">From Date</label>
+					<input type="date" id="from-date-filter" />
+				</div>
+				<div class="filter-group">
+					<label for="to-date-filter">To Date</label>
+					<input type="date" id="to-date-filter" />
+				</div>
+				<div class="filter-group">
+					<label for="status-filter">Status</label>
+					<select id="status-filter">
+						<option value="">All Statuses</option>
+						<option value="Draft" data-for="invoices returns">Draft</option>
+						<option value="Unpaid" data-for="invoices">Unpaid</option>
+						<option value="Overdue" data-for="invoices">Overdue</option>
+						<option value="Partly Paid" data-for="invoices">Partly Paid</option>
+						<option value="Paid" data-for="invoices">Paid</option>
+						<option value="Return" data-for="returns">Return</option>
+						<option value="Credit Note Issued" data-for="invoices">Credit Note Issued</option>
+					</select>
+				</div>
+			</div>
+			<div class="filter-divider"></div>
+			<div class="filter-count"><span id="order-count">0</span> <span id="count-label">Invoices</span></div>
+		</div>
+
+		<div id="order-list"></div>
+		<div id="sentinel"></div>
+		<div id="loading-indicator" hidden>Loading more invoices…</div>
+		<div id="empty-state" hidden></div>
+		<div id="error-state" hidden>
+			<div class="error-message">Something went wrong loading invoices.</div>
+			<button id="retry-btn" class="btn-retry">Retry</button>
+		</div>
+	</div>
+</main>
+
+<!-- Logout Confirmation Modal -->
+<div class="logout-confirm-overlay" id="logout-confirm-overlay">
+  <div class="logout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-title">
+    <div class="logout-confirm-title" id="logout-confirm-title">Confirm Logout</div>
+    <div class="logout-confirm-msg">Are you sure you want to log out?</div>
+    <div class="logout-confirm-actions">
+      <button class="btn-cancel" id="logout-cancel-btn">Cancel</button>
+      <button class="btn-logout-confirm" id="logout-confirm-btn">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom nav (mobile) -->
+<nav class="bottom-nav">
+  <a href="/sales-home" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+    Home
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+    Customers
+  </a>
+  <a href="/sales-customer" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+    New Order
+  </a>
+  <a href="/sales-customer" class="bnav-item" data-quotation-link>
+    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 100-2H6a1 1 0 00-1 1v1H3a1 1 0 000 2h3V7a1 1 0 100 2H5a1 1 0 000 2h1v1H4a2 2 0 01-2-2V5zm12-2a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+    Quotation
+  </a>
+  <a href="/pending-orders" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+    Pending
+  </a>
+  <a href="/sales-invoice" class="bnav-item active">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+    Invoices
+  </a>
+  <a href="/desk" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h5a1 1 0 010 2H5v10h10v-4a1 1 0 112 0v5a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm9-1a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 001.414 1.414L15 6.414V9a1 1 0 102 0V3h-6z" clip-rule="evenodd"/></svg>
+    System
+  </a>
+  <a href="/sales-logout" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/></svg>
+    Sign Out
+  </a>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+<script src="/assets/dms/js/glass_datepicker.js?v=d4"></script>
+<script src="/assets/dms/js/sales_return.js?v=r3"></script>
+<script src="/sales-invoice/script.js?v=i9"></script>
+<script>
+(function(){
+  var btn=document.getElementById('sidebar-toggle');
+  if(!btn)return;
+  btn.addEventListener('click',function(){document.body.classList.toggle('sidebar-expanded');});
+  document.querySelectorAll('.nav-link').forEach(function(a){
+    a.addEventListener('click',function(){if(window.innerWidth<1200)document.body.classList.remove('sidebar-expanded');});
+  });
+})();
+
+(function(){
+  var overlay=document.getElementById('logout-confirm-overlay');
+  function openLogoutConfirm(e){e.preventDefault();overlay.classList.add('open')}
+  function closeLogoutConfirm(){overlay.classList.remove('open')}
+  document.querySelectorAll('a[href="/sales-logout"]').forEach(function(a){
+    a.addEventListener('click',openLogoutConfirm);
+  });
+  document.getElementById('logout-cancel-btn').addEventListener('click',closeLogoutConfirm);
+  document.getElementById('logout-confirm-btn').addEventListener('click',function(){
+    window.location.href='/sales-logout';
+  });
+  overlay.addEventListener('click',function(e){if(e.target===overlay)closeLogoutConfirm()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLogoutConfirm()});
+})();
+</script>
+<script src="/assets/dms/js/quotation_party_modal.js?v=glass2"></script>
+<script src="/assets/dms/js/order_notifications.js?v=n2"></script>
+</body>
+</html>

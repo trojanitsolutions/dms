@@ -67,13 +67,13 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,te
 .modal-close-btn:hover{background:var(--fill-hover);color:var(--color-text-primary)}
 
 /* ── Fields (filled, no border; focus ring in accent) ─── */
-.search-box input,.filter-group input[type="date"],.filter-group select,.form-group input,.form-group select,
+.search-box input,.filter-group input:is([type="date"],.glass-date),.filter-group select,.form-group input,.form-group select,
 .party-row select,.party-row input,.warehouse-row select,.address-row select,.addr-col select,.mob-cat-filter select,
 .action-select,.search-wrap input,.item-disc-type,.item-disc-value,.desc-input,.cart-item-rate-input,
 .delivery-row input,.terms-row textarea,.wh-select{
   background-color:var(--color-input-bg);border:1px solid transparent;border-radius:var(--radius-md);color:var(--color-text-primary);
   transition:background-color .15s var(--ease),box-shadow .15s var(--ease)}
-.search-box input:focus,.filter-group input[type="date"]:focus,.filter-group select:focus,.form-group input:focus,.form-group select:focus,
+.search-box input:focus,.filter-group input:is([type="date"],.glass-date):focus,.filter-group select:focus,.form-group input:focus,.form-group select:focus,
 .party-row select:focus,.party-row input:focus,.warehouse-row select:focus,.address-row select:focus,.addr-col select:focus,.mob-cat-filter select:focus,
 .action-select:focus,.category-filter:focus,.search-wrap input:focus,.item-disc-type:focus,.item-disc-value:focus,.desc-input:focus,.cart-item-rate-input:focus,
 .delivery-row input:focus,.terms-row textarea:focus,.wh-select:focus{background-color:#fff;border-color:transparent;box-shadow:0 0 0 1px var(--color-primary),var(--focus-ring);outline:none}

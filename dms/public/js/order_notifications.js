@@ -20,11 +20,14 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 .on-overlay.open{display:block}
 .on-panel{position:fixed;top:calc(66px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));width:380px;max-width:calc(100vw - 32px);max-height:min(560px,calc(100vh - 90px));max-height:min(560px,calc(100dvh - 90px));display:flex;flex-direction:column;box-sizing:border-box;background:rgba(255,255,255,.78);-webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);border:1px solid rgba(255,255,255,.85);border-radius:20px;box-shadow:0 24px 64px rgba(30,40,90,.22),inset 0 1px 0 rgba(255,255,255,.8);color:#1d1d1f;font-family:inherit;animation:on-pop .18s cubic-bezier(.25,.1,.25,1)}
 .on-panel:focus{outline:none}
-.on-head{display:flex;align-items:center;gap:8px;padding:16px 14px 10px 18px;border-bottom:1px solid rgba(0,0,0,.06)}
+.on-head{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:16px 14px 10px 18px;border-bottom:1px solid rgba(0,0,0,.06)}
 .on-title{flex:1;font-size:17px;font-weight:700}
 .on-mark{border:none;background:none;color:#0066cc;font-size:13px;font-weight:600;cursor:pointer;padding:6px 8px;border-radius:8px;font-family:inherit;min-height:32px}
 .on-mark:hover{background:rgba(0,113,227,.08)}
 .on-mark:disabled{color:#8e8e93;cursor:default;background:none}
+.on-clear{color:#d70015}
+.on-clear:hover{background:rgba(215,0,21,.08)}
+.on-clear.confirm{background:rgba(215,0,21,.1)}
 .on-close{width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(255,255,255,.85);background:rgba(255,255,255,.6);color:#4a4a52;cursor:pointer}
 .on-close:hover{background:#fff;color:#1d1d1f}
 .on-close svg{width:14px;height:14px}
@@ -99,7 +102,7 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 		return d.toLocaleDateString();
 	}
 
-	let btn,badge,overlay,panel,list,markBtn,timer=null,items=[],unread=0,loaded=false,busy=false;
+	let btn,badge,overlay,panel,list,markBtn,clearBtn,clearTimer=null,justCleared=false,timer=null,items=[],unread=0,loaded=false,busy=false;
 
 	function setBadge(n){
 		unread=n;
@@ -125,8 +128,10 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 
 	function render(){
 		markBtn.disabled=!items.some(i=>i.unread);
+		clearBtn.disabled=!items.length;
 		if(!items.length){
-			list.innerHTML=`<div class="on-state">${ICON_BELL}No changes to your orders in the last 30 days.</div>`;
+			resetClear();
+			list.innerHTML=`<div class="on-state">${ICON_BELL}${justCleared?'You’re all caught up.':'No changes to your orders in the last 30 days.'}</div>`;
 			return;
 		}
 		list.innerHTML=items.map(itemHtml).join('');
@@ -138,6 +143,7 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 		try{
 			const r=await call('get_notifications?limit=30');
 			items=(r&&r.items)||[];
+			if(items.length)justCleared=false;
 			setBadge((r&&r.unread)||0);
 			loaded=true;
 			if(isOpen())render();
@@ -150,6 +156,27 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 		if(!unread)return;
 		setBadge(0);
 		try{await call('mark_notifications_seen',{method:'POST'})}catch(e){}
+	}
+
+	function resetClear(){
+		clearTimeout(clearTimer);clearTimer=null;
+		clearBtn.classList.remove('confirm');
+		clearBtn.textContent='Clear all';
+	}
+
+	async function clearAll(){
+		if(!clearBtn.classList.contains('confirm')){
+			clearBtn.classList.add('confirm');
+			clearBtn.textContent='Clear all?';
+			clearTimer=setTimeout(resetClear,3000);
+			return;
+		}
+		resetClear();
+		items=[];justCleared=true;
+		setBadge(0);
+		render();
+		try{await call('clear_notifications',{method:'POST'})}
+		catch(e){justCleared=false;refresh()}
 	}
 
 	function isOpen(){return overlay.classList.contains('open')}
@@ -169,6 +196,7 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 		overlay.classList.remove('open');
 		btn.setAttribute('aria-expanded','false');
 		items.forEach(i=>i.unread=false);
+		resetClear();
 		btn.focus();
 	}
 
@@ -198,13 +226,15 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 			<div class="on-head">
 				<div class="on-title" id="on-title">Notifications</div>
 				<button type="button" class="on-mark" disabled>Mark all as read</button>
+				<button type="button" class="on-mark on-clear" disabled>Clear all</button>
 				<button type="button" class="on-close" aria-label="Close">${ICON_X}</button>
 			</div>
 			<div class="on-list"></div>
 		</div>`;
 		panel=overlay.querySelector('.on-panel');
 		list=overlay.querySelector('.on-list');
-		markBtn=overlay.querySelector('.on-mark');
+		markBtn=overlay.querySelector('.on-mark:not(.on-clear)');
+		clearBtn=overlay.querySelector('.on-clear');
 
 		document.body.appendChild(btn);
 		document.body.appendChild(overlay);
@@ -218,6 +248,7 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 			render();
 			markSeen();
 		});
+		clearBtn.addEventListener('click',clearAll);
 		list.addEventListener('click',e=>{
 			if(e.target.closest('.on-retry')){list.innerHTML='<div class="on-state">Loading…</div>';refresh()}
 		});

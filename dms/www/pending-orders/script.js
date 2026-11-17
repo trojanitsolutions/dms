@@ -61,6 +61,8 @@ function fmtTime(dateStr){
 	return d.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',meridiem:'short'});
 }
 
+const ICON_ACTIVITY='<svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>';
+
 function fillCategories(){
 	const sel=document.getElementById('category-filter'),cur=sel.value;
 	const cats=[...new Set(orders.flatMap(o=>o.categories||[]))].sort();
@@ -73,7 +75,7 @@ function render(){
 	const compact=matchMedia('(max-width:1199px)').matches,cat=compact?document.getElementById('category-filter').value:'';
 	filtered=orders.filter(o=>(o.name.toLowerCase().includes(searchTerm)||o.customer_name.toLowerCase().includes(searchTerm)||(compact&&(o.search_text||'').includes(searchTerm)))&&(!cat||(o.categories||[]).includes(cat)));
 	const toShow=filtered.slice(0,shown);
-	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(docTotal(o))}</td><td>${o.can_act?`<select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select>`:''}</td></tr>`).join('');
+	const rows=toShow.map(o=>`<tr><td class="order-number-cell">${esc(o.name)}</td><td>${esc(o.customer_name)}</td><td><div class="order-date-cell"><div class="order-date-main">${fmtDate(o.transaction_date)}</div><div class="order-date-time">${fmtTime(o.transaction_date)}</div></div></td><td>${o.item_count||0}</td><td>${fmt(docTotal(o))}</td><td>${o.can_act?`<select class="action-select" data-name="${esc(o.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select>`:''}<button type="button" class="activity-btn" data-name="${esc(o.name)}" data-customer="${esc(o.customer_name)}" aria-label="Activity for ${esc(o.name)}">${ICON_ACTIVITY}<span>Activity</span></button></td></tr>`).join('');
 	document.getElementById('order-list').innerHTML=rows;
 	const total=filtered.length;
 	const displaying=Math.min(shown,total);
@@ -134,6 +136,11 @@ document.getElementById('order-list').addEventListener('change',async e=>{
 			}
 		}
 	}
+});
+
+document.getElementById('order-list').addEventListener('click',e=>{
+	const btn=e.target.closest('.activity-btn');
+	if(btn&&window.DMSActivity)window.DMSActivity.openPanel(btn.dataset.name,btn.dataset.customer);
 });
 
 document.getElementById('search-input').addEventListener('input',e=>{shown=pageSize;render()});

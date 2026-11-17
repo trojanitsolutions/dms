@@ -6,7 +6,8 @@
 <title>Order History — Luxury Stationery Field Sales</title>
 <link rel="stylesheet" href="/order-history/style.css?v=c1">
 <link rel="stylesheet" href="/sales-ui.css">
-<link rel="stylesheet" href="/sales-glass.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+<link rel="stylesheet" href="/sales-glass.css?v=g6">
 <link rel="stylesheet" href="/sales-mobile.css?v=1">
 </head>
 <body>
@@ -53,6 +54,10 @@
   <a class="nav-link" href="/quotation-history">
     <img src="/assets/dms/images/quote.png" alt="" width="17" height="17">
     <span>Quotation History</span>
+  </a>
+  <a class="nav-link" href="/sales-invoice">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+    <span>Sales Invoices</span>
   </a>
   <a class="nav-link" href="/pending-orders">
     <span class="nav-icon">◴</span>
@@ -158,6 +163,10 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
     Pending
   </a>
+  <a href="/sales-invoice" class="bnav-item">
+    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+    Invoices
+  </a>
   <a href="/desk" class="bnav-item">
     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h5a1 1 0 010 2H5v10h10v-4a1 1 0 112 0v5a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm9-1a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 001.414 1.414L15 6.414V9a1 1 0 102 0V3h-6z" clip-rule="evenodd"/></svg>
     System
@@ -168,7 +177,10 @@
   </a>
 </nav>
 
-<script src="/order-history/script.js?v=n1"></script>
+<script src="/assets/dms/js/order_activity.js?v=a1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+<script src="/assets/dms/js/glass_datepicker.js?v=d4"></script>
+<script src="/order-history/script.js?v=n2"></script>
 <script>
 (function(){
   var btn=document.getElementById('sidebar-toggle');
@@ -195,6 +207,6 @@
 })();
 </script>
 <script src="/assets/dms/js/quotation_party_modal.js?v=glass2"></script>
-<script src="/assets/dms/js/order_notifications.js?v=n1"></script>
+<script src="/assets/dms/js/order_notifications.js?v=n2"></script>
 </body>
 </html>

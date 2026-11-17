@@ -48,8 +48,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 .filter-group{display:flex;flex-direction:column;gap:4px}
 .filter-group label{font-size:11px;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em}
-.filter-group input[type="date"],.filter-group select{height:38px;padding:0 10px;border:1.5px solid var(--color-card-border);border-radius:8px;font-size:13px;background:var(--color-bg-surface);color:var(--color-text-primary);outline:none;transition:border-color .15s}
-.filter-group input[type="date"]:focus,.filter-group select:focus{border-color:var(--color-primary)}
+.filter-group input:is([type="date"],.glass-date),.filter-group select{height:38px;padding:0 10px;border:1.5px solid var(--color-card-border);border-radius:8px;font-size:13px;background:var(--color-bg-surface);color:var(--color-text-primary);outline:none;transition:border-color .15s}
+.filter-group input:is([type="date"],.glass-date):focus,.filter-group select:focus{border-color:var(--color-primary)}
 
 .filter-bottom-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .filter-toggles{display:flex;gap:10px;flex-wrap:wrap;padding-top:4px}

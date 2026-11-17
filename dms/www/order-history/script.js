@@ -130,6 +130,7 @@ function orderCard(o){
 			${editLink}
 		</div>
 		${commentsSection(o.name)}
+		${activitySection(o.name)}
 	</div>`;
 }
 
@@ -175,6 +176,19 @@ function commentsSection(name){
 			</form>
 			<div class="oc-list" aria-live="polite"></div>
 		</div>
+	</div>`;
+}
+
+/* ── Activity (timeline drawn by /assets/dms/js/order_activity.js) ── */
+const ICON_ACTIVITY='<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>';
+
+function activitySection(name){
+	const id='oa-'+name.replace(/[^A-Za-z0-9_-]/g,'_');
+	return `<div class="order-activity" data-order="${esc(name)}">
+		<button type="button" class="oa-toggle" aria-expanded="false" aria-controls="${id}">
+			${ICON_ACTIVITY}<span>Activity</span>${ICON_CHEVRON}
+		</button>
+		<div class="oa-section-body" id="${id}" hidden></div>
 	</div>`;
 }
 
@@ -241,6 +255,20 @@ async function loadComments(box){
 
 const orderListEl=document.getElementById('order-list');
 if(orderListEl){
+	orderListEl.addEventListener('click',async e=>{
+		const btn=e.target.closest('.oa-toggle');
+		if(!btn)return;
+		const box=btn.closest('.order-activity');
+		const body=box.querySelector('.oa-section-body');
+		const open=btn.getAttribute('aria-expanded')!=='true';
+		btn.setAttribute('aria-expanded',String(open));
+		body.hidden=!open;
+		box.classList.toggle('open',open);
+		if(open&&!box.dataset.loaded&&window.DMSActivity){
+			box.dataset.loaded='1';
+			if(!await window.DMSActivity.render(body,box.dataset.order))delete box.dataset.loaded;
+		}
+	});
 	orderListEl.addEventListener('click',e=>{
 		const btn=e.target.closest('.oc-toggle');
 		if(!btn)return;

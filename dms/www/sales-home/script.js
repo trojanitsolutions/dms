@@ -101,3 +101,8 @@ function prettyDate(s){
   overlay.addEventListener('click',function(e){if(e.target===overlay)closeLogoutConfirm()});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLogoutConfirm()});
 })();
+
+// Sales Return quick action: shared popup from /assets/dms/js/sales_return.js.
+document.getElementById('quick-return')?.addEventListener('click',function(){
+  if(window.SalesReturn)SalesReturn.pick();
+});
