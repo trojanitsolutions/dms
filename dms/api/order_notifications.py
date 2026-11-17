@@ -59,7 +59,7 @@ def _full_names(users):
 
 def _version_items(doctype, docs, since, user):
 	meta = frappe.get_meta(doctype)
-	noun = WATCHED_DOCTYPES[doctype]
+	noun = _(WATCHED_DOCTYPES.get(doctype, doctype))
 	filters = {"ref_doctype": doctype, "docname": ["in", list(docs)]}
 	_add_scope(filters, since, user)
 	rows = frappe.get_all(
@@ -75,13 +75,13 @@ def _version_items(doctype, docs, since, user):
 			data = json.loads(r.data or "{}")
 		except ValueError:
 			continue
-		kind, title, parts = "change", _("{0} updated").format(_(noun)), []
+		kind, title, parts = "change", _("{0} updated").format(noun), []
 		for field, old, new in data.get("changed") or []:
 			if field == "docstatus":
 				if new == 1:
-					kind, title = "submit", _("{0} submitted").format(_(noun))
+					kind, title = "submit", _("{0} submitted").format(noun)
 				elif new == 2:
-					kind, title = "cancel", _("{0} cancelled").format(_(noun))
+					kind, title = "cancel", _("{0} cancelled").format(noun)
 				continue
 			if field in SKIP_FIELDS or (not old and not new):
 				continue
@@ -102,7 +102,7 @@ def _version_items(doctype, docs, since, user):
 
 
 def _comment_items(doctype, docs, since, user):
-	noun = WATCHED_DOCTYPES[doctype]
+	noun = _(WATCHED_DOCTYPES.get(doctype, doctype))
 	filters = {
 		"reference_doctype": doctype,
 		"reference_name": ["in", list(docs)],
@@ -117,7 +117,8 @@ def _comment_items(doctype, docs, since, user):
 		limit_page_length=200,
 	)
 	titles = {
-		"Comment": _("New comment"), "Info": _("{0} activity").format(_(noun)), "Workflow": _("Workflow update"),
+		"Comment": _("New comment"), "Info": _("{0} activity").format(noun),
+		"Workflow": _("{0} updated").format(noun),
 		"Assigned": _("Assignment"), "Attachment": _("File attached"),
 	}
 	return [{
