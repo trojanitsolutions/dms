@@ -16,6 +16,7 @@ from dms.api.sales import (
 	_get_credit_info,
 	_rounding_disabled,
 )
+from dms.utils import apply_status_filter, apply_workflow_status, workflow_state_field
 
 
 def _require_sales_rep():
@@ -377,6 +378,7 @@ def get_pending_quotations(customer: str = "", party_type: str = ""):
 		order_by="creation desc",
 		limit=2500,
 	)
+	apply_workflow_status("Quotation", quotations)
 
 	item_counts = {}
 	if quotations:
@@ -476,6 +478,7 @@ def get_quotation_detail(name: str):
 		from frappe.contacts.doctype.address.address import get_address_display
 		address_display = get_address_display(quotation.customer_address) or ""
 
+	wf_field = workflow_state_field("Quotation")
 	return {
 		"name": quotation.name,
 		"party_type": quotation.quotation_to,
@@ -487,7 +490,8 @@ def get_quotation_detail(name: str):
 		"contact_email": quotation.contact_email or "",
 		"transaction_date": quotation.transaction_date,
 		"valid_till": quotation.valid_till,
-		"status": quotation.status,
+		"status": (quotation.get(wf_field) if wf_field else None) or quotation.status,
+		"doc_status": quotation.status,
 		"docstatus": quotation.docstatus,
 		"terms": quotation.terms or "",
 		"in_words": quotation.in_words or "",
@@ -600,6 +604,7 @@ def get_linked_sales_orders(quotation: str):
 		quotation,
 		as_dict=True,
 	)
+	apply_workflow_status("Sales Order", orders)
 
 	if orders:
 		order_names = [o["name"] for o in orders]
@@ -867,8 +872,7 @@ def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_len
 
 	if valid_till:
 		filters["valid_till"] = valid_till
-	if status and status != "All":
-		filters["status"] = status
+	apply_status_filter("Quotation", filters, status)
 
 	or_filters = None
 	if search:
@@ -889,7 +893,7 @@ def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_len
 	)
 
 	has_more = len(quotations) > limit_page_length
-	quotations = quotations[:limit_page_length]
+	quotations = apply_workflow_status("Quotation", quotations[:limit_page_length])
 
 	if quotations:
 		names = [q["name"] for q in quotations]

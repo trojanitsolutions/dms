@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
-from dms.utils import get_owner_filter
+from dms.utils import apply_workflow_status, get_owner_filter, get_workflow_state_names
 
 
 def _require_sales_rep():
@@ -311,8 +311,20 @@ def get_dashboard_stats():
     return {
         "today_sales": today_sales,
         "today_orders": today_orders,
-        "recent_orders": recent_orders,
+        "recent_orders": apply_workflow_status("Sales Order", recent_orders),
     }
+
+
+WORKFLOW_STATE_DOCTYPES = ("Sales Order", "Quotation", "Sales Invoice")
+
+
+@frappe.whitelist(methods=["GET"])
+def get_workflow_states(doctype: str):
+    """Return the states of the active Workflow for a sales doctype, or [] when none is active."""
+    _require_sales_rep()
+    if doctype not in WORKFLOW_STATE_DOCTYPES:
+        frappe.throw(_("Invalid document type {0}").format(doctype))
+    return get_workflow_state_names(doctype)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -856,6 +868,7 @@ def get_pending_orders(customer: str = ""):
         order_by="creation desc",
         limit=2500,  # ponytail: unsubmitted drafts never approach this
     )
+    apply_workflow_status("Sales Order", orders)
     for o in orders:
         o["can_act"] = o.pop("owner") == frappe.session.user
     names = [o["name"] for o in orders]

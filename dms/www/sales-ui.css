@@ -138,7 +138,8 @@ input[type=checkbox]{accent-color:var(--color-primary)}
 .table-footer{border-top:.5px solid var(--color-gray-200);background:transparent}
 
 /* ── Badges and chips (tinted capsules) ───────────────── */
-.badge,.order-status-badge,.quotation-status-badge,.draft-badge,.quotation-party-tag{border-radius:var(--radius-pill);font-weight:600;letter-spacing:0;text-transform:none}
+.badge,.workflow-badge,.order-status-badge,.quotation-status-badge,.draft-badge,.quotation-party-tag{border-radius:var(--radius-pill);font-weight:600;letter-spacing:0;text-transform:none}
+.workflow-badge{display:inline-block;padding:3px 10px;font-size:11px;white-space:nowrap;background:var(--color-badge-gray-bg);color:var(--color-badge-gray-text)}
 .status-chip,.cat-chip{border-radius:var(--radius-pill);border:0;background:#fff;color:var(--color-text-primary);font-weight:500;box-shadow:0 0 0 .5px var(--hairline)}
 .status-chip:hover,.cat-chip:hover{background:#fff;color:var(--color-text-primary);box-shadow:0 0 0 .5px var(--color-gray-300),0 1px 3px rgba(0,0,0,.06)}
 .status-chip.active,.cat-chip.active{background:var(--color-text-primary);color:#fff;box-shadow:none;font-weight:600}

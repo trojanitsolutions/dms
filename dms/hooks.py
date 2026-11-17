@@ -26,7 +26,10 @@ fixtures = [
         "dt": "Role",
         "filters": [["name", "in", ["Delivery Partner","Sales Rep"]]]
     },
-
+    {
+        "dt": "Workflow",
+        "filters": [["name", "in", ["Quotation Workflow"]]],
+    },
 ]
 
 after_install = ["dms.customisation.warehouse.create_custom_fields", "dms.setup.navbar.add_overview_navbar_item"]

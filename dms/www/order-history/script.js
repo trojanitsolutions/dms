@@ -356,6 +356,19 @@ if (deliveryDateEl) {
 	});
 }
 
+// When the doctype has an active Workflow, offer its states in the status filter.
+async function addWorkflowStatusOptions(doctype){
+	const select=document.getElementById('status-filter');
+	if(!select)return;
+	const states=await get('dms.api.sales.get_workflow_states',{doctype});
+	if(!states||!states.length)return;
+	const group=document.createElement('optgroup');
+	group.label='Workflow';
+	states.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;group.appendChild(o)});
+	select.appendChild(group);
+}
+addWorkflowStatusOptions('Sales Order');
+
 const statusEl = document.getElementById('status-filter');
 if (statusEl) {
 	statusEl.addEventListener('change',e=>{

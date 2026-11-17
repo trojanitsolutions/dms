@@ -1,4 +1,5 @@
-"""Read-only notification feed: changes made by other people to the session user's own Sales Orders.
+"""Read-only notification feed: changes made by other people to the session user's own
+Sales Orders, Quotations and Sales Invoices.
 
 Built from records Frappe already keeps (Version, Comment, Delivery Note Item, Sales Invoice Item).
 No new DocType, no hooks.
@@ -17,6 +18,8 @@ LOOKBACK_DAYS = 30
 MAX_ORDERS = 500
 MAX_LIMIT = 50
 COMMENT_TYPES = ("Comment", "Info", "Workflow", "Assigned", "Attachment")
+# Doctypes whose own changes (Version, Comment) notify their creator; the noun is used in titles.
+WATCHED_DOCTYPES = {"Sales Order": "Order", "Quotation": "Quotation", "Sales Invoice": "Invoice"}
 SKIP_FIELDS = {"modified", "modified_by", "creation", "idx", "_comments", "_assign", "_seen", "_liked_by"}
 
 
@@ -42,7 +45,7 @@ def _add_scope(filters, since=None, user=None):
 
 
 def _short(value, length=40):
-	text = "" if value is None else str(value)
+	text = "" if value is None else strip_html(str(value)).strip()
 	return text if len(text) <= length else text[: length - 1] + "…"
 
 
@@ -54,9 +57,10 @@ def _full_names(users):
 	return {r.name: r.full_name or r.name for r in rows}
 
 
-def _version_items(orders, since, user):
-	meta = frappe.get_meta("Sales Order")
-	filters = {"ref_doctype": "Sales Order", "docname": ["in", list(orders)]}
+def _version_items(doctype, docs, since, user):
+	meta = frappe.get_meta(doctype)
+	noun = WATCHED_DOCTYPES[doctype]
+	filters = {"ref_doctype": doctype, "docname": ["in", list(docs)]}
 	_add_scope(filters, since, user)
 	rows = frappe.get_all(
 		"Version",
@@ -71,13 +75,13 @@ def _version_items(orders, since, user):
 			data = json.loads(r.data or "{}")
 		except ValueError:
 			continue
-		kind, title, parts = "change", _("Order updated"), []
+		kind, title, parts = "change", _("{0} updated").format(_(noun)), []
 		for field, old, new in data.get("changed") or []:
 			if field == "docstatus":
 				if new == 1:
-					kind, title = "submit", _("Order submitted")
+					kind, title = "submit", _("{0} submitted").format(_(noun))
 				elif new == 2:
-					kind, title = "cancel", _("Order cancelled")
+					kind, title = "cancel", _("{0} cancelled").format(_(noun))
 				continue
 			if field in SKIP_FIELDS or (not old and not new):
 				continue
@@ -91,16 +95,17 @@ def _version_items(orders, since, user):
 		if len(parts) > 2:
 			detail += " " + _("and {0} more").format(len(parts) - 2)
 		items.append({
-			"id": f"Version:{r.name}", "kind": kind, "order": r.docname,
+			"id": f"Version:{r.name}", "kind": kind, "doctype": doctype, "order": r.docname,
 			"owner": r.owner, "time": r.creation, "title": title, "detail": detail,
 		})
 	return items
 
 
-def _comment_items(orders, since, user):
+def _comment_items(doctype, docs, since, user):
+	noun = WATCHED_DOCTYPES[doctype]
 	filters = {
-		"reference_doctype": "Sales Order",
-		"reference_name": ["in", list(orders)],
+		"reference_doctype": doctype,
+		"reference_name": ["in", list(docs)],
 		"comment_type": ["in", COMMENT_TYPES],
 	}
 	_add_scope(filters, since, user)
@@ -112,14 +117,14 @@ def _comment_items(orders, since, user):
 		limit_page_length=200,
 	)
 	titles = {
-		"Comment": _("New comment"), "Info": _("Order activity"), "Workflow": _("Workflow update"),
+		"Comment": _("New comment"), "Info": _("{0} activity").format(_(noun)), "Workflow": _("Workflow update"),
 		"Assigned": _("Assignment"), "Attachment": _("File attached"),
 	}
 	return [{
 		"id": f"Comment:{r.name}",
 		"kind": "comment" if r.comment_type == "Comment" else "change",
-		"order": r.reference_name, "owner": r.owner, "time": r.creation,
-		"title": titles.get(r.comment_type, _("Order activity")),
+		"doctype": doctype, "order": r.reference_name, "owner": r.owner, "time": r.creation,
+		"title": titles.get(r.comment_type, titles["Info"]),
 		"detail": _short(strip_html(r.content or "").strip(), 140),
 	} for r in rows]
 
@@ -140,31 +145,37 @@ def _linked_items(orders, since, user, doctype, child_doctype, link_field, kind)
 		query = query.where(parent.creation >= since)
 	rows = query.distinct().limit(200).run(as_dict=True)
 	return [{
-		"id": f"{doctype}:{r.name}:{r.sales_order}", "kind": kind, "order": r.sales_order,
+		"id": f"{doctype}:{r.name}:{r.sales_order}", "kind": kind, "doctype": "Sales Order", "order": r.sales_order,
 		"owner": r.owner, "time": r.creation,
 		"title": _("{0} created").format(_(doctype)), "detail": r.name,
 	} for r in rows]
 
 
+def _owned_docs(doctype, user, since):
+	"""The user's own documents of doctype touched in the lookback window, keyed by name."""
+	fields = ["name", "customer_name"] + (["is_return"] if doctype == "Sales Invoice" else [])
+	return {
+		r.name: r
+		for r in frappe.get_all(
+			doctype,
+			filters={"owner": user, "modified": [">=", since]},
+			fields=fields,
+			order_by="modified desc",
+			limit_page_length=MAX_ORDERS,
+		)
+	}
+
+
 @frappe.whitelist(methods=["GET"])
 def get_notifications(limit: int = 30):
-	"""Changes by other people to Sales Orders the session user created, newest first."""
+	"""Changes by other people to Sales Orders, Quotations and Sales Invoices the session user created, newest first."""
 	_require_login()
 	user = frappe.session.user
 	limit = max(1, min(cint(limit) or 30, MAX_LIMIT))
 	since = add_days(now_datetime(), -LOOKBACK_DAYS)
 
-	orders = {
-		r.name: r.customer_name
-		for r in frappe.get_all(
-			"Sales Order",
-			filters={"owner": user, "modified": [">=", since]},
-			fields=["name", "customer_name"],
-			order_by="modified desc",
-			limit_page_length=MAX_ORDERS,
-		)
-	}
-	if not orders:
+	owned = {doctype: _owned_docs(doctype, user, since) for doctype in WATCHED_DOCTYPES}
+	if not any(owned.values()):
 		return {"items": [], "unread": 0}
 
 	# Items before the last "Clear all" are hidden; the orders list keeps the full lookback window.
@@ -173,12 +184,14 @@ def get_notifications(limit: int = 30):
 	if cleared_dt and cleared_dt > since:
 		since = cleared_dt
 
-	items = (
-		_version_items(orders, since, user)
-		+ _comment_items(orders, since, user)
-		+ _linked_items(orders, since, user, "Delivery Note", "Delivery Note Item", "against_sales_order", "delivery")
-		+ _linked_items(orders, since, user, "Sales Invoice", "Sales Invoice Item", "sales_order", "invoice")
-	)
+	items = []
+	for doctype, docs in owned.items():
+		if docs:
+			items += _version_items(doctype, docs, since, user) + _comment_items(doctype, docs, since, user)
+	orders = owned["Sales Order"]
+	if orders:
+		items += _linked_items(orders, since, user, "Delivery Note", "Delivery Note Item", "against_sales_order", "delivery")
+		items += _linked_items(orders, since, user, "Sales Invoice", "Sales Invoice Item", "sales_order", "invoice")
 	if cleared_dt:
 		items = [i for i in items if get_datetime(i["time"]) > cleared_dt]
 	items.sort(key=lambda i: get_datetime(i["time"]), reverse=True)
@@ -189,7 +202,9 @@ def get_notifications(limit: int = 30):
 	names = _full_names(i["owner"] for i in items)
 	unread = 0
 	for i in items:
-		i["customer_name"] = orders.get(i["order"]) or ""
+		doc = owned[i["doctype"]].get(i["order"]) or {}
+		i["customer_name"] = doc.get("customer_name") or ""
+		i["is_return"] = cint(doc.get("is_return"))
 		i["by"] = names.get(i.pop("owner"), "")
 		i["unread"] = seen_dt is None or get_datetime(i["time"]) > seen_dt
 		unread += i["unread"]

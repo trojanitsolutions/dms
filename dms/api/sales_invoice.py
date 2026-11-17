@@ -1,11 +1,10 @@
 import json
-from contextlib import contextmanager
 
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate
 
-from dms.utils import get_owner_filter
+from dms.utils import apply_status_filter, apply_workflow_status, get_owner_filter
 
 INVOICE_FIELDS = [
 	"name", "customer", "customer_name", "posting_date", "due_date",
@@ -31,8 +30,7 @@ def get_sales_invoices(kind: str = "invoices", search: str = "", invoice_id: str
 	invoice_id / customer / sales_order: separate search fields; all filled ones must match.
 	On returns, invoice_id also matches the original invoice (return_against).
 	"""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+	_require_permission("read")
 
 	limit_start = cint(limit_start)
 	limit_page_length = cint(limit_page_length) or 20
@@ -55,8 +53,7 @@ def get_sales_invoices(kind: str = "invoices", search: str = "", invoice_id: str
 	date_filter = _posting_date_filter(posting_date, from_date, to_date)
 	if date_filter:
 		filters["posting_date"] = date_filter
-	if status and status != "All":
-		filters["status"] = status
+	apply_status_filter("Sales Invoice", filters, status)
 
 	# Separate search fields. Each adds its own AND condition, so use list filters
 	# (a dict can hold only one condition on "name").
@@ -80,7 +77,8 @@ def get_sales_invoices(kind: str = "invoices", search: str = "", invoice_id: str
 		if billed_orders:
 			or_filters.append(["name", "in", billed_orders])
 
-	invoices = frappe.get_all(
+	# get_list applies role and user permissions of the session user.
+	invoices = frappe.get_list(
 		"Sales Invoice",
 		filters=filters,
 		or_filters=or_filters,
@@ -91,18 +89,20 @@ def get_sales_invoices(kind: str = "invoices", search: str = "", invoice_id: str
 	)
 
 	has_more = len(invoices) > limit_page_length
-	invoices = invoices[:limit_page_length]
+	invoices = apply_workflow_status("Sales Invoice", invoices[:limit_page_length])
 	_attach_items(invoices)
 	_attach_return_flags(invoices)
-	return {"invoices": invoices, "has_more": has_more, "based_on": based_on, "kind": "returns" if returns else "invoices"}
+	return {
+		"invoices": invoices, "has_more": has_more, "based_on": based_on,
+		"kind": "returns" if returns else "invoices", "can_return": can_create_return(),
+	}
 
 
 @frappe.whitelist(methods=["GET"])
 def search_invoice_customers(txt: str = "", kind: str = "invoices"):
 	"""Customer suggestions (ID and name) for the Customer search field.
 	Only customers on invoices the user can see in the given tab."""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+	_require_permission("read")
 	returns = kind == "returns"
 	based_on, show = _invoice_settings()
 	filters = {
@@ -116,7 +116,7 @@ def search_invoice_customers(txt: str = "", kind: str = "invoices"):
 		filters["name"] = ["in", visible]
 	txt = txt.strip()
 	or_filters = [["customer", "like", f"%{txt}%"], ["customer_name", "like", f"%{txt}%"]] if txt else None
-	return frappe.get_all(
+	return frappe.get_list(
 		"Sales Invoice",
 		filters=filters,
 		or_filters=or_filters,
@@ -258,7 +258,7 @@ def get_return_items(invoice: str):
 def _existing_returns(invoice):
 	"""Draft and submitted credit notes made against the invoice, with their items.
 	Drafts come first, newest first within each group."""
-	returns = frappe.get_all(
+	returns = frappe.get_list(
 		"Sales Invoice",
 		filters={"return_against": invoice, "is_return": 1, "docstatus": ["<", 2]},
 		fields=["name", "docstatus", "posting_date", "grand_total", "rounded_total", "disable_rounded_total"],
@@ -295,7 +295,7 @@ def create_sales_return(invoice: str, items):
 		row.idx = idx
 	return_doc.run_method("calculate_taxes_and_totals")
 	_scale_pos_refund(return_doc)
-	return_doc.insert(ignore_permissions=True)
+	return_doc.insert()
 	return {"name": return_doc.name}
 
 
@@ -325,8 +325,7 @@ def _build_return(invoice):
 	from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 
 	_assert_can_return(invoice)
-	with _as_administrator():
-		return_doc = make_sales_return(invoice)
+	return_doc = make_sales_return(invoice)
 	in_drafts = _qty_in_draft_returns(invoice)
 	for row in return_doc.items:
 		# ERPNext only subtracts submitted returns; open drafts count too.
@@ -341,22 +340,6 @@ def _throw_nothing_left(invoice):
 	if drafts:
 		frappe.throw(_("Everything left on {0} is already in draft return {1}").format(invoice, ", ".join(drafts)))
 	frappe.throw(_("Everything on {0} has already been returned").format(invoice))
-
-
-@contextmanager
-def _as_administrator():
-	"""ERPNext's return mapper checks Sales Invoice read/create rights, which sales
-	users lack. Access is already checked by _assert_can_return."""
-	user = frappe.session.user
-	frappe.session.user = "Administrator"
-	frappe.local.role_permissions = {}
-	frappe.local.user_perms = None
-	try:
-		yield
-	finally:
-		frappe.session.user = user
-		frappe.local.role_permissions = {}
-		frappe.local.user_perms = None
 
 
 def _qty_in_draft_returns(invoice):
@@ -374,15 +357,33 @@ def _qty_in_draft_returns(invoice):
 
 
 def _assert_can_return(invoice):
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+	if not can_create_return():
+		frappe.throw(_("You are not permitted to create Sales Returns"), frappe.PermissionError)
 	inv = frappe.db.get_value("Sales Invoice", invoice, ["docstatus", "is_return"], as_dict=True)
 	if not inv:
 		frappe.throw(_("Sales Invoice {0} not found").format(invoice), frappe.DoesNotExistError)
 	if inv.docstatus != 1 or inv.is_return:
 		frappe.throw(_("Only submitted sales invoices can be returned"))
+	if not frappe.has_permission("Sales Invoice", "read", doc=invoice):
+		frappe.throw(_("You are not permitted to read {0}").format(invoice), frappe.PermissionError)
 
 	based_on, show = _invoice_settings()
 	visible = _individual_invoice_names(show)
 	if based_on == "Draft" or (visible is not None and invoice not in visible):
 		frappe.throw(_("You cannot return this invoice"), frappe.PermissionError)
+
+
+# ---------------------------------------------------------------------------
+# Permissions: Sales Invoice role permissions (Role Permission Manager) only.
+# ---------------------------------------------------------------------------
+
+def _require_permission(ptype):
+	if frappe.session.user == "Guest":
+		frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+	if not frappe.has_permission("Sales Invoice", ptype):
+		frappe.throw(_("You are not permitted to {0} Sales Invoices").format(_(ptype)), frappe.PermissionError)
+
+
+def can_create_return():
+	"""A return is a new Sales Invoice, so it needs Sales Invoice create permission."""
+	return frappe.session.user != "Guest" and bool(frappe.has_permission("Sales Invoice", "create"))

@@ -165,10 +165,12 @@
             <div class="quick-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/></svg></div>
             <div class="quick-label">Product Catalog</div>
           </a>
+          {% if can_return %}
           <button type="button" class="quick-item" id="quick-return">
             <div class="quick-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div>
             <div class="quick-label">Sales Return</div>
           </button>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -225,6 +227,6 @@
 <script src="/assets/dms/js/sales_return.js?v=r3"></script>
 <script src="/sales-home/script.js?v=r1"></script>
 <script src="/assets/dms/js/quotation_party_modal.js?v=glass2"></script>
-<script src="/assets/dms/js/order_notifications.js?v=n2"></script>
+<script src="/assets/dms/js/order_notifications.js?v=n3"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Order notifications: a bell on every Sales page that lists changes other people
-// made to the Sales Orders the signed-in sales person created. Read-only feed.
+// made to the Sales Orders, Quotations and Sales Invoices the signed-in sales person created. Read-only feed.
 (function(){
 	if(window.__dmsOrderNotifications)return;
 	window.__dmsOrderNotifications=true;
@@ -111,8 +111,16 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 		btn.setAttribute('aria-label',n?`Notifications, ${n} unread`:'Notifications');
 	}
 
+	// Each notification opens the page that lists its document.
+	function itemHref(i){
+		const name=encodeURIComponent(i.order);
+		if(i.doctype==='Quotation')return '/quotation-history?quotation='+name;
+		if(i.doctype==='Sales Invoice')return '/sales-invoice?invoice='+name+(i.is_return?'#returns':'');
+		return '/order-history?order='+name+(i.kind==='comment'?'&comments=1':'');
+	}
+
 	function itemHtml(i){
-		const href='/order-history?order='+encodeURIComponent(i.order)+(i.kind==='comment'?'&comments=1':'');
+		const href=itemHref(i);
 		const exact=parseTime(i.time).toLocaleString();
 		return `<a class="on-item on-k-${esc(i.kind)}${i.unread?' unread':''}" href="${esc(href)}">
 			<span class="on-icon">${ICONS[i.kind]||ICONS.change}</span>
@@ -131,7 +139,7 @@ body.on-bell #list-view>.content>.search-bar:first-child{margin-right:56px}
 		clearBtn.disabled=!items.length;
 		if(!items.length){
 			resetClear();
-			list.innerHTML=`<div class="on-state">${ICON_BELL}${justCleared?'You’re all caught up.':'No changes to your orders in the last 30 days.'}</div>`;
+			list.innerHTML=`<div class="on-state">${ICON_BELL}${justCleared?'You’re all caught up.':'No changes to your orders, quotations or invoices in the last 30 days.'}</div>`;
 			return;
 		}
 		list.innerHTML=items.map(itemHtml).join('');

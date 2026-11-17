@@ -1,11 +1,14 @@
 import frappe
 
+from dms.api.sales_invoice import can_create_return
+
 
 def get_context(context):
     context.no_cache = 1
     _require_sales_rep()
     context.full_name = frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
     context.company_logo = _get_company_logo()
+    context.can_return = can_create_return()
 
 
 def _require_sales_rep():

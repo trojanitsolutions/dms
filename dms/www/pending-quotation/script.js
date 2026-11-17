@@ -65,7 +65,9 @@ function render(){
 	const searchTerm=document.getElementById('search-input').value.toLowerCase();
 	filtered=quotations.filter(q=>q.name.toLowerCase().includes(searchTerm)||(q.customer_name||'').toLowerCase().includes(searchTerm)||(q.party_name||'').toLowerCase().includes(searchTerm));
 	const toShow=filtered.slice(0,shown);
-	const rows=toShow.map(q=>`<tr><td class="quotation-number-cell">${esc(q.name)}</td><td>${esc(q.customer_name||q.party_name)}${q.party_type&&q.party_type!=='Customer'?`<span class="quotation-party-tag">${esc(q.party_type)}</span>`:''}</td><td><div class="quotation-date-cell"><div class="quotation-date-main">${fmtDate(q.transaction_date)}</div><div class="quotation-date-time">${fmtTime(q.transaction_date)}</div></div></td><td>${fmtDate(q.valid_till)}</td><td>${q.item_count||0}</td><td>${fmt(docTotal(q))}</td><td><select class="action-select" data-name="${esc(q.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select></td></tr>`).join('');
+	const wf=quotations.some(q=>'doc_status' in q);
+	document.getElementById('status-col').hidden=!wf;
+	const rows=toShow.map(q=>`<tr><td class="quotation-number-cell">${esc(q.name)}</td><td>${esc(q.customer_name||q.party_name)}${q.party_type&&q.party_type!=='Customer'?`<span class="quotation-party-tag">${esc(q.party_type)}</span>`:''}</td><td><div class="quotation-date-cell"><div class="quotation-date-main">${fmtDate(q.transaction_date)}</div><div class="quotation-date-time">${fmtTime(q.transaction_date)}</div></div></td><td>${fmtDate(q.valid_till)}</td><td>${q.item_count||0}</td><td>${fmt(docTotal(q))}</td>${wf?`<td><span class="workflow-badge">${esc(q.status)}</span></td>`:''}<td><select class="action-select" data-name="${esc(q.name)}"><option value="">Select Action</option><option value="reopen">Reopen</option><option value="submit">Submit</option><option value="discard">Discard</option></select></td></tr>`).join('');
 	document.getElementById('quotation-list').innerHTML=rows;
 	const total=filtered.length;
 	const displaying=Math.min(shown,total);

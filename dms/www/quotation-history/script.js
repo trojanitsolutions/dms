@@ -260,6 +260,19 @@ if (partyTypeEl) {
 	});
 }
 
+// When the doctype has an active Workflow, offer its states in the status filter.
+async function addWorkflowStatusOptions(doctype){
+	const select=document.getElementById('status-filter');
+	if(!select)return;
+	const states=await get('dms.api.sales.get_workflow_states',{doctype});
+	if(!states||!states.length)return;
+	const group=document.createElement('optgroup');
+	group.label='Workflow';
+	states.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;group.appendChild(o)});
+	select.appendChild(group);
+}
+addWorkflowStatusOptions('Quotation');
+
 const statusEl = document.getElementById('status-filter');
 if (statusEl) {
 	statusEl.addEventListener('change',e=>{
@@ -377,7 +390,8 @@ async function loadQuotationDetail(name){
 		}
 
 		const createSoBtn=document.getElementById('quotation-detail-create-so');
-		if(canConvert(q.status)){
+		// Conversion depends on the document status, not the workflow state shown in the badge.
+		if(canConvert(q.doc_status||q.status)){
 			createSoBtn.style.display='inline-block';
 		}else{
 			createSoBtn.style.display='none';

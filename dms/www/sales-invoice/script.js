@@ -20,7 +20,7 @@ function fmtDate(dateStr){
 }
 
 const PAGE_SIZE=20;
-const state={kind:location.hash==='#returns'?'returns':'invoices',invoiceId:'',customer:'',salesOrder:'',postingDate:'',fromDate:'',toDate:'',status:'',offset:0,loading:false,hasMore:true,names:new Set(),seq:0};
+const state={kind:location.hash==='#returns'?'returns':'invoices',invoiceId:'',customer:'',salesOrder:'',postingDate:'',fromDate:'',toDate:'',status:'',offset:0,loading:false,hasMore:true,names:new Set(),seq:0,canReturn:false};
 const listEl=document.getElementById('order-list');
 
 async function loadNextPage(){
@@ -42,6 +42,7 @@ async function loadNextPage(){
 	if(!result){toggle('error-state',true);return}
 
 	applyMode(result.based_on);
+	setCanReturn(!!result.can_return);
 	state.offset+=PAGE_SIZE;
 	state.hasMore=!!result.has_more;
 	const fresh=result.invoices.filter(i=>!state.names.has(i.name));
@@ -147,8 +148,15 @@ function ordersLine(inv){
 	return orders.length?`<div class="invoice-orders">Order <strong>${orders.map(esc).join(', ')}</strong></div>`:'';
 }
 
+// Return actions need Sales Invoice create permission (sent by the API as can_return).
+function setCanReturn(on){
+	state.canReturn=on;
+	const newBtn=document.getElementById('new-return-btn');
+	if(newBtn)newBtn.hidden=!on||state.kind!=='returns';
+}
+
 function returnAction(inv){
-	if(inv.docstatus!==1||inv.is_return)return '';
+	if(!state.canReturn||inv.docstatus!==1||inv.is_return)return '';
 	const tag=inv.has_returns?'<span class="invoice-return-tag">Has returns</span>':'';
 	return `${tag}<button type="button" class="invoice-return-btn" data-return="${esc(inv.name)}">Return</button>`;
 }
@@ -168,7 +176,7 @@ function setKind(kind){
 		tab.setAttribute('aria-selected',on?'true':'false');
 	});
 	const newBtn=document.getElementById('new-return-btn');
-	if(newBtn)newBtn.hidden=kind!=='returns';
+	if(newBtn)newBtn.hidden=!state.canReturn||kind!=='returns';
 	history.replaceState(null,'',kind==='returns'?'#returns':location.pathname+location.search);
 	// Drop a status that the new tab does not offer.
 	const select=document.getElementById('status-filter');
@@ -265,6 +273,28 @@ function onRangeChange(){
 document.getElementById('from-date-filter')?.addEventListener('change',onRangeChange);
 document.getElementById('to-date-filter')?.addEventListener('change',onRangeChange);
 document.getElementById('status-filter')?.addEventListener('change',e=>{state.status=e.target.value;resetAndReload()});
+
+// When the doctype has an active Workflow, offer its states in the status filter.
+async function addWorkflowStatusOptions(doctype){
+	const select=document.getElementById('status-filter');
+	if(!select)return;
+	const states=await get('dms.api.sales.get_workflow_states',{doctype});
+	if(!states||!states.length)return;
+	const group=document.createElement('optgroup');
+	group.label='Workflow';
+	states.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;group.appendChild(o)});
+	select.appendChild(group);
+}
+addWorkflowStatusOptions('Sales Invoice');
+
+// Deep link from the notification bell: /sales-invoice?invoice=<name> fills the Invoice ID search.
+(function(){
+	const invoice=(new URLSearchParams(location.search).get('invoice')||'').trim();
+	if(!invoice)return;
+	state.invoiceId=invoice;
+	const input=document.getElementById('search-invoice');
+	if(input)input.value=invoice;
+})();
 document.getElementById('retry-btn')?.addEventListener('click',loadNextPage);
 
 new IntersectionObserver(entries=>{

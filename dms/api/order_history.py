@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
-from dms.utils import get_owner_filter
+from dms.utils import apply_status_filter, apply_workflow_status, get_owner_filter
 
 
 def _require_login():
@@ -26,8 +26,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 		filters["transaction_date"] = posting_date
 	if delivery_date:
 		filters["delivery_date"] = delivery_date
-	if status and status != "All":
-		filters["status"] = status
+	apply_status_filter("Sales Order", filters, status)
 
 	or_filters = None
 	if search:
@@ -48,7 +47,7 @@ def get_order_history(search: str = "", limit_start: int = 0, limit_page_length:
 	)
 
 	has_more = len(orders) > limit_page_length
-	orders = orders[:limit_page_length]
+	orders = apply_workflow_status("Sales Order", orders[:limit_page_length])
 
 	if orders:
 		order_names = [o["name"] for o in orders]
