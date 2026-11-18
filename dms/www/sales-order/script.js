@@ -37,6 +37,7 @@ let renderedCount=0;
 let scrollSentinel=null,sentinelObserver=null;
 let modalItemCode=null;
 let orderDiscountType='',orderDiscountValue=0;
+let discountError='';
 let STOCK_VALIDATION_DISABLED=false;
 let pendingAdd=new Set();
 
@@ -67,10 +68,25 @@ function findUom(item,uom){
 }
 function lineCf(line){return line?(line.cf||1):1}
 function stockQty(line){return line?line.qty*lineCf(line):0}
-function lineRate(line){
+// set selling price for the line's UOM: the floor a rep's rate may not go below
+function baseRate(line){
   const u=findUom(line.item,line.uom);
   return u&&u.rate!==undefined?u.rate:line.item.standard_rate*lineCf(line);
 }
+function lineRate(line){return line.rate!==undefined?line.rate:baseRate(line)}
+function maxDisc(item){return Number(item.max_discount)||0}
+function discPct(line){
+  const v=Number(line.discountValue)||0;
+  if(line.discountType==='Percentage')return v;
+  if(line.discountType==='Amount'){const r=lineRate(line);return r?v/r*100:0}
+  return 0;
+}
+function discLimitFor(line){
+  const cap=maxDisc(line.item);
+  if(!cap||!line.discountType)return null;
+  return line.discountType==='Percentage'?cap:Math.floor(lineRate(line)*cap)/100;
+}
+function rateEditable(){return !LOCKED_ITEMS&&!EDITING_SUBMITTED}
 // whole units of the line's UOM that still fit into available stock
 function maxQtyFor(code){
   const line=cart[code];
@@ -447,6 +463,7 @@ async function refreshTotals(){
 		document.getElementById('cart-taxes-rows').innerHTML='';
 		document.getElementById('discount-row').style.display='none';
 		currentGrandTotal=0;
+		discountError='';
 		updateCreditWarning();
 		return;
 	}
@@ -471,6 +488,11 @@ async function refreshTotals(){
 				additional_discount_value:orderDiscountValue
 			});
 			if(!result)return;
+			const newDiscErr=result.discount_error||'';
+			if(newDiscErr&&newDiscErr!==discountError)alert(newDiscErr);
+			discountError=newDiscErr;
+			const odInput=document.getElementById('order-discount-value');
+			if(odInput)odInput.style.borderColor=discountError&&orderDiscountType?'#dc2626':'';
 			result.items.forEach(resItem=>{
 				const el=document.querySelector(`.cart-item-total[data-item-code="${CSS.escape(resItem.item_code)}"]`);
 				if(el)el.textContent=fmt(resItem.amount);
@@ -614,13 +636,14 @@ function updateCartUI(){
     const minusDis=qty<=1?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const plusDis=!canAddMore(code)?' disabled style="opacity:.45;cursor:not-allowed"':'';
     const discInputDis=!discountType||LOCKED_ITEMS||EDITING_SUBMITTED?' disabled':'';
-    const discInputMax=discountType==='Percentage'?' max="100"':'';
+    const discLimit=discLimitFor(line);
+    const discInputMax=discLimit!==null?` max="${discLimit}"`:(discountType==='Percentage'?' max="100"':'');
     const removeBtn=!LOCKED_ITEMS?`<button class="cart-remove" data-item-code="${item.name}" title="Remove">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
       </button>`:'';
     const descCtrl=!LOCKED_ITEMS&&!EDITING_SUBMITTED?`<div class="cart-desc-ctrl">${descMarkup(code,description)}</div>`:'';
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-code">${item.name}</div><div class="cart-item-price"><span class="cart-item-rate" data-item-code="${code}">${fmt(lineRate(line))}</span> / ${uomMarkup(line)}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-code">${item.name}</div><div class="cart-item-price">${rateEditable()?`<input type="number" class="cart-item-rate-input" data-item-code="${code}" min="${baseRate(line)}" step="0.01" value="${lineRate(line)}" aria-label="Rate">`:`<span class="cart-item-rate" data-item-code="${code}">${fmt(lineRate(line))}</span>`} / ${uomMarkup(line)}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
       <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"${LOCKED_ITEMS?' disabled':''}><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
       ${descCtrl}
       <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
@@ -844,6 +867,13 @@ function renderItemModal(){
 }
 
 function validateOrderInputs(){
+	if(rateEditable()){
+		const low=Object.values(cart).find(l=>lineRate(l)<baseRate(l));
+		if(low){alert(`Rate for ${low.item.item_name} cannot be lower than the selling price ${fmt(baseRate(low))}.`);return false}
+	}
+	const overDisc=Object.values(cart).find(l=>maxDisc(l.item)&&discPct(l)>maxDisc(l.item)+1e-9);
+	if(overDisc){alert(`Max discount for ${overDisc.item.item_name} is ${maxDisc(overDisc.item)}%.`);return false}
+	if(discountError){alert(discountError);return false}
 	const items=Object.values(cart);
 	if(!items.length){alert('Add at least one item.');return false}
 	if(!CUSTOMER_ID){alert('No customer selected.');return false}
@@ -887,9 +917,9 @@ function buildOrderPayload(){
 
 function buildTransItemsPayload(){
 	return Object.values(cart).map(line=>{
-		const {item,qty,docname,rate}=line;
+		const {item,qty,docname}=line;
 		const row={item_code:item.name,qty,uom:line.uom,conversion_factor:lineCf(line)};
-		row.rate=docname&&rate!==undefined?rate:lineRate(line);
+		row.rate=lineRate(line);
 		if(docname)row.docname=docname;
 		return row;
 	});
@@ -1152,6 +1182,7 @@ async function saveSubmittedOrderEdits(){
       if(!item)return;
       const cartLine=newCartLine(item,it.qty,{discountType:it.discount_type||'',discountValue:it.discount_value||0,description:it.description||'',uom:it.uom||item.stock_uom});
       if(EDITING_SUBMITTED){cartLine.docname=it.docname;cartLine.rate=it.rate}
+      else if(!LOCKED_ITEMS&&it.rate!==undefined)cartLine.rate=Math.max(Number(it.rate)||0,baseRate(cartLine));
       cart[it.item_code]=cartLine;
     });
   }
@@ -1374,6 +1405,31 @@ document.addEventListener('click',e=>{
   }
 });
 
+// Rate: reps may raise it freely but never go below the set selling price.
+document.addEventListener('input',e=>{
+  const input=e.target;
+  if(!input.classList||!input.classList.contains('cart-item-rate-input'))return;
+  const line=cart[input.dataset.itemCode];if(!line)return;
+  const minRate=baseRate(line);
+  const newRate=parseFloat(input.value);
+  const tooLow=isNaN(newRate)||newRate<minRate;
+  input.style.borderColor=tooLow?'#EF4444':'';
+  if(!tooLow){line.rate=newRate;refreshTotals();}
+});
+document.addEventListener('change',e=>{
+  const input=e.target;
+  if(!input.classList||!input.classList.contains('cart-item-rate-input'))return;
+  const line=cart[input.dataset.itemCode];if(!line)return;
+  const minRate=baseRate(line);
+  const newRate=parseFloat(input.value);
+  input.style.borderColor='';
+  if(isNaN(newRate)||newRate<minRate){
+    input.value=minRate;
+    line.rate=minRate;
+    alert(`Rate cannot be lower than the selling price ${fmt(minRate)}.`);
+  }else line.rate=newRate;
+  refreshTotals();
+});
 document.addEventListener('change',e=>{
   if(e.target.classList.contains('desc-cb')){
     const code=e.target.dataset.itemCode;
@@ -1406,7 +1462,9 @@ document.addEventListener('change',e=>{
       const valInput=document.querySelector(`.item-disc-value[data-item-code="${CSS.escape(code)}"]`);
       if(valInput){
         valInput.disabled=!e.target.value;
-        if(e.target.value==='Percentage')valInput.max='100';
+        const lim=discLimitFor(cart[code]);
+        if(lim!==null)valInput.max=String(lim);
+        else if(e.target.value==='Percentage')valInput.max='100';
         else valInput.removeAttribute('max');
         if(!e.target.value)valInput.value='0';
       }
@@ -1415,7 +1473,16 @@ document.addEventListener('change',e=>{
   }
   if(e.target.classList.contains('item-disc-value')){
     const code=e.target.dataset.itemCode;
-    if(cart[code])cart[code].discountValue=parseFloat(e.target.value)||0,refreshTotals();
+    const line=cart[code];
+    if(line){
+      line.discountValue=parseFloat(e.target.value)||0;
+      const lim=discLimitFor(line);
+      if(lim!==null&&line.discountValue>lim){
+        alert(`Max discount for ${line.item.item_name} is ${maxDisc(line.item)}%.`);
+        line.discountValue=lim;e.target.value=lim;
+      }
+      refreshTotals();
+    }
   }
 });
 

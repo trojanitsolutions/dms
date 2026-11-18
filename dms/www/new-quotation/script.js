@@ -514,7 +514,7 @@ function updateCartUI(){
     const discInputDis=!discountType?' disabled':'';
     const discInputMax=discountType==='Percentage'?' max="100"':'';
     return`<div class="cart-item">
-      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><input type="number" class="cart-item-rate-input" data-item-code="${code}" min="0" step="0.01" value="${rate!==undefined?rate:item.standard_rate}" aria-label="Rate"> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
+      <div class="cart-item-info"><div class="cart-item-name">${item.item_name}</div><div class="cart-item-price"><input type="number" class="cart-item-rate-input" data-item-code="${code}" min="${item.standard_rate||0}" step="0.01" value="${rate!==undefined?rate:item.standard_rate}" aria-label="Rate"> / ${item.stock_uom||'ea'}</div><div class="qty-ctrl cart-qty-ctrl"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="-1"${minusDis}>−</button><input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-num cart-qty-num" data-item-code="${code}" value="${qty}" aria-label="Quantity"><button class="qty-btn cart-qty-btn" data-item-code="${code}" data-delta="1"${plusDis}>+</button></div></div>
       <div class="item-discount-ctrl"><select class="item-disc-type" data-item-code="${code}"><option value="">No disc.</option><option value="Percentage"${discountType==='Percentage'?' selected':''}>Percentage</option><option value="Amount"${discountType==='Amount'?' selected':''}>Amount</option></select><input type="number" class="item-disc-value" data-item-code="${code}" min="0" value="${discountValue}"${discInputDis}${discInputMax}></div>
       <div class="cart-item-total" data-item-code="${code}">QAR 0.00</div>
       <button class="cart-remove" data-item-code="${item.name}" title="Remove">
@@ -831,6 +831,8 @@ function validateQuotationInputs(){
 	if(!partyId){alert('Select a customer or lead first.');return false}
 	const wh=getWarehouse();
 	if(!wh){alert('Select a warehouse first.');return false}
+	const lowRate=items.find(l=>l.rate!==undefined&&l.rate<(Number(l.item.standard_rate)||0));
+	if(lowRate){alert(`Rate for ${lowRate.item.item_name} cannot be lower than the selling price ${fmt(lowRate.item.standard_rate)}.`);return false}
 	const qDate=document.getElementById('quotation-date').value;
 	if(qDate&&qDate<new Date().toISOString().slice(0,10)){alert('Quotation date cannot be a past date.');return false}
 	const validTill=document.getElementById('valid-till').value;
@@ -940,12 +942,6 @@ async function createQuotation(){
 		}else if(e.target.classList.contains('cart-qty-num')){
 			const code=e.target.dataset.itemCode;
 			e.target.addEventListener('blur',()=>setQty(code,e.target.value),{once:true});
-		}else if(e.target.classList.contains('cart-item-rate-input')){
-			const code=e.target.dataset.itemCode;
-			e.target.addEventListener('input',()=>{
-				const newRate=parseFloat(e.target.value)||0;
-				if(cart[code]){cart[code].rate=newRate;refreshTotals();}
-			});
 		}else if(e.target.classList.contains('cart-qty-btn')){
 			const code=e.target.dataset.itemCode;
 			const delta=parseInt(e.target.dataset.delta,10);
@@ -964,6 +960,31 @@ async function createQuotation(){
 		if(e.target.id==='item-modal-overlay')closeItemModal();
 	});
 	document.getElementById('item-modal-close')?.addEventListener('click',closeItemModal);
+	// Rate: reps may raise it freely but never go below the set selling price.
+	document.addEventListener('input',e=>{
+		const input=e.target;
+		if(!input.classList||!input.classList.contains('cart-item-rate-input'))return;
+		const line=cart[input.dataset.itemCode];if(!line)return;
+		const minRate=Number(line.item.standard_rate)||0;
+		const newRate=parseFloat(input.value);
+		const tooLow=isNaN(newRate)||newRate<minRate;
+		input.style.borderColor=tooLow?'#EF4444':'';
+		if(!tooLow){line.rate=newRate;refreshTotals();}
+	});
+	document.addEventListener('change',e=>{
+		const input=e.target;
+		if(!input.classList||!input.classList.contains('cart-item-rate-input'))return;
+		const line=cart[input.dataset.itemCode];if(!line)return;
+		const minRate=Number(line.item.standard_rate)||0;
+		const newRate=parseFloat(input.value);
+		input.style.borderColor='';
+		if(isNaN(newRate)||newRate<minRate){
+			input.value=minRate;
+			line.rate=minRate;
+			alert(`Rate cannot be lower than the selling price ${fmt(minRate)}.`);
+		}else line.rate=newRate;
+		refreshTotals();
+	});
 	document.getElementById('order-discount-type')?.addEventListener('change',e=>{
 		orderDiscountType=e.currentTarget.value;
 		const valEl=document.getElementById('order-discount-value');

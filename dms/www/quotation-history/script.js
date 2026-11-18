@@ -299,13 +299,11 @@ let currentQuotation=null;
 function showListView(){
 	document.getElementById('quotation-list-view').hidden=false;
 	document.getElementById('quotation-detail-view').hidden=true;
-	document.getElementById('list-export-actions').hidden=false;
 }
 
 function showDetailView(){
 	document.getElementById('quotation-list-view').hidden=true;
 	document.getElementById('quotation-detail-view').hidden=false;
-	document.getElementById('list-export-actions').hidden=true;
 	document.getElementById('detail-export-error').hidden=true;
 }
 
@@ -345,14 +343,8 @@ async function downloadExport(method,args,btn,errorBox,fallbackName){
 	}
 }
 
-// List export: every quotation matching the current search and filters.
+// Detail export: the quotation currently open.
 ['pdf','xlsx'].forEach(fileFormat=>{
-	const btn=document.getElementById(`export-${fileFormat}-btn`);
-	btn.addEventListener('click',()=>downloadExport(
-		'dms.api.quotation.export_quotations',
-		{search:searchTerm,valid_till:validTill,status:status,party_type:partyTypeFilter,file_format:fileFormat},
-		btn,document.getElementById('export-error'),`Quotations.${fileFormat}`
-	));
 	const detailBtn=document.getElementById(`detail-export-${fileFormat}-btn`);
 	detailBtn.addEventListener('click',()=>{
 		if(!currentQuotation)return;

@@ -161,6 +161,7 @@ doc_events = {
 		"on_update": "dms.api.item_image_cache.queue_on_item_update",
 	},
 	"Sales Order": {
+		"validate": "dms.api.sales.validate_sales_order_max_discount",
 		"on_submit": "dms.automation.dn_si_auto_create.create_draft_si_from_so",
 	},
 	"Delivery Note": {

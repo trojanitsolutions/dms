@@ -7,7 +7,8 @@
  "field_order": [
   "disable_stock_validation",
   "sales_invoice_based_on",
-  "show_sales_invoice"
+  "show_sales_invoice",
+  "max_item_discount"
  ],
  "fields": [
   {
@@ -28,13 +29,19 @@
    "fieldtype": "Select",
    "label": "Show Sales Invoice",
    "options": "All\nIndividual"
+  },
+  {
+   "description": "Apply the global discount only to items without an existing discount. Items with predefined discounts should remain unchanged.",
+   "fieldname": "max_item_discount",
+   "fieldtype": "Percent",
+   "label": "Max Item Discount"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-17 09:35:11.030645",
+ "modified": "2026-11-18 10:54:03.710091",
  "modified_by": "Administrator",
  "module": "DMS",
  "name": "Sales Management Settings",

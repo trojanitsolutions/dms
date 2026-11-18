@@ -9,6 +9,7 @@ from dms.api.sales import (
 	_apply_order_level_discount,
 	_build_item_rows,
 	_rounding_disabled,
+	_validate_min_selling_rate,
 )
 from dms.api.quotation import _resolve_party, _validate_party, _validate_party_address
 
@@ -62,6 +63,7 @@ def get_quotation_totals(warehouse: str, items_json: str, customer: str = "", va
 	company = _get_default_company()
 	qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, "", transaction_date, party_type)
 	qtn.run_method("set_missing_values")
+	_validate_min_selling_rate(qtn)
 	_validate_item_discount_amounts(qtn)
 	_apply_order_level_discount(qtn, additional_discount_type, additional_discount_value)
 
@@ -103,6 +105,7 @@ def create_quotation(warehouse: str, items_json: str, customer: str = "", valid_
 
 		qtn = _build_quotation_doc(customer, warehouse, items, valid_till, customer_address, shipping_address, company, terms, transaction_date, party_type)
 		qtn.run_method("set_missing_values")
+		_validate_min_selling_rate(qtn)
 		_validate_item_discount_amounts(qtn)
 		_apply_order_level_discount(qtn, additional_discount_type, additional_discount_value)
 

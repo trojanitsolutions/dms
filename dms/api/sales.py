@@ -177,6 +177,99 @@ def _resolve_discount(discount_type, discount_value):
 		frappe.throw(_("Invalid discount type: {0}. Must be 'Percentage' or 'Amount'.").format(discount_type))
 
 
+def _get_min_selling_rate(item_code, uom, conversion_factor, price_list, transaction_date):
+	"""Set selling price for one UOM, resolved the same way the portal catalog prices items."""
+	from erpnext.stock.get_item_details import get_item_price
+
+	stock_uom = frappe.db.get_value("Item", item_code, "stock_uom")
+	cf = flt(conversion_factor) or 1
+	if uom and uom != stock_uom:
+		prices = get_item_price(
+			{"price_list": price_list, "uom": uom, "transaction_date": transaction_date},
+			item_code,
+			ignore_party=True,
+		)
+		uom_price = next((p for p in prices or [] if p.get("uom") == uom), None)
+		if uom_price:
+			return flt(uom_price.get("price_list_rate"))
+
+	prices = get_item_price(
+		{"price_list": price_list, "uom": stock_uom, "transaction_date": transaction_date},
+		item_code,
+		ignore_party=True,
+	)
+	stock_rate = flt(prices[0].get("price_list_rate")) if prices else 0
+	if not stock_rate:
+		stock_rate = flt(frappe.db.get_value("Item", item_code, "standard_rate"))
+	return stock_rate * (cf if uom and uom != stock_uom else 1)
+
+
+def _validate_min_selling_rate(doc):
+	"""Sales reps may raise an item's rate but never set it below the set selling price."""
+	for row in doc.items:
+		min_rate = _get_min_selling_rate(
+			row.item_code,
+			row.uom,
+			row.conversion_factor,
+			doc.selling_price_list,
+			doc.transaction_date or frappe.utils.today(),
+		)
+		precision = row.precision("price_list_rate")
+		if flt(row.price_list_rate, precision) < flt(min_rate, precision):
+			frappe.throw(
+				_("Row {0}: Rate for {1} cannot be lower than the selling price {2}").format(
+					row.idx, row.item_code, frappe.utils.fmt_money(min_rate, currency=doc.currency)
+				)
+			)
+
+
+def _get_max_item_discounts(item_codes):
+	"""Per-item discount cap: Item.max_discount if set, else the global Max Item Discount setting."""
+	global_cap = flt(frappe.db.get_single_value("Sales Management Settings", "max_item_discount"))
+	item_caps = dict(
+		frappe.get_all(
+			"Item", filters={"name": ["in", list(set(item_codes))]}, fields=["name", "max_discount"], as_list=True
+		)
+	) if item_codes else {}
+	return {code: flt(item_caps.get(code)) or global_cap for code in item_codes}
+
+
+def _validate_max_item_discount(doc, throw=True):
+	"""Check each row's effective discount (item + order-level) against its cap.
+
+	Needs calculate_taxes_and_totals to have run: the order-level discount is
+	spread into net_rate, so price_list_rate vs net_rate covers item %/amount
+	and order %/amount together. Returns the first error when throw=False.
+	"""
+	caps = _get_max_item_discounts([row.item_code for row in doc.items])
+	has_order_discount = flt(doc.get("discount_amount")) > 0
+	for row in doc.items:
+		cap = caps.get(row.item_code)
+		if not cap:
+			continue
+		base = flt(row.price_list_rate) or (flt(row.rate) + flt(row.discount_amount))
+		if not base:
+			continue
+		net_rate = flt(row.net_rate) if row.get("net_rate") is not None else flt(row.rate)
+		pct = max(flt(row.discount_percentage), (base - net_rate) / base * 100)
+		if flt(pct, 2) > flt(cap, 2):
+			msg = _("Row {0}: Total discount for {1} is {2}%{3}. Max allowed is {4}%.").format(
+				row.idx,
+				row.item_code,
+				f"{flt(pct, 2):g}",
+				_(" (item + order discount)") if has_order_discount else "",
+				f"{flt(cap, 2):g}",
+			)
+			if throw:
+				frappe.throw(msg)
+			return msg
+	return None
+
+
+def validate_sales_order_max_discount(doc, method=None):
+	_validate_max_item_discount(doc)
+
+
 def _validate_item_discount_amounts(so):
 	for d in so.items:
 		if d.discount_amount and d.price_list_rate:
@@ -476,7 +569,7 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
 
     get_all_kwargs = dict(
         filters=filters,
-        fields=["name", "item_name", "item_group", "standard_rate", "image", "stock_uom", "description"],
+        fields=["name", "item_name", "item_group", "standard_rate", "image", "stock_uom", "description", "max_discount"],
         limit=10000,
         order_by="item_name",
     )
@@ -538,7 +631,9 @@ def get_items(warehouse: str = "", search: str = "", item_group: str = ""):
     for (item_code, wh_name), avail in _get_available_qty_map(item_codes=item_codes).items():
         wh_available.setdefault(item_code, {})[wh_name] = avail
 
+    global_max_discount = flt(frappe.db.get_single_value("Sales Management Settings", "max_item_discount"))
     for item in items:
+        item["max_discount"] = flt(item.get("max_discount")) or global_max_discount
         pl_rate = price_map.get(item["name"])
         if pl_rate:
             item["standard_rate"] = pl_rate
@@ -682,6 +777,7 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 	disable_stock_validation = _stock_validation_disabled()
 	so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, order_date, disable_stock_validation)
 	so.run_method("set_missing_values")
+	_validate_min_selling_rate(so)
 	for d in so.items:
 		frappe.logger().debug(
 			f"DEBUG get_order_totals after set_missing_values: item={d.item_code}, "
@@ -689,6 +785,7 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 		)
 	_validate_item_discount_amounts(so)
 	_apply_order_level_discount(so, additional_discount_type, additional_discount_value)
+	discount_error = _validate_max_item_discount(so, throw=False)
 
 	return {
 		"total": so.total,
@@ -699,6 +796,7 @@ def get_order_totals(customer: str, warehouse: str, items_json: str, delivery_da
 		"disable_rounded_total": so.disable_rounded_total,
 		"additional_discount_percentage": so.additional_discount_percentage or 0,
 		"discount_amount": so.discount_amount or 0,
+		"discount_error": discount_error,
 		"items": [{"item_code": d.item_code, "qty": d.qty, "rate": d.rate, "amount": d.amount, "discount_percentage": d.discount_percentage or 0, "discount_amount": d.discount_amount or 0} for d in so.items],
 		"taxes": [{"description": t.description, "tax_amount": t.tax_amount, "total": t.total} for t in so.taxes],
 	}
@@ -788,6 +886,7 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             so = _build_sales_order_doc(customer, warehouse, items, delivery_date, customer_address, shipping_address, company, sales_person, order_date, disable_stock_validation)
 
         so.run_method("set_missing_values")
+        _validate_min_selling_rate(so)
         for d in so.items:
             frappe.logger().debug(
                 f"DEBUG create_sales_order after set_missing_values: item={d.item_code}, "
@@ -795,6 +894,7 @@ def create_sales_order(customer: str, warehouse: str, items_json: str, delivery_
             )
         _validate_item_discount_amounts(so)
         _apply_order_level_discount(so, additional_discount_type, additional_discount_value)
+        _validate_max_item_discount(so)
 
         credit_info = _get_credit_info(customer, company)
         if credit_info["credit_limit"] > 0:
