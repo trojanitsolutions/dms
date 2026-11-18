@@ -299,12 +299,70 @@ let currentQuotation=null;
 function showListView(){
 	document.getElementById('quotation-list-view').hidden=false;
 	document.getElementById('quotation-detail-view').hidden=true;
+	document.getElementById('list-export-actions').hidden=false;
 }
 
 function showDetailView(){
 	document.getElementById('quotation-list-view').hidden=true;
 	document.getElementById('quotation-detail-view').hidden=false;
+	document.getElementById('list-export-actions').hidden=true;
+	document.getElementById('detail-export-error').hidden=true;
 }
+
+// Fetch the file here (not in a new tab) so a server error shows on this page.
+async function downloadExport(method,args,btn,errorBox,fallbackName){
+	const label=btn.lastChild;
+	const original=label.textContent;
+	errorBox.hidden=true;
+	btn.disabled=true;
+	label.textContent=' Preparing…';
+	try{
+		const r=await fetch(`/api/method/${method}?${new URLSearchParams(args)}`,{headers:{'X-Frappe-CSRF-Token':csrf()}});
+		const type=r.headers.get('Content-Type')||'';
+		if(!r.ok||type.includes('application/json')){
+			const json=await r.json().catch(()=>({}));
+			let error='';
+			try{error=JSON.parse(json._server_messages||'[]').map(m=>JSON.parse(m).message).join(' ')}catch(e){/* keep generic text */}
+			const tmp=document.createElement('div');
+			tmp.innerHTML=error;
+			throw new Error(tmp.textContent.trim()||'Export failed. Please try again.');
+		}
+		const blob=await r.blob();
+		const match=/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(r.headers.get('Content-Disposition')||'');
+		const a=document.createElement('a');
+		a.href=URL.createObjectURL(blob);
+		a.download=match?decodeURIComponent(match[1]):fallbackName;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+	}catch(e){
+		errorBox.textContent=e.message||'Export failed. Please try again.';
+		errorBox.hidden=false;
+	}finally{
+		label.textContent=original;
+		btn.disabled=false;
+	}
+}
+
+// List export: every quotation matching the current search and filters.
+['pdf','xlsx'].forEach(fileFormat=>{
+	const btn=document.getElementById(`export-${fileFormat}-btn`);
+	btn.addEventListener('click',()=>downloadExport(
+		'dms.api.quotation.export_quotations',
+		{search:searchTerm,valid_till:validTill,status:status,party_type:partyTypeFilter,file_format:fileFormat},
+		btn,document.getElementById('export-error'),`Quotations.${fileFormat}`
+	));
+	const detailBtn=document.getElementById(`detail-export-${fileFormat}-btn`);
+	detailBtn.addEventListener('click',()=>{
+		if(!currentQuotation)return;
+		downloadExport(
+			'dms.api.quotation.export_quotation',
+			{name:currentQuotation.name,file_format:fileFormat},
+			detailBtn,document.getElementById('detail-export-error'),`${currentQuotation.name}.${fileFormat}`
+		);
+	});
+});
 
 function formatInWords(words){
 	if(!words)return '';

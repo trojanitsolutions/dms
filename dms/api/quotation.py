@@ -1,7 +1,8 @@
 import json
+import re
 import frappe
 from frappe import _
-from frappe.utils import cint, strip_html
+from frappe.utils import cint, flt, fmt_money, formatdate, strip_html, today
 
 from dms.api.sales import (
 	_get_default_company,
@@ -860,16 +861,14 @@ def create_sales_order_from_quotation(name: str, items_json: str, customer_addre
 		raise
 
 
-@frappe.whitelist(methods=["GET"])
-def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20, valid_till: str = "", status: str = "", party_type: str = ""):
-	_require_sales_rep()
+HISTORY_ORDER = "transaction_date desc, creation desc, name desc"
+MAX_EXPORT_ROWS = 5000
 
-	limit_start = cint(limit_start)
-	limit_page_length = cint(limit_page_length) or 20
 
+def _history_filters(search: str = "", valid_till: str = "", status: str = "", party_type: str = ""):
+	"""Filters for the session user's Quotation History list (shared by the list and its export)."""
 	filters = {"owner": frappe.session.user, "docstatus": ["in", [0, 1]]}
 	_apply_party_filters(filters, party_type=party_type)
-
 	if valid_till:
 		filters["valid_till"] = valid_till
 	apply_status_filter("Quotation", filters, status)
@@ -881,13 +880,23 @@ def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_len
 			["customer_name", "like", f"%{search}%"],
 			["party_name", "like", f"%{search}%"],
 		]
+	return filters, or_filters
 
+
+@frappe.whitelist(methods=["GET"])
+def get_quotation_history(search: str = "", limit_start: int = 0, limit_page_length: int = 20, valid_till: str = "", status: str = "", party_type: str = ""):
+	_require_sales_rep()
+
+	limit_start = cint(limit_start)
+	limit_page_length = cint(limit_page_length) or 20
+
+	filters, or_filters = _history_filters(search, valid_till, status, party_type)
 	quotations = frappe.get_all(
 		"Quotation",
 		filters=filters,
 		or_filters=or_filters,
 		fields=QUOTATION_LIST_FIELDS,
-		order_by="transaction_date desc, creation desc, name desc",
+		order_by=HISTORY_ORDER,
 		limit_start=limit_start,
 		limit_page_length=limit_page_length + 1,
 	)
@@ -925,3 +934,201 @@ def get_quotation_print_html(name: str, format: str = ""):
 		lambda: frappe.get_print("Quotation", name, print_format=format or None, as_pdf=False)
 	)
 	return html
+
+
+# ---------------------------------------------------------------- Export (PDF / Excel)
+
+EXPORT_FORMATS = ("xlsx", "pdf")
+LIST_EXPORT_TITLE = "Quotations"
+
+
+def _check_export_format(file_format: str):
+	if file_format not in EXPORT_FORMATS:
+		frappe.throw(_("Unsupported export format"))
+
+
+LOCAL_IMAGE_SRC = re.compile(r"""src=(["'])(/(?:private/)?files/[^"']+)\1""")
+
+
+def _embed_local_images(html: str) -> str:
+	"""Replace /files/ and /private/files/ image paths with data URIs.
+
+	The PDF renderer cannot fetch them: Chrome opens the HTML as a file:// page, and
+	wkhtmltopdf cannot read private files without a session.
+	"""
+	from dms.api.product_catalog import _get_thumbnails
+
+	urls = {m.group(2) for m in LOCAL_IMAGE_SRC.finditer(html)}
+	if not urls:
+		return html
+	thumbs = _get_thumbnails(list(urls))
+	return LOCAL_IMAGE_SRC.sub(
+		lambda m: f'src="{thumbs[m.group(2)]}"' if m.group(2) in thumbs else m.group(0), html
+	)
+
+
+def _prepare_for_chrome(html: str) -> str:
+	"""Chrome opens the HTML as a file:// page, so site-relative /assets/ links do not load.
+
+	The base URL lets them load from the site, and the inline rule hides the print view's
+	"Print / Get PDF" banner even when the print stylesheet cannot load.
+	"""
+	head = f'<base href="{frappe.utils.get_url()}/"><style>.print-hide {{ display: none !important; }}</style>'
+	if "<head>" in html:
+		return html.replace("<head>", "<head>" + head, 1)
+	return head + html
+
+
+def _to_pdf(html: str, options: dict | None = None) -> bytes:
+	"""Render html to PDF with wkhtmltopdf, or headless Chrome when wkhtmltopdf cannot start."""
+	from frappe.utils.pdf import get_pdf
+
+	from dms.api.customer_ledger_report import _chrome_pdf
+
+	html = _embed_local_images(html)
+	try:
+		content = get_pdf(html, options or {})
+	except OSError:
+		content = _chrome_pdf(_prepare_for_chrome(html))
+	if not content:
+		frappe.log_error(title="Quotation PDF export failed")
+		frappe.throw(_("PDF export is not available: the PDF generator (wkhtmltopdf) cannot run on the server. Contact your administrator."))
+	return content
+
+
+def _doc_total(row) -> float:
+	"""Rounded total unless rounding is disabled on the document (same as the portal list)."""
+	return flt(row.get("grand_total") if row.get("disable_rounded_total") or not row.get("rounded_total") else row.get("rounded_total"))
+
+
+def _filters_summary(search: str, valid_till: str, status: str, party_type: str) -> str:
+	parts = [
+		f"{_('Search')}: {search}" if search else "",
+		f"{_('Valid Till')}: {formatdate(valid_till)}" if valid_till else "",
+		f"{_('Party Type')}: {_(party_type)}" if party_type else "",
+		f"{_('Status')}: {_(status)}" if status else "",
+	]
+	return ", ".join(p for p in parts if p) or _("All quotations")
+
+
+@frappe.whitelist(methods=["GET"])
+def export_quotations(search: str = "", valid_till: str = "", status: str = "", party_type: str = "", file_format: str = "xlsx"):
+	"""Every Quotation History row matching the list's search and filters, as Excel or PDF."""
+	_require_sales_rep()
+	_check_export_format(file_format)
+
+	filters, or_filters = _history_filters(search, valid_till, status, party_type)
+	rows = frappe.get_all(
+		"Quotation",
+		filters=filters,
+		or_filters=or_filters,
+		fields=[*QUOTATION_LIST_FIELDS, "currency"],
+		order_by=HISTORY_ORDER,
+		limit_page_length=MAX_EXPORT_ROWS,
+	)
+	rows = apply_workflow_status("Quotation", rows)
+
+	header = [_("Quotation"), _("Date"), _("Valid Till"), _("Party Type"), _("Customer / Lead"), _("Status"), _("Grand Total")]
+	data = [
+		[
+			r.name,
+			formatdate(r.transaction_date),
+			formatdate(r.valid_till) if r.valid_till else "",
+			_(r.party_type or ""),
+			r.customer_name or r.party_name or "",
+			_(r.status or ""),
+			_doc_total(r),
+		]
+		for r in rows
+	]
+	total = sum(row[-1] for row in data)
+	summary = _filters_summary(search, valid_till, status, party_type)
+
+	from frappe.desk.utils import provide_binary_file
+
+	if file_format == "xlsx":
+		from frappe.utils.xlsxutils import make_xlsx
+
+		title = [f"{LIST_EXPORT_TITLE} — {summary}"]
+		total_row = [_("Total"), "", "", "", "", "", total]
+		content = make_xlsx([title, [], header, *data, total_row], LIST_EXPORT_TITLE).getvalue()
+		provide_binary_file(LIST_EXPORT_TITLE, "xlsx", content)
+		return
+
+	from dms.api.product_catalog import _get_thumbnails
+
+	company = _get_default_company()
+	currency = (rows[0].currency if rows else None) or frappe.get_cached_value(
+		"Company", company, "default_currency"
+	)
+	# Embedded as a data URI: the PDF renderer cannot fetch a relative /files/ path.
+	logo = frappe.db.get_value("Company", company, "company_logos") if company else None
+	company_logo = _get_thumbnails([logo]).get(logo) if logo else None
+
+	def money(value):
+		return f"{currency or ''} {fmt_money(flt(value), precision=2)}".strip()
+
+	html = frappe.render_template(
+		"dms/templates/quotation_list_pdf.html",
+		{
+			"title": LIST_EXPORT_TITLE,
+			"company": company,
+			"company_logo": company_logo,
+			"summary": summary,
+			"generated": formatdate(today()),
+			"header": header,
+			"rows": [[*row[:-1], money(row[-1])] for row in data],
+			"total": money(total),
+		},
+	)
+	content = _to_pdf(html, {"orientation": "Landscape", "page-size": "A4"})
+	provide_binary_file(LIST_EXPORT_TITLE, "pdf", content)
+
+
+@frappe.whitelist(methods=["GET"])
+def export_quotation(name: str, file_format: str = "xlsx"):
+	"""One quotation: PDF is its standard print; Excel lists its details, items and totals."""
+	_check_export_format(file_format)
+	q = get_quotation_detail(name)  # checks the Sales Rep role and that the user owns it
+
+	from frappe.desk.utils import provide_binary_file
+
+	if file_format == "pdf":
+		html = _run_privileged(lambda: frappe.get_print("Quotation", name, as_pdf=False))
+		provide_binary_file(name, "pdf", _to_pdf(html))
+		return
+
+	from frappe.utils.xlsxutils import make_xlsx
+
+	discount = flt(q["discount_amount"]) + (
+		flt(q["net_total"]) * flt(q["additional_discount_percentage"]) / 100
+		if q["additional_discount_percentage"] else 0
+	)
+	sheet = [
+		[_("Quotation"), q["name"]],
+		[_(q["party_type"] or "Customer"), q["customer_name"] or q["party_name"] or ""],
+		[_("Date"), formatdate(q["transaction_date"])],
+		[_("Valid Till"), formatdate(q["valid_till"]) if q["valid_till"] else ""],
+		[_("Status"), _(q["status"] or "")],
+		[],
+		[_("Item Code"), _("Item Name"), _("Description"), _("Qty"), _("UOM"), _("Rate"), _("Discount"), _("Amount")],
+	]
+	for it in q["items"]:
+		item_discount = f"{flt(it['discount_percentage'])}%" if it["discount_percentage"] else flt(it["discount_amount"]) or ""
+		sheet.append([
+			it["item_code"], it["item_name"], it["description"], flt(it["qty"]), it["uom"] or "",
+			flt(it["rate"]), item_discount, flt(it["amount"]),
+		])
+	pad = [""] * 6
+	sheet.append([])
+	sheet.append([*pad, _("Net Total"), flt(q["net_total"] or q["total"])])
+	if flt(q["total_taxes_and_charges"]):
+		sheet.append([*pad, _("Taxes & Charges"), flt(q["total_taxes_and_charges"])])
+	if discount:
+		sheet.append([*pad, _("Discount"), -discount])
+	sheet.append([*pad, _("Grand Total"), _doc_total(q)])
+	if q["terms"]:
+		sheet += [[], [_("Terms & Conditions")], [strip_html(q["terms"]).strip()]]
+
+	content = make_xlsx(sheet, name[:31]).getvalue()
+	provide_binary_file(name, "xlsx", content)

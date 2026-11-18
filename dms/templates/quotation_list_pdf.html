@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #1d1d1f; margin: 0; }
+  .head { margin-bottom: 10px; border-bottom: 1.5px solid #1d1d1f; padding-bottom: 6px; }
+  .head-table td { border: 0; padding: 0; vertical-align: middle; }
+  .head-table .logo-cell { width: 1%; padding-right: 12px; }
+  .logo { max-height: 50px; max-width: 160px; display: block; }
+  .company { font-size: 11px; font-weight: bold; text-transform: uppercase; }
+  .title { font-size: 16px; font-weight: bold; }
+  .meta { font-size: 10px; color: #555; margin-top: 3px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th { background: #f2f2f4; font-size: 8.5px; text-transform: uppercase; text-align: left; padding: 5px 4px; border-bottom: 1px solid #bbb; }
+  td { padding: 4px; border-bottom: 1px solid #e3e3e6; vertical-align: top; }
+  .num { text-align: right; white-space: nowrap; }
+  tfoot td { font-weight: bold; background: #f2f2f4; border-top: 1px solid #bbb; }
+  .empty { text-align: center; color: #777; padding: 20px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <table class="head-table">
+      <tr>
+        {% if company_logo %}<td class="logo-cell"><img class="logo" src="{{ company_logo }}" alt="{{ company or '' }}"></td>{% endif %}
+        <td>
+          {% if company %}<div class="company">{{ company }}</div>{% endif %}
+          <div class="title">{{ title }}</div>
+          <div class="meta">{{ summary }} &nbsp;·&nbsp; Generated: {{ generated }} &nbsp;·&nbsp; {{ rows|length }} quotations</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        {% for h in header %}<th class="{{ 'num' if loop.last else '' }}">{{ h }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        {% for value in row %}<td class="{{ 'num' if loop.last else '' }}">{{ value }}</td>{% endfor %}
+      </tr>
+      {% else %}
+      <tr><td class="empty" colspan="{{ header|length + 1 }}">No quotations found for the selected filters.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if rows %}
+    <tfoot>
+      <tr>
+        <td></td>
+        <td>Total</td>
+        <td colspan="{{ header|length - 2 }}"></td>
+        <td class="num">{{ total }}</td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</body>
+</html>
