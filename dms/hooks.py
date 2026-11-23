@@ -95,10 +95,9 @@ doctype_js = {
 # ----------
 
 # add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "dms.utils.jinja_methods",
-# 	"filters": "dms.utils.jinja_filters"
-# }
+jinja = {
+	"methods": ["dms.print_helpers.get_item_attachments"],
+}
 
 # Installation
 # ------------

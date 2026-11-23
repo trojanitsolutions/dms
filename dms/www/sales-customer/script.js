@@ -140,6 +140,37 @@ async function showDetail(custId){
         <div class="order-right">${badge(o.status)}<div class="order-amount">${fmt(docTotal(o))}</div></div>
       </div>`).join('')
     :'<div class="empty-state">No orders yet.</div>';
+
+  renderAttachments(c.attachments||[]);
+}
+
+const IMAGE_EXT=['png','jpg','jpeg','gif','webp','bmp','svg'];
+function esc(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function fileExt(name){const m=/\.([a-z0-9]+)$/i.exec(name||'');return m?m[1].toLowerCase():''}
+function fmtSize(b){if(!b)return '';if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';return (b/1048576).toFixed(1)+' MB'}
+
+let currentAttachments=[];
+const SHEET_EXT=['xlsx','xlsm','xls','csv'];
+const BROWSER_EXT=['pdf','txt'];
+
+function renderAttachments(files){
+  document.getElementById('d-attach-count').textContent=files.length?`${files.length} file${files.length!==1?'s':''}`:'';
+  const list=document.getElementById('d-attachments-list');
+  if(!files.length){list.innerHTML='<div class="empty-state">No attachments.</div>';return}
+  currentAttachments=files;
+  list.innerHTML=files.map((f,i)=>{
+    const name=f.file_name||'File';
+    const ext=fileExt(name)||fileExt(f.file_url);
+    const thumb=IMAGE_EXT.includes(ext)
+      ?`<img src="${esc(f.file_url)}" alt="" loading="lazy">`
+      :esc(ext||'file');
+    const meta=[fmtSize(f.file_size),relTime(f.creation)].filter(Boolean).join(' · ');
+    return `<a class="attach-row" href="${esc(f.file_url)}" target="_blank" rel="noopener" data-attach-index="${i}">
+      <div class="attach-thumb">${thumb}</div>
+      <div class="attach-info"><div class="attach-name">${esc(name)}</div><div class="attach-meta">${esc(meta)}</div></div>
+      <svg class="attach-open" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+    </a>`;
+  }).join('');
 }
 
 function showList(){
@@ -175,7 +206,8 @@ async function submitNewCustomer(){
 const urlCustomer=new URLSearchParams(location.search).get('customer');
 if(urlCustomer){showDetail(urlCustomer)}else{loadCustomers()}
 
-document.getElementById('new-customer-btn').addEventListener('click',openModal);
+// The New button is commented out in index.html; guard so the rest of the script still runs.
+document.getElementById('new-customer-btn')?.addEventListener('click',openModal);
 document.getElementById('modal-cancel-btn').addEventListener('click',closeModal);
 document.getElementById('nc-submit-btn').addEventListener('click',submitNewCustomer);
 document.getElementById('modal-overlay').addEventListener('click',overlayClick);
@@ -207,3 +239,127 @@ document.querySelectorAll('.status-chip').forEach(el=>{
   overlay.addEventListener('click',function(e){if(e.target===overlay)closeLogoutConfirm()});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLogoutConfirm()});
 })();
+
+// ── Attachment viewer ─────────────────────────────────────────
+document.getElementById('d-attachments-list').addEventListener('click',e=>{
+  const row=e.target.closest('[data-attach-index]');
+  if(!row)return;
+  const f=currentAttachments[+row.dataset.attachIndex];
+  const ext=fileExt(f.file_name)||fileExt(f.file_url);
+  const isLocal=f.file_url.startsWith('/');
+  if(IMAGE_EXT.includes(ext)||BROWSER_EXT.includes(ext)||(isLocal&&SHEET_EXT.includes(ext))){
+    e.preventDefault();
+    openViewer(f,ext);
+  }
+});
+
+function openViewer(f,ext){
+  document.getElementById('av-title').textContent=f.file_name||'File';
+  document.getElementById('av-open').href=f.file_url;
+  const tabs=document.getElementById('av-tabs');
+  tabs.className='av-tabs';tabs.innerHTML='';
+  const body=document.getElementById('av-body');
+  document.getElementById('av-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+
+  if(IMAGE_EXT.includes(ext)){
+    body.innerHTML=`<div class="av-img"><img src="${esc(f.file_url)}" alt=""></div>`;
+  }else if(ext==='pdf'&&isMobileViewer()){
+    renderPdfPages(f);
+  }else if(BROWSER_EXT.includes(ext)){
+    body.innerHTML=`<iframe src="${esc(f.file_url)}" title="${esc(f.file_name)}"></iframe>`;
+  }else{
+    loadSheetPreview(f);
+  }
+}
+
+async function loadSheetPreview(f){
+  const body=document.getElementById('av-body');
+  body.innerHTML='<div class="av-msg">Loading preview…</div>';
+  let data;
+  try{data=await post('dms.api.sales.get_customer_attachment_preview',{file:f.name})}
+  catch(err){body.innerHTML=`<div class="av-msg">Could not preview this file. <a href="${esc(f.file_url)}" target="_blank" rel="noopener">Download it</a> instead.</div>`;return}
+  const sheets=(data&&data.sheets)||[];
+  if(!sheets.length){body.innerHTML='<div class="av-msg">This file is empty.</div>';return}
+  const tabs=document.getElementById('av-tabs');
+  if(sheets.length>1){
+    tabs.className='av-tabs show';
+    tabs.innerHTML=sheets.map((s,i)=>`<button class="av-tab${i?'':' active'}" data-sheet="${i}">${esc(s.name)}</button>`).join('');
+    tabs.onclick=e=>{
+      const b=e.target.closest('[data-sheet]');if(!b)return;
+      tabs.querySelectorAll('.av-tab').forEach(t=>t.classList.toggle('active',t===b));
+      renderSheet(sheets[+b.dataset.sheet],data.max_rows);
+    };
+  }
+  renderSheet(sheets[0],data.max_rows);
+}
+
+function renderSheet(sheet,maxRows){
+  const body=document.getElementById('av-body');
+  if(!sheet.rows.length){body.innerHTML='<div class="av-msg">This sheet is empty.</div>';return}
+  const note=sheet.truncated?`<div class="av-note">Showing the first ${maxRows} rows. Open the file to see all of it.</div>`:'';
+  body.innerHTML=note+'<table class="av-table"><tbody>'+sheet.rows.map((r,i)=>
+    `<tr><td class="av-rownum">${i+1}</td>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`
+  ).join('')+'</tbody></table>';
+  body.scrollTop=0;
+}
+
+// Mobile browsers can't scroll a PDF inside an iframe (iOS shows page 1 only,
+// Android often shows nothing), so on phones we draw each page with PDF.js.
+const PDFJS_BASE='/assets/dms/js/pdfjs/';
+let pdfjsPromise=null;
+let pdfRenderToken=0;
+
+function isMobileViewer(){return window.matchMedia('(max-width:768px), (pointer:coarse)').matches}
+
+function loadPdfJs(){
+  if(!pdfjsPromise){
+    pdfjsPromise=new Promise((resolve,reject)=>{
+      const sc=document.createElement('script');
+      sc.src=PDFJS_BASE+'pdf.min.js';
+      sc.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_BASE+'pdf.worker.min.js';resolve(window.pdfjsLib)};
+      sc.onerror=()=>{pdfjsPromise=null;reject(new Error('Could not load PDF viewer'))};
+      document.head.appendChild(sc);
+    });
+  }
+  return pdfjsPromise;
+}
+
+async function renderPdfPages(f){
+  const token=++pdfRenderToken;
+  const body=document.getElementById('av-body');
+  body.innerHTML='<div class="av-msg">Loading PDF…</div>';
+  try{
+    const pdfjsLib=await loadPdfJs();
+    const pdf=await pdfjsLib.getDocument({url:f.file_url,withCredentials:true}).promise;
+    if(token!==pdfRenderToken)return;
+    body.innerHTML='<div class="av-pdf"></div>';
+    const wrap=body.firstChild;
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    for(let n=1;n<=pdf.numPages;n++){
+      const page=await pdf.getPage(n);
+      if(token!==pdfRenderToken)return;
+      const width=wrap.clientWidth-16;
+      const base=page.getViewport({scale:1});
+      const viewport=page.getViewport({scale:(width/base.width)*dpr});
+      const canvas=document.createElement('canvas');
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      canvas.style.width=width+'px';
+      wrap.appendChild(canvas);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    }
+  }catch(err){
+    if(token!==pdfRenderToken)return;
+    body.innerHTML=`<div class="av-msg">Could not show this PDF. <a href="${esc(f.file_url)}" target="_blank" rel="noopener">Open it</a> instead.</div>`;
+  }
+}
+
+function closeViewer(){
+  document.getElementById('av-overlay').classList.remove('open');
+  pdfRenderToken++;
+  document.getElementById('av-body').innerHTML='';
+  document.body.style.overflow='';
+}
+document.getElementById('av-close').addEventListener('click',closeViewer);
+document.getElementById('av-overlay').addEventListener('click',e=>{if(e.target.id==='av-overlay')closeViewer()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('av-overlay').classList.contains('open'))closeViewer()});

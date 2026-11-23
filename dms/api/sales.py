@@ -1157,4 +1157,117 @@ def get_customer_detail(customer: str):
         order_by="creation desc",
         limit=5,
     )
+    c["attachments"] = _get_customer_attachments(customer)
     return c
+
+
+def _get_customer_attachments(customer):
+    files = frappe.get_all(
+        "File",
+        filters={"attached_to_doctype": "Customer", "attached_to_name": customer, "is_folder": 0},
+        fields=["name", "file_name", "file_url", "file_size", "creation"],
+        order_by="creation desc",
+    )
+    for f in files:
+        # Local (incl. private) files go through the Sales Rep endpoint; external links stay as-is.
+        if (f["file_url"] or "").startswith("/"):
+            f["file_url"] = f"/api/method/dms.api.sales.get_customer_attachment?file={f['name']}"
+    return files
+
+
+def _get_customer_file(file):
+    _require_sales_rep()
+    file_doc = frappe.get_doc("File", file)
+    if file_doc.attached_to_doctype != "Customer":
+        frappe.throw(_("Access Denied"), frappe.PermissionError)
+    return file_doc
+
+
+PREVIEW_MAX_ROWS = 500
+PREVIEW_MAX_COLS = 50
+
+
+@frappe.whitelist()
+def get_customer_attachment(file: str):
+    """Serve a Customer attachment to a Sales Rep, including private files."""
+    file_doc = _get_customer_file(file)
+    frappe.local.response.filename = file_doc.file_name
+    frappe.local.response.filecontent = file_doc.get_content()
+    frappe.local.response.display_content_as = "inline"
+    frappe.local.response.type = "download"
+
+
+@frappe.whitelist()
+def get_customer_attachment_preview(file: str):
+    """Return the sheets of an Excel/CSV Customer attachment as rows, for in-page preview."""
+    file_doc = _get_customer_file(file)
+    ext = (file_doc.file_name or file_doc.file_url or "").rsplit(".", 1)[-1].lower()
+    content = file_doc.get_content()
+    if isinstance(content, str):
+        content = content.encode("utf-8")
+
+    if ext in ("xlsx", "xlsm"):
+        sheets = _read_xlsx_sheets(content)
+    elif ext == "xls":
+        sheets = _read_xls_sheets(content)
+    elif ext == "csv":
+        sheets = _read_csv_sheet(content)
+    else:
+        frappe.throw(_("Preview is not available for this file type"))
+    return {"sheets": sheets, "max_rows": PREVIEW_MAX_ROWS}
+
+
+def _read_xlsx_sheets(content):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    wb = load_workbook(BytesIO(content), read_only=True, data_only=True)
+    sheets = []
+    for ws in wb.worksheets:
+        rows, truncated = [], False
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i >= PREVIEW_MAX_ROWS:
+                truncated = True
+                break
+            rows.append([_cell_text(v) for v in row[:PREVIEW_MAX_COLS]])
+        sheets.append({"name": ws.title, "rows": _trim_rows(rows), "truncated": truncated})
+    wb.close()
+    return sheets
+
+
+def _read_xls_sheets(content):
+    import xlrd
+
+    book = xlrd.open_workbook(file_contents=content)
+    sheets = []
+    for sh in book.sheets():
+        n = min(sh.nrows, PREVIEW_MAX_ROWS)
+        rows = [[_cell_text(v) for v in sh.row_values(r)[:PREVIEW_MAX_COLS]] for r in range(n)]
+        sheets.append({"name": sh.name, "rows": _trim_rows(rows), "truncated": sh.nrows > PREVIEW_MAX_ROWS})
+    return sheets
+
+
+def _read_csv_sheet(content):
+    from frappe.utils.csvutils import read_csv_content
+
+    rows = read_csv_content(content)
+    truncated = len(rows) > PREVIEW_MAX_ROWS
+    rows = [[_cell_text(v) for v in r[:PREVIEW_MAX_COLS]] for r in rows[:PREVIEW_MAX_ROWS]]
+    return [{"name": "Sheet1", "rows": _trim_rows(rows), "truncated": truncated}]
+
+
+def _cell_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def _trim_rows(rows):
+    """Drop trailing empty rows and trailing empty columns."""
+    while rows and not any(rows[-1]):
+        rows.pop()
+    width = max((max((i + 1 for i, v in enumerate(r) if v), default=0) for r in rows), default=0)
+    return [(r + [""] * width)[:width] for r in rows]
