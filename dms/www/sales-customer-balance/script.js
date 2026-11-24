@@ -124,7 +124,7 @@ function renderTable() {
     <tr>
       <td class="col-check"><input type="checkbox" class="row-check" data-customer="${esc(r.customer)}" ${selected.has(r.customer) ? 'checked' : ''}></td>
       <td class="col-num">${i + 1}</td>
-      <td class="font-medium">${esc(r.customer)}</td>
+      <td class="font-medium"><a class="inv-link" href="${invoiceBalanceUrl(r.customer)}" title="Open this customer's invoices">${esc(r.customer)}</a></td>
       <td>${esc(r.customer_name || r.customer)}</td>
       <td class="text-right font-medium ${balanceClass(r.outstanding_balance)}">${fmt(r.outstanding_balance, r.currency)}</td>
     </tr>
@@ -139,6 +139,17 @@ function renderTable() {
     });
   });
   updateSelectionUI(rowsSlice);
+}
+
+// Link to the Customer Invoice Balance page, for one customer or for the current filters.
+function invoiceBalanceUrl(customer) {
+  const params = new URLSearchParams();
+  const group = $('customer-group-filter').value.trim();
+  if (customer) params.set('customer', customer);
+  else if ($('customer-filter').value.trim()) params.set('customer', $('customer-filter').value.trim());
+  if (group && !customer) params.set('customer_group', group);
+  const query = params.toString();
+  return `/sales-customer-invoice-balance${query ? `?${query}` : ''}`;
 }
 
 // Total of the rows shown in the table, like the total row in the desk report.
@@ -263,6 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
   $('refresh-btn').addEventListener('click', loadData);
   $('retry-btn').addEventListener('click', loadData);
   $('export-btn').addEventListener('click', exportExcel);
+  // Carry the customer filters over when opening the invoice page.
+  $('invoice-balance-btn').addEventListener('click', e => {
+    e.preventDefault();
+    window.location.href = invoiceBalanceUrl();
+  });
 
   document.querySelectorAll('.page-size-btn').forEach(btn => {
     btn.addEventListener('click', () => {

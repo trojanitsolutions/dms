@@ -107,6 +107,14 @@ function loadMore() {
   filters.page_length = rows.value.length + step.value
 }
 
+// Opens the Customer Invoice Balance page with this customer's invoices.
+function invoiceBalanceRoute(row: Row) {
+  return {
+    path: '/customer-invoice-balance',
+    query: { customer: String(row.customer), company: filters.company || undefined },
+  }
+}
+
 const exportUrl = computed(
   () =>
     `/api/method/dms.api.reports.export_customer_balance?filters=${encodeURIComponent(
@@ -188,6 +196,7 @@ const exportUrl = computed(
               >
                 {{ col.label }}
               </th>
+              <th class="px-4 py-2" />
             </tr>
           </thead>
           <tbody class="divide-y divide-outline-gray-1">
@@ -223,6 +232,15 @@ const exportUrl = computed(
                   {{ formatCurrency(row[col.fieldname], row.currency) }}
                 </template>
                 <template v-else>{{ row[col.fieldname] ?? '' }}</template>
+              </td>
+              <td class="px-4 py-2 text-right">
+                <Button
+                  label="Invoice Balance"
+                  icon-left="lucide-receipt"
+                  size="sm"
+                  variant="subtle"
+                  :route="invoiceBalanceRoute(row)"
+                />
               </td>
             </tr>
           </tbody>

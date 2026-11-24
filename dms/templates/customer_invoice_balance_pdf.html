@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #1d1d1f; margin: 0; }
+  .head { margin-bottom: 10px; border-bottom: 1.5px solid #1d1d1f; padding-bottom: 6px; }
+  .title { font-size: 16px; font-weight: bold; }
+  .meta { font-size: 10px; color: #555; margin-top: 3px; }
+  .customer { margin-bottom: 10px; font-size: 10px; line-height: 1.5; }
+  .customer b { font-size: 12px; }
+  .cards { width: 100%; margin-bottom: 10px; border-collapse: separate; border-spacing: 6px 0; }
+  .cards td { border: 1px solid #d6d6da; border-radius: 4px; padding: 6px 8px; }
+  .cards .label { font-size: 8px; color: #666; text-transform: uppercase; }
+  .cards .value { font-size: 12px; font-weight: bold; margin-top: 2px; }
+  table.rows { width: 100%; border-collapse: collapse; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th { background: #f2f2f4; font-size: 8.5px; text-transform: uppercase; text-align: left; padding: 5px 8px; border-bottom: 1px solid #bbb; }
+  table.rows td { padding: 4px 8px; border-bottom: 1px solid #e3e3e6; vertical-align: top; }
+  .num { text-align: right; white-space: nowrap; }
+  .red { color: #c0392b; }
+  tfoot td { font-weight: bold; background: #f2f2f4; border-top: 1px solid #bbb; }
+  .empty { text-align: center; color: #777; padding: 20px; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="title">{{ title }}</div>
+    <div class="meta">{{ company }}{% if period %} &nbsp;·&nbsp; Period: {{ period }}{% endif %} &nbsp;·&nbsp; Generated: {{ generated }} &nbsp;·&nbsp; {{ rows|length }} invoices</div>
+  </div>
+
+  {% if customer %}
+  <div class="customer">
+    <b>{{ customer.name }}</b> &nbsp;({{ customer.id }})<br>
+    {% if customer.address %}{{ customer.address }}<br>{% endif %}
+    {% if customer.phone %}Phone: {{ customer.phone }}{% endif %}
+  </div>
+  {% endif %}
+
+  <table class="cards">
+    <tr>
+      {% for card in cards %}
+      <td><div class="label">{{ card.label }}</div><div class="value {{ card.cls or '' }}">{{ card.value }}</div></td>
+      {% endfor %}
+    </tr>
+  </table>
+
+  <table class="rows">
+    <thead>
+      <tr>
+        {% for c in columns %}<th class="{{ 'num' if c.fieldname in numeric else '' }}">{{ c.label }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for value in row %}
+        {% set field = columns[loop.index0].fieldname %}
+        <td class="{{ 'num' if field in numeric else '' }} {{ 'red' if field == 'outstanding_amount' else '' }}">{{ value }}</td>
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr><td class="empty" colspan="{{ columns|length }}">No invoices found for the selected filters.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if rows %}
+    <tfoot>
+      <tr>
+        {% for value in totals %}<td class="{{ 'num' if columns[loop.index0].fieldname in numeric else '' }}">{{ value }}</td>{% endfor %}
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</body>
+</html>

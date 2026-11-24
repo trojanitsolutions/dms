@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Button,
   Checkbox,
@@ -55,6 +56,12 @@ const defaultFilters = () => ({
   page_length: PAGE_SIZES[0] as number | null,
 })
 const filters = reactive(defaultFilters())
+// The Customer Balance page links here with `?customer=...&company=...`.
+const route = useRoute()
+for (const key of ['customer', 'company'] as const) {
+  const value = route.query[key]
+  if (typeof value === 'string') filters[key] = value
+}
 const step = ref(PAGE_SIZES[0])
 
 // True when any filter differs from its default. Paging does not count.

@@ -212,3 +212,5 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .col-check input{accent-color:var(--color-primary);cursor:pointer;width:15px;height:15px}
 .filter-group input[list]{min-width:200px;height:38px;padding:0 10px;border:1.5px solid var(--color-card-border);border-radius:8px;font-size:13px;background:var(--color-bg-surface);color:var(--color-text-primary);outline:none;transition:border-color .15s}
 .filter-group input[list]:focus{border-color:var(--color-primary)}
+.inv-link{color:var(--color-primary);text-decoration:none}
+.inv-link:hover{text-decoration:underline}
