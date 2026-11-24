@@ -18,6 +18,10 @@ export const router = createRouter({
       component: () => import('./pages/CustomerBalanceReport.vue'),
     },
     {
+      path: '/customer-invoice-balance',
+      component: () => import('./pages/CustomerInvoiceBalanceReport.vue'),
+    },
+    {
       path: '/sales-order-status',
       component: () => import('./pages/SalesOrderStatusReport.vue'),
     },

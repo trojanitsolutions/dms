@@ -156,6 +156,94 @@ def export_customer_balance(filters=None):
 
 
 @frappe.whitelist()
+def get_customer_invoice_balance(filters=None):
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+
+	from dms.dms.report.customer_invoice_balance.customer_invoice_balance import execute
+
+	columns, data, _msg, _chart, report_summary = execute(filters)
+	return {"columns": columns, "data": data, "report_summary": report_summary}
+
+
+@frappe.whitelist()
+def export_customer_invoice_balance(filters=None):
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+	# Export all matching rows, not only the current page.
+	filters.pop("page_length", None)
+	selected = set(filters.pop("selected", None) or [])
+
+	from frappe.desk.utils import provide_binary_file
+	from frappe.utils.xlsxutils import make_xlsx
+
+	from dms.dms.report.customer_invoice_balance.customer_invoice_balance import execute
+
+	columns, data, _msg, _chart, _summary = execute(filters)
+	# Keep the customer columns in the file even when the screen hides them for one customer.
+	columns = [
+		col for col in columns if not col.get("hidden") or col["fieldname"] in ("customer", "customer_name")
+	]
+	if selected:
+		data = [row for row in data if row.get("invoice") in selected]
+
+	header = [col["label"] for col in columns]
+	rows = [[row.get(col["fieldname"], "") for col in columns] for row in data]
+
+	content = make_xlsx([header, *rows], "Customer Invoice Balance").getvalue()
+	provide_binary_file("Customer Invoice Balance Report", "xlsx", content)
+
+
+def _get_report_print_format(report: str) -> str | None:
+	"""Return the print format set for a report in Sales Management Settings."""
+	return frappe.db.get_value(
+		"Dms Report Table",
+		{"parent": "Sales Management Settings", "parenttype": "Sales Management Settings", "reports": report},
+		"print_format",
+	)
+
+
+@frappe.whitelist()
+def get_report_print_format_name(report: str):
+	_require_report_role()
+	return _get_report_print_format(report)
+
+
+@frappe.whitelist()
+def get_customer_invoice_balance_print(filters=None):
+	"""Return the configured print format and the rows to render with it in the browser."""
+	_require_accounts_manager()
+	filters = _parse_filters(filters)
+	# Print all matching rows, not only the current page.
+	filters.pop("page_length", None)
+	selected = set(filters.pop("selected", None) or [])
+
+	from frappe.desk.query_report import get_print_format_data
+
+	from dms.dms.report.customer_invoice_balance.customer_invoice_balance import (
+		execute,
+		get_statement_details,
+	)
+
+	print_format = _get_report_print_format("Customer Invoice Balance")
+	if not print_format:
+		frappe.throw(_("No print format is set for this report in Sales Management Settings"))
+	template = get_print_format_data(print_format)
+
+	_columns, data, _msg, _chart, _summary = execute(filters)
+	if selected:
+		data = [row for row in data if row.get("invoice") in selected]
+
+	return {
+		"print_format": print_format,
+		"html": template["html"],
+		"css": template["css"],
+		"data": data,
+		"statement_details": get_statement_details(filters.get("company"), filters.get("customer")),
+	}
+
+
+@frappe.whitelist()
 def get_sales_order_status(filters=None):
 	_require_report_role()
 	filters = _parse_filters(filters)

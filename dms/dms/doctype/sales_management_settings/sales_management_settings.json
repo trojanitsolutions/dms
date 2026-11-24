@@ -8,7 +8,9 @@
   "disable_stock_validation",
   "sales_invoice_based_on",
   "show_sales_invoice",
-  "max_item_discount"
+  "max_item_discount",
+  "section_break_bmfz",
+  "dms_report_print_format"
  ],
  "fields": [
   {
@@ -35,13 +37,23 @@
    "fieldname": "max_item_discount",
    "fieldtype": "Percent",
    "label": "Max Item Discount"
+  },
+  {
+   "fieldname": "section_break_bmfz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "dms_report_print_format",
+   "fieldtype": "Table",
+   "label": "DMS Report Print Format",
+   "options": "Dms Report Table"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-18 10:54:03.710091",
+ "modified": "2026-11-24 12:16:12.644214",
  "modified_by": "Administrator",
  "module": "DMS",
  "name": "Sales Management Settings",

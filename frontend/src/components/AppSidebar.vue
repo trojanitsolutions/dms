@@ -29,6 +29,11 @@ const { resolvedColorScheme, toggleColorScheme } = useColorScheme()
         route="/customer-balance"
       />
       <SidebarItem
+        label="Customer Invoice Balance"
+        icon="lucide-receipt"
+        route="/customer-invoice-balance"
+      />
+      <SidebarItem
         label="Sales Order Status"
         icon="lucide-clipboard-list"
         route="/sales-order-status"

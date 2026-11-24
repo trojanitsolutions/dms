@@ -25,6 +25,11 @@ frappe.query_reports["Customer Invoice Balance"] = {
 			options: "Customer Group",
 		},
 		{
+			fieldname: "posting_date",
+			label: __("Posting Date"),
+			fieldtype: "Date",
+		},
+		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",
@@ -51,6 +56,7 @@ frappe.query_reports["Customer Invoice Balance"] = {
 
 	onload(report) {
 		add_scrollbar_styles(report);
+		report.page.add_inner_button(__("Clear Filters"), () => clear_filters(report));
 	},
 
 	formatter(value, row, column, data, default_formatter) {
@@ -71,8 +77,22 @@ frappe.query_reports["Customer Invoice Balance"] = {
 
 	after_refresh(report) {
 		render_paging(report);
+		load_statement_details(report);
 	},
 };
+
+// The "CIB Standard" print format reads these details from `report.statement_details`.
+function load_statement_details(report) {
+	frappe
+		.xcall(
+			"dms.dms.report.customer_invoice_balance.customer_invoice_balance.get_statement_details",
+			{
+				company: report.get_filter_value("company"),
+				customer: report.get_filter_value("customer"),
+			}
+		)
+		.then((details) => (report.statement_details = details));
+}
 
 function render_paging(report) {
 	report.page.main.find(".customer-invoice-balance-paging").remove();
@@ -116,6 +136,24 @@ function render_paging(report) {
 function get_total_invoices(report) {
 	const card = (report.raw_data?.report_summary || []).find((c) => c.key === "total_invoices");
 	return card ? cint(card.value) : report.data.length;
+}
+
+// Empty every visible filter and go back to the first page. Refreshes the report once.
+async function clear_filters(report) {
+	report.page_step = PAGE_SIZES[0];
+	// Stop each filter change from starting its own refresh.
+	report._no_refresh = true;
+	try {
+		await Promise.all(
+			report.filters.map((f) => {
+				if (f.df.fieldname === "page_length") return f.set_value(PAGE_SIZES[0]);
+				return f.set_value(f.df.fieldtype === "Check" ? 0 : "");
+			})
+		);
+	} finally {
+		report._no_refresh = false;
+	}
+	report.refresh();
 }
 
 // Keep the vertical and horizontal scrollbars of the table always visible.

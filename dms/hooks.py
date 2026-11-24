@@ -30,6 +30,10 @@ fixtures = [
         "dt": "Workflow",
         "filters": [["name", "in", ["Quotation Workflow"]]],
     },
+    {
+        "dt": "Print Format",
+        "filters": [["name", "in", ["CIB Standard"]]],
+    },
 ]
 
 after_install = ["dms.customisation.warehouse.create_custom_fields", "dms.setup.navbar.add_overview_navbar_item"]
