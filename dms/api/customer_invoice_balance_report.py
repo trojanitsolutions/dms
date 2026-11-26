@@ -6,7 +6,7 @@ from frappe.utils import flt, formatdate, today
 
 from dms.api.reports import _parse_filters, _require_report_role
 
-ALLOWED_FILTERS = ("company", "customer", "customer_group", "from_date", "to_date", "show_paid_invoices")
+ALLOWED_FILTERS = ("company", "customer", "customer_address", "customer_group", "from_date", "to_date", "show_paid_invoices")
 TITLE = "Customer Invoice Balance"
 MONEY = ("invoice_amount", "paid_amount", "outstanding_amount")
 

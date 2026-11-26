@@ -62,6 +62,7 @@ function getServerFilters() {
   const values = {
     company: $('company-filter').value,
     customer: $('customer-filter').value.trim(),
+    customer_address: $('customer-address-filter').value.trim(),
     customer_group: $('customer-group-filter').value.trim(),
     from_date: $('from-date-filter').value,
     to_date: $('to-date-filter').value,
@@ -261,7 +262,7 @@ function showError(message) {
 }
 
 function resetFilters() {
-  ['search-input', 'customer-filter', 'customer-group-filter', 'from-date-filter', 'to-date-filter']
+  ['search-input', 'customer-filter', 'customer-address-filter', 'customer-group-filter', 'from-date-filter', 'to-date-filter']
     .forEach(id => { $(id).value = ''; });
   $('paid-check').checked = false;
   history.replaceState(null, '', location.pathname);
@@ -359,7 +360,8 @@ function download(blob, name) {
 }
 
 // Fill a <datalist> from a search endpoint as the user types.
-function bindTypeahead(inputId, listId, method) {
+// `extraArgs` returns more search args, for example the picked customer.
+function bindTypeahead(inputId, listId, method, extraArgs = () => ({})) {
   const input = $(inputId);
   const list = $(listId);
   let timer = null;
@@ -367,7 +369,7 @@ function bindTypeahead(inputId, listId, method) {
   input.addEventListener('input', () => {
     clearTimeout(timer);
     timer = setTimeout(async () => {
-      const options = await get(method, { txt: input.value }) || [];
+      const options = await get(method, { txt: input.value, ...extraArgs() }) || [];
       list.innerHTML = options.map(o =>
         `<option value="${esc(o.value)}">${esc(o.label !== o.value ? o.label : (o.description || ''))}</option>`
       ).join('');
@@ -411,7 +413,14 @@ document.addEventListener('DOMContentLoaded', () => {
   $('from-date-filter').addEventListener('change', loadData);
   $('to-date-filter').addEventListener('change', loadData);
   $('paid-check').addEventListener('change', loadData);
+  // An address picked for another customer no longer applies. Runs before the reload below.
+  $('customer-filter').addEventListener('change', () => {
+    $('customer-address-filter').value = '';
+    $('customer-address-options').innerHTML = '';
+  });
   bindTypeahead('customer-filter', 'customer-options', 'dms.api.reports.search_customers');
+  bindTypeahead('customer-address-filter', 'customer-address-options', 'dms.api.reports.search_customer_addresses',
+    () => ({ customer: $('customer-filter').value.trim() }));
   bindTypeahead('customer-group-filter', 'customer-group-options', 'dms.api.customer_balance_report.search_customer_groups');
 
   $('reset-filters-btn').addEventListener('click', resetFilters);

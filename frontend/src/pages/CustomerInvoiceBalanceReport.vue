@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Button,
@@ -47,6 +47,7 @@ const PAGE_SIZES = [20, 100, 500, 2500]
 const defaultFilters = () => ({
   company: '',
   customer: '',
+  customer_address: '',
   customer_group: '',
   posting_date: '',
   from_date: '',
@@ -63,6 +64,11 @@ for (const key of ['customer', 'company'] as const) {
   if (typeof value === 'string') filters[key] = value
 }
 const step = ref(PAGE_SIZES[0])
+// An address picked for another customer no longer applies.
+watch(
+  () => filters.customer,
+  () => (filters.customer_address = ''),
+)
 
 // True when any filter differs from its default. Paging does not count.
 const hasFilters = computed(() => {
@@ -215,6 +221,13 @@ const exportUrl = computed(
         label="Customer"
         placeholder="Search customer name or ID"
         url="/api/v2/method/dms.api.reports.search_customers"
+      />
+      <SearchPicker
+        v-model="filters.customer_address"
+        label="Customer Address"
+        placeholder="Search address"
+        url="/api/v2/method/dms.api.reports.search_customer_addresses"
+        :params="{ customer: filters.customer }"
       />
       <TextInput
         v-model="filters.customer_group"

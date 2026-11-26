@@ -78,6 +78,36 @@ def search_customers(txt: str = ""):
 
 
 @frappe.whitelist()
+def search_customer_addresses(txt: str = "", customer: str = ""):
+	"""Return up to 20 customer addresses whose title, line or city contains `txt`, for the Address picker.
+
+	With `customer`, only that customer's addresses.
+	"""
+	_require_report_role()
+	search = f"%{txt.strip()}%"
+	filters = [["Dynamic Link", "link_doctype", "=", "Customer"], ["disabled", "=", 0]]
+	if customer:
+		filters.append(["Dynamic Link", "link_name", "=", customer])
+	addresses = frappe.get_list(
+		"Address",
+		filters=filters,
+		or_filters={"name": ["like", search], "address_line1": ["like", search], "city": ["like", search]},
+		fields=["name", "address_title", "address_type", "address_line1", "city"],
+		order_by="address_title",
+		limit_page_length=20,
+		distinct=True,
+	)
+	return [
+		{
+			"value": a.name,
+			"label": a.name,
+			"description": ", ".join(filter(None, [a.address_type, a.address_line1, a.city])),
+		}
+		for a in addresses
+	]
+
+
+@frappe.whitelist()
 def search_sales_orders(txt: str = "", company: str = "", customer: str = ""):
 	"""Return up to 20 submitted or cancelled Sales Orders whose ID or customer name contains `txt`."""
 	_require_report_role()
