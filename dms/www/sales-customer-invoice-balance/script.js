@@ -359,25 +359,100 @@ function download(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-// Fill a <datalist> from a search endpoint as the user types.
+// Search dropdown under a filter input, like a Desk Link field: it opens on click,
+// narrows as the user types, and shows the name with the ID under it.
 // `extraArgs` returns more search args, for example the picked customer.
 function bindTypeahead(inputId, listId, method, extraArgs = () => ({})) {
   const input = $(inputId);
   const list = $(listId);
   let timer = null;
+  let requestId = 0;
+  let options = [];
+  let active = -1;
+  let committed = '';
 
+  function close() {
+    list.hidden = true;
+    active = -1;
+  }
+
+  function render() {
+    if (!options.length) {
+      list.innerHTML = '<div class="ta-empty">No results</div>';
+    } else {
+      list.innerHTML = options.map((o, i) => {
+        const sub = o.label !== o.value ? o.value : (o.description || '');
+        return `<div class="ta-item${i === active ? ' active' : ''}" role="option" data-index="${i}">
+          <div class="ta-label">${esc(o.label || o.value)}</div>
+          ${sub ? `<div class="ta-sub">${esc(sub)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+    list.hidden = false;
+  }
+
+  async function load() {
+    const id = ++requestId;
+    const result = await get(method, { txt: input.value, ...extraArgs() }) || [];
+    // Skip answers that came back after a newer search, or after the input lost focus.
+    if (id !== requestId || document.activeElement !== input) return;
+    options = result;
+    active = -1;
+    render();
+  }
+
+  // Reload the report only when the value really changed.
+  function commit() {
+    if (input.value === committed) return;
+    committed = input.value;
+    input.dispatchEvent(new Event('change'));
+  }
+
+  function pick(index) {
+    input.value = options[index].value;
+    close();
+    commit();
+  }
+
+  // Remember the value at focus, so blur reloads only when it changed.
+  input.addEventListener('focus', () => { committed = input.value; load(); });
+  input.addEventListener('click', () => { if (list.hidden) load(); });
   input.addEventListener('input', () => {
     clearTimeout(timer);
-    timer = setTimeout(async () => {
-      const options = await get(method, { txt: input.value, ...extraArgs() }) || [];
-      list.innerHTML = options.map(o =>
-        `<option value="${esc(o.value)}">${esc(o.label !== o.value ? o.label : (o.description || ''))}</option>`
-      ).join('');
-    }, 250);
+    timer = setTimeout(load, 250);
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (list.hidden || !options.length) return;
+      e.preventDefault();
+      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      render();
+      list.querySelector('.ta-item.active')?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!list.hidden && active >= 0) pick(active);
+      else { close(); commit(); }
+    } else if (e.key === 'Escape') {
+      close();
+    }
+  });
+  input.addEventListener('blur', () => {
+    requestId++;
+    close();
+    commit();
+  });
+  // `mousedown` runs before the input's blur, so the pick is not lost.
+  list.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const item = e.target.closest('.ta-item');
+    if (item) pick(Number(item.dataset.index));
   });
 
-  // `change` fires when the value is committed (pick, Enter, blur), not on every keystroke.
-  input.addEventListener('change', loadData);
+  // The native `change` from blur is replaced by commit(); only the dispatched one reloads.
+  input.addEventListener('change', e => {
+    if (e.isTrusted) { e.stopImmediatePropagation(); return; }
+    loadData();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
