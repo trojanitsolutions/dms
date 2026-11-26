@@ -103,6 +103,8 @@ def get_data(filters: dict) -> list[dict]:
 		query = query.where(si.company == filters.get("company"))
 	if filters.get("customer"):
 		query = query.where(si.customer == filters.get("customer"))
+	if filters.get("customer_address"):
+		query = query.where(si.customer_address == filters.get("customer_address"))
 	if filters.get("customer_group"):
 		query = query.where(si.customer_group == filters.get("customer_group"))
 	if filters.get("posting_date"):

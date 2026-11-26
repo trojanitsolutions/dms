@@ -17,6 +17,28 @@ frappe.query_reports["Customer Invoice Balance"] = {
 			label: __("Customer"),
 			fieldtype: "Link",
 			options: "Customer",
+			on_change(report) {
+				// An address picked for another customer no longer applies.
+				if (report.get_filter_value("customer_address")) {
+					report.set_filter_value("customer_address", "");
+				} else if (!report._no_refresh) {
+					report.refresh(true);
+				}
+			},
+		},
+		{
+			fieldname: "customer_address",
+			label: __("Customer Address"),
+			fieldtype: "Link",
+			options: "Address",
+			get_query() {
+				// Show only customer addresses, and only the picked customer's when one is set.
+				const customer = frappe.query_report.get_filter_value("customer");
+				return {
+					query: "frappe.contacts.doctype.address.address.address_query",
+					filters: Object.assign({ link_doctype: "Customer" }, customer ? { link_name: customer } : {}),
+				};
+			},
 		},
 		{
 			fieldname: "customer_group",
